@@ -71,7 +71,7 @@ export default function AgentPage() {
   const [savingProfile, setSavingProfile] = useState(false);
 
   const fetchProfile = useCallback(async (id: string) => {
-    const r = await fetch(`/_api/agents/${id}`);
+    const r = await fetch(`/api/agents/${id}`);
     const d = await r.json();
     if (d.agent) {
       setProfile(d.agent);
@@ -80,10 +80,10 @@ export default function AgentPage() {
   }, []);
 
   useEffect(() => {
-    fetch("/_api/auth/me").then(r => r.json()).then(d => {
+    fetch("/api/auth/me").then(r => r.json()).then(d => {
       if (d.user) fetchProfile(d.user.id);
     });
-    const es = new EventSource("/_api/events");
+    const es = new EventSource("/api/events");
     esRef.current = es;
     es.addEventListener("connected", () => setLiveConnected(true));
     es.addEventListener("orders", (e) => { setOrders(JSON.parse(e.data) as Order[]); setLoading(false); });
@@ -94,7 +94,7 @@ export default function AgentPage() {
   async function toggleAvailability() {
     if (!profile) return;
     setTogglingAvail(true);
-    await fetch(`/_api/agents/${profile.id}`, {
+    await fetch(`/api/agents/${profile.id}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ available: !profile.available }),
     });
@@ -104,19 +104,19 @@ export default function AgentPage() {
 
   async function acceptJob(orderId: string) {
     setActing(orderId);
-    await fetch(`/_api/orders/${orderId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ accept: true }) });
+    await fetch(`/api/orders/${orderId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ accept: true }) });
     setActing(null);
   }
 
   async function declineJob(orderId: string) {
     setActing(orderId);
-    await fetch(`/_api/orders/${orderId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ decline: true }) });
+    await fetch(`/api/orders/${orderId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ decline: true }) });
     setActing(null);
   }
 
   async function completeJob(orderId: string) {
     setActing(orderId);
-    await fetch(`/_api/orders/${orderId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: "completed" }) });
+    await fetch(`/api/orders/${orderId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: "completed" }) });
     setActing(null);
     if (profile) fetchProfile(profile.id);
   }
@@ -126,7 +126,7 @@ export default function AgentPage() {
     const reader = new FileReader();
     reader.onload = async () => {
       const url = reader.result as string;
-      await fetch(`/_api/orders/${orderId}/photos`, {
+      await fetch(`/api/orders/${orderId}/photos`, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ filename: file.name, url, description: uploadDesc }),
       });
@@ -136,18 +136,18 @@ export default function AgentPage() {
   }
 
   async function deletePhoto(orderId: string, photoId: string) {
-    await fetch(`/_api/orders/${orderId}/photos`, { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ photoId }) });
+    await fetch(`/api/orders/${orderId}/photos`, { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ photoId }) });
   }
 
   async function saveProfile() {
     if (!profile) return;
     setSavingProfile(true);
-    await fetch(`/_api/agents/${profile.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(profileForm) });
+    await fetch(`/api/agents/${profile.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(profileForm) });
     setProfile(p => p ? { ...p, ...profileForm } : p);
     setEditingProfile(false); setSavingProfile(false);
   }
 
-  async function logout() { await fetch("/_api/auth/logout", { method: "POST" }); router.push("/"); }
+  async function logout() { await fetch("/api/auth/logout", { method: "POST" }); router.push("/"); }
 
   const myJobs = orders.filter(o => o.assignedAgentId === profile?.id && o.status === "in_progress");
   const offers = orders.filter(o => o.status === "pending" && o.assignedAgentId === null);

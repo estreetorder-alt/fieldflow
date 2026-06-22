@@ -59,7 +59,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
   const [error, setError] = useState("");
 
   useEffect(() => {
-    fetch(`/_api/orders/${id}`)
+    fetch(`/api/orders/${id}`)
       .then(async (res) => {
         if (res.status === 401) { router.push("/login"); return; }
         if (res.status === 403 || res.status === 404) { setError("Order not found or access denied."); setLoading(false); return; }
@@ -71,7 +71,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
   }, [id, router]);
 
   function handleDownload() {
-    window.open(`/_api/orders/${id}/report`, "_blank");
+    window.open(`/api/orders/${id}/report`, "_blank");
   }
 
   if (loading) {

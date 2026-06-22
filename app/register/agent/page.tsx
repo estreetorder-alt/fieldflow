@@ -24,7 +24,7 @@ export default function AgentRegisterPage() {
     if (form.password !== form.confirm) { setError("Passwords do not match"); return; }
     if (form.password.length < 8) { setError("Password must be at least 8 characters"); return; }
     setLoading(true); setError("");
-    const res = await fetch("/_api/auth/register", {
+    const res = await fetch("/api/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...form, role: "agent" }),

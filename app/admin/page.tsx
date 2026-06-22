@@ -63,10 +63,10 @@ export default function AdminPage() {
 
   const fetchAll = useCallback(async () => {
     const [agentsRes, pricingRes, meRes, emailsRes] = await Promise.all([
-      fetch("/_api/agents"),
-      fetch("/_api/pricing"),
-      fetch("/_api/auth/me"),
-      fetch("/_api/email-log"),
+      fetch("/api/agents"),
+      fetch("/api/pricing"),
+      fetch("/api/auth/me"),
+      fetch("/api/email-log"),
     ]);
     const [agentsData, pricingData, meData, emailsData] = await Promise.all([
       agentsRes.json(), pricingRes.json(), meRes.json(), emailsRes.json(),
@@ -80,7 +80,7 @@ export default function AdminPage() {
   useEffect(() => {
     setLoading(true);
     fetchAll().finally(() => setLoading(false));
-    const es = new EventSource("/_api/events");
+    const es = new EventSource("/api/events");
     esRef.current = es;
     es.addEventListener("connected", () => setLiveConnected(true));
     es.addEventListener("orders", (e) => { setOrders(JSON.parse(e.data) as Order[]); setLoading(false); });
@@ -88,23 +88,23 @@ export default function AdminPage() {
     return () => { es.close(); };
   }, [fetchAll]);
 
-  async function handleLogout() { await fetch("/_api/auth/logout", { method: "POST" }); router.push("/"); }
+  async function handleLogout() { await fetch("/api/auth/logout", { method: "POST" }); router.push("/"); }
 
   async function assignAgent(orderId: string, agentId: string | null, status?: string) {
     const body: Record<string, unknown> = { assignedAgentId: agentId };
     if (status) body.status = status;
-    await fetch(`/_api/orders/${orderId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    await fetch(`/api/orders/${orderId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
   }
 
   async function updateStatus(orderId: string, status: string) {
-    await fetch(`/_api/orders/${orderId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }) });
+    await fetch(`/api/orders/${orderId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }) });
   }
 
   async function savePricing(id: string) {
     setSaving(id);
     const updates = editingPrice[id];
     if (!updates) { setSaving(null); return; }
-    await fetch("/_api/pricing", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, ...updates }) });
+    await fetch("/api/pricing", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, ...updates }) });
     setSaving(null);
     setEditingPrice(prev => { const n = { ...prev }; delete n[id]; return n; });
     fetchAll();
@@ -115,7 +115,7 @@ export default function AdminPage() {
   }
 
   async function toggleAgentAvailability(agent: Agent) {
-    await fetch(`/_api/agents/${agent.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ available: !agent.available }) });
+    await fetch(`/api/agents/${agent.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ available: !agent.available }) });
     setAgents(prev => prev.map(a => a.id === agent.id ? { ...a, available: !a.available } : a));
   }
 
@@ -123,7 +123,7 @@ export default function AdminPage() {
     const rating = ratingEdit[agentId];
     if (rating == null) return;
     setSaving(`rating-${agentId}`);
-    await fetch(`/_api/agents/${agentId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ rating }) });
+    await fetch(`/api/agents/${agentId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ rating }) });
     setAgents(prev => prev.map(a => a.id === agentId ? { ...a, rating } : a));
     setRatingEdit(prev => { const n = { ...prev }; delete n[agentId]; return n; });
     setSaving(null);
@@ -131,7 +131,7 @@ export default function AdminPage() {
 
   async function markAgentPaid(agentId: string) {
     setSaving(`pay-${agentId}`);
-    await fetch(`/_api/agents/${agentId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ markPaid: true }) });
+    await fetch(`/api/agents/${agentId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ markPaid: true }) });
     setAgents(prev => prev.map(a => a.id === agentId ? { ...a, pendingPayout: 0 } : a));
     setSaving(null);
   }
@@ -263,7 +263,7 @@ export default function AdminPage() {
                             <option value="completed">Completed</option>
                             <option value="cancelled">Cancelled</option>
                           </select>
-                          <button onClick={() => window.open(`/_api/orders/${order.id}/invoice`, "_blank")}
+                          <button onClick={() => window.open(`/api/orders/${order.id}/invoice`, "_blank")}
                             className="p-1.5 text-slate-400 hover:text-blue-600 border border-slate-200 rounded-lg hover:border-blue-200">
                             <Download className="w-3.5 h-3.5" />
                           </button>

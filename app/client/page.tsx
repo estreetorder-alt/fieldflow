@@ -73,8 +73,8 @@ export default function ClientPage() {
   const price = calcPrice(form.serviceType, form.turnaroundTier);
 
   useEffect(() => {
-    fetch("/_api/auth/me").then(r => r.json()).then(d => { if (d.user) { setUserName(d.user.name); setUserId(d.user.id); } });
-    const es = new EventSource("/_api/events");
+    fetch("/api/auth/me").then(r => r.json()).then(d => { if (d.user) { setUserName(d.user.name); setUserId(d.user.id); } });
+    const es = new EventSource("/api/events");
     esRef.current = es;
     es.addEventListener("connected", () => setLiveConnected(true));
     es.addEventListener("orders", (e) => { setOrders(JSON.parse(e.data) as Order[]); setLoading(false); });
@@ -88,7 +88,7 @@ export default function ClientPage() {
       const body = bulkMode
         ? { orders: bulkRows.filter(r => r.address.trim()) }
         : { address: form.address, serviceType: form.serviceType, turnaroundTier: form.turnaroundTier, notes: form.notes, customizeNotes: form.customize ? form.customizeNotes : "" };
-      const res = await fetch("/_api/orders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const res = await fetch("/api/orders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       if (!res.ok) { const d = await res.json(); setFormError(d.error ?? "Failed to submit"); return; }
       setShowNewOrder(false);
       setForm({ address: "", serviceType: "inspection", turnaroundTier: "standard", notes: "", customizeNotes: "", customize: false });
@@ -105,19 +105,19 @@ export default function ClientPage() {
     });
     const sel = new Set(selectedPhotos[orderId] ?? []);
     if (sel.has(photoId)) sel.delete(photoId); else sel.add(photoId);
-    await fetch(`/_api/orders/${orderId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ selectedPhotos: [...sel] }) });
+    await fetch(`/api/orders/${orderId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ selectedPhotos: [...sel] }) });
   }
 
   async function emailSelectedPhotos(orderId: string) {
     setEmailingOrder(orderId);
     const sel = selectedPhotos[orderId] ?? new Set();
-    await fetch("/_api/email-log", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ orderId, photoIds: [...sel] }) }).catch(() => {});
+    await fetch("/api/email-log", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ orderId, photoIds: [...sel] }) }).catch(() => {});
     setTimeout(() => { setEmailingOrder(null); alert("Email sent! (stub — real email coming soon)"); }, 800);
   }
 
-  function downloadInvoice(orderId: string) { window.open(`/_api/orders/${orderId}/invoice`, "_blank"); }
+  function downloadInvoice(orderId: string) { window.open(`/api/orders/${orderId}/invoice`, "_blank"); }
 
-  async function logout() { await fetch("/_api/auth/logout", { method: "POST" }); router.push("/"); }
+  async function logout() { await fetch("/api/auth/logout", { method: "POST" }); router.push("/"); }
 
   const myOrders = orders.filter(o => true); // Already filtered by API
   const stats = {
