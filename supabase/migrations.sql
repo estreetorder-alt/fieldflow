@@ -9,8 +9,8 @@ create table if not exists agent_zip_codes (
   created_at timestamptz not null default now(),
   unique(agent_id, zip_code)
 );
-create index if not exists on agent_zip_codes(zip_code);
-create index if not exists on agent_zip_codes(agent_id);
+create index if not exists idx_azc_zip on agent_zip_codes(zip_code);
+create index if not exists idx_azc_agent on agent_zip_codes(agent_id);
 
 -- ── 2. Agent grade (0.0–5.0, starts at 3.0) ──────────────────
 alter table users add column if not exists grade numeric(3,1) default 3.0;
@@ -40,8 +40,8 @@ create table if not exists messages (
   read        boolean not null default false,
   created_at  timestamptz not null default now()
 );
-create index if not exists on messages(to_id, read);
-create index if not exists on messages(from_id);
+create index if not exists idx_msg_to on messages(to_id, read);
+create index if not exists idx_msg_from on messages(from_id);
 
 -- ── 5. Sub-accounts (employee logins under a client) ──────────
 alter table users add column if not exists parent_client_id text references users(id) on delete cascade;
