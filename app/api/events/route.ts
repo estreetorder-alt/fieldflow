@@ -1,98 +1,60 @@
 import { NextRequest } from "next/server";
-import { cookies } from "next/headers";
-import { store } from "@/lib/store";
+import { getAllOrders, getOrdersByClientId, getOrdersByAgentId } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
-export const runtime = "nodejs";
+export const maxDuration = 60;
 
-export async function GET(req: NextRequest) {
-  const cookieStore = await cookies();
-  const userId = cookieStore.get("user_id")?.value;
-  const userRole = cookieStore.get("user_role")?.value;
-
-  if (!userId || !userRole) {
-    return new Response("Unauthorized", { status: 401 });
-  }
+export async function GET(request: NextRequest) {
+  const userId = request.cookies.get("user_id")?.value;
+  const userRole = request.cookies.get("user_role")?.value;
 
   const encoder = new TextEncoder();
-  let intervalId: ReturnType<typeof setInterval> | null = null;
+  let intervalId: ReturnType<typeof setInterval>;
   let closed = false;
 
   const stream = new ReadableStream({
     start(controller) {
-      function sendEvent(event: string, data: unknown) {
+      const send = (event: string, data: string) => {
         if (closed) return;
         try {
-          controller.enqueue(
-            encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`)
-          );
-        } catch {
-          closed = true;
-        }
-      }
+          controller.enqueue(encoder.encode(`event: ${event}\ndata: ${data}\n\n`));
+        } catch { closed = true; }
+      };
 
-      sendEvent("connected", { ok: true, role: userRole });
+      send("connected", JSON.stringify({ ok: true }));
 
-      function getSnapshot() {
-        const orders = store.orders.filter((o) => {
-          if (userRole === "admin") return true;
-          if (userRole === "client") return o.clientId === userId;
-          if (userRole === "agent") return o.assignedAgentId === userId || o.status === "pending";
-          return false;
-        });
+      const push = async () => {
+        if (closed) { clearInterval(intervalId); return; }
+        try {
+          let orders;
+          if (userRole === "admin") orders = await getAllOrders();
+          else if (userRole === "client") orders = await getOrdersByClientId(userId!);
+          else orders = await getOrdersByAgentId(userId!);
+          send("orders", JSON.stringify(orders));
+        } catch { /* ignore */ }
+      };
 
-        return orders.map((o) => {
-          const client = store.users.find((u) => u.id === o.clientId);
-          const agent = o.assignedAgentId ? store.users.find((u) => u.id === o.assignedAgentId) : null;
-          return {
-            id: o.id,
-            status: o.status,
-            address: o.address,
-            serviceType: o.serviceType,
-            turnaroundTier: o.turnaroundTier,
-            totalPrice: o.totalPrice,
-            assignedAgentId: o.assignedAgentId,
-            photos: o.photos,
-            createdAt: o.createdAt,
-            client: client ? { name: client.name, email: client.email } : null,
-            agent: agent ? { name: agent.name } : null,
-          };
-        });
-      }
+      push();
+      intervalId = setInterval(push, 5000);
 
-      let lastSnapshot = JSON.stringify(getSnapshot());
-      sendEvent("orders", JSON.parse(lastSnapshot));
-
-      intervalId = setInterval(() => {
-        if (closed) {
-          if (intervalId) clearInterval(intervalId);
-          return;
-        }
-        const current = JSON.stringify(getSnapshot());
-        if (current !== lastSnapshot) {
-          lastSnapshot = current;
-          sendEvent("orders", JSON.parse(current));
-        }
-        sendEvent("ping", { ts: Date.now() });
-      }, 3000);
+      request.signal.addEventListener("abort", () => {
+        closed = true;
+        clearInterval(intervalId);
+        try { controller.close(); } catch { /* ignore */ }
+      });
     },
     cancel() {
       closed = true;
-      if (intervalId) clearInterval(intervalId);
+      clearInterval(intervalId);
     },
-  });
-
-  req.signal.addEventListener("abort", () => {
-    closed = true;
-    if (intervalId) clearInterval(intervalId);
   });
 
   return new Response(stream, {
     headers: {
       "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache, no-transform",
-      Connection: "keep-alive",
       "X-Accel-Buffering": "no",
+      Connection: "keep-alive",
     },
   });
 }

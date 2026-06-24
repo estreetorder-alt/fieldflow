@@ -1,65 +1,39 @@
 import { NextRequest, NextResponse } from "next/server";
-import { store } from "@/lib/store";
+import { getOrderById, getBidsByOrderId, createBid, updateBidStatus, rejectOtherBids, updateOrder, addStatusHistory, getUserById, addEmailLog } from "@/lib/db";
 
 type Params = { params: Promise<{ id: string }> };
 
-// GET /api/orders/[id]/bids — list bids on an order
 export async function GET(request: NextRequest, { params }: Params) {
   const userId = request.cookies.get("user_id")?.value;
   const userRole = request.cookies.get("user_role")?.value;
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
   const { id } = await params;
-  const order = store.orders.find(o => o.id === id);
-  if (!order) return NextResponse.json({ error: "Order not found" }, { status: 404 });
-
-  // Clients can only see bids on their own orders
-  if (userRole === "client" && order.clientId !== userId)
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-
-  // Agents can only see their own bid
-  let bids = order.bids ?? [];
-  if (userRole === "agent") {
-    bids = bids.filter(b => b.agentId === userId);
-  }
-
-  // Enrich with agent name
-  const enriched = bids.map(b => {
-    const agent = store.users.find(u => u.id === b.agentId);
-    return { ...b, agentName: agent?.name ?? "Unknown", agentRating: agent?.rating ?? null };
-  });
-
-  return NextResponse.json({ bids: enriched });
+  let bids = await getBidsByOrderId(id);
+  if (userRole === "agent") bids = bids.filter(b => b.agentId === userId);
+  return NextResponse.json({ bids });
 }
 
-// POST /api/orders/[id]/bids — place a bid
 export async function POST(request: NextRequest, { params }: Params) {
   const userId = request.cookies.get("user_id")?.value;
   const userRole = request.cookies.get("user_role")?.value;
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
-  const orderIdx = store.orders.findIndex(o => o.id === id);
-  if (orderIdx === -1) return NextResponse.json({ error: "Order not found" }, { status: 404 });
-
-  const order = store.orders[orderIdx];
-
-  // Order must be pending and unassigned
-  if (order.status !== "pending" || order.assignedAgentId !== null)
-    return NextResponse.json({ error: "Order is no longer available for bidding" }, { status: 409 });
+  const order = await getOrderById(id);
+  if (!order) return NextResponse.json({ error: "Order not found" }, { status: 404 });
+  if (order.status !== "pending" || order.assignedAgentId)
+    return NextResponse.json({ error: "Order is no longer available" }, { status: 409 });
 
   const body = await request.json();
   const { amount, message, actingAsAgentId } = body;
 
-  // Who is actually placing the bid?
   let bidderAgentId: string;
   let placedByAdmin = false;
 
   if (userRole === "admin") {
-    // Admin can bid on behalf of any agent
-    if (!actingAsAgentId) return NextResponse.json({ error: "actingAsAgentId required for admin bids" }, { status: 400 });
-    const agent = store.users.find(u => u.id === actingAsAgentId && u.role === "agent");
-    if (!agent) return NextResponse.json({ error: "Agent not found" }, { status: 404 });
+    if (!actingAsAgentId) return NextResponse.json({ error: "actingAsAgentId required" }, { status: 400 });
+    const agent = await getUserById(actingAsAgentId);
+    if (!agent || agent.role !== "agent") return NextResponse.json({ error: "Agent not found" }, { status: 404 });
     bidderAgentId = actingAsAgentId;
     placedByAdmin = true;
   } else if (userRole === "agent") {
@@ -68,104 +42,52 @@ export async function POST(request: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "Only agents or admins can place bids" }, { status: 403 });
   }
 
-  // Agent cannot bid twice on the same order
-  const existing = (order.bids ?? []).find(b => b.agentId === bidderAgentId);
-  if (existing) return NextResponse.json({ error: "You have already bid on this order" }, { status: 409 });
-
   if (!amount || Number(amount) <= 0)
-    return NextResponse.json({ error: "A valid bid amount is required" }, { status: 400 });
+    return NextResponse.json({ error: "Valid bid amount required" }, { status: 400 });
 
-  const bid = {
-    id: `bid-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
-    orderId: id,
-    agentId: bidderAgentId,
-    amount: Number(amount),
-    message: message ?? "",
-    placedAt: new Date().toISOString(),
-    placedByAdmin,
-    status: "pending" as const,
-  };
-
-  if (!store.orders[orderIdx].bids) store.orders[orderIdx].bids = [];
-  store.orders[orderIdx].bids.push(bid);
-
-  const agent = store.users.find(u => u.id === bidderAgentId);
-  store.emailLog.push({
-    timestamp: new Date().toISOString(),
-    type: "bid_placed",
-    to: "client@fieldflow.com",
-    subject: `New bid on order ${id} from ${agent?.name ?? bidderAgentId}`,
-    body: `Bid: $${amount}. Message: ${message}${placedByAdmin ? " [Placed by admin on agent's behalf]" : ""}`,
-  });
+  const bid = await createBid({ orderId: id, agentId: bidderAgentId, amount: Number(amount), message: message ?? "", placedByAdmin });
+  const agent = await getUserById(bidderAgentId);
+  await addEmailLog({ type: "bid_placed", to: "client@fieldflow.com", subject: `New bid on order ${id} from ${agent?.name}`, body: `Bid: $${amount}. ${message ?? ""}` });
 
   return NextResponse.json({ bid }, { status: 201 });
 }
 
-// PATCH /api/orders/[id]/bids — accept or reject a bid (client or admin)
 export async function PATCH(request: NextRequest, { params }: Params) {
   const userId = request.cookies.get("user_id")?.value;
   const userRole = request.cookies.get("user_role")?.value;
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
-  const orderIdx = store.orders.findIndex(o => o.id === id);
-  if (orderIdx === -1) return NextResponse.json({ error: "Order not found" }, { status: 404 });
-
-  const order = store.orders[orderIdx];
-
-  // Only client (owner) or admin can accept/reject bids
+  const order = await getOrderById(id);
+  if (!order) return NextResponse.json({ error: "Order not found" }, { status: 404 });
   if (userRole === "client" && order.clientId !== userId)
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  if (userRole === "agent")
-    return NextResponse.json({ error: "Agents cannot accept/reject bids" }, { status: 403 });
+  if (userRole === "agent") return NextResponse.json({ error: "Agents cannot accept bids" }, { status: 403 });
+  if (order.acceptedBidId) return NextResponse.json({ error: "Bid already accepted" }, { status: 409 });
 
-  if (order.acceptedBidId)
-    return NextResponse.json({ error: "A bid has already been accepted for this order" }, { status: 409 });
-
-  const { bidId, action } = await request.json(); // action: "accept" | "reject"
+  const { bidId, action } = await request.json();
   if (!bidId || !["accept", "reject"].includes(action))
-    return NextResponse.json({ error: "bidId and action (accept|reject) required" }, { status: 400 });
+    return NextResponse.json({ error: "bidId and action required" }, { status: 400 });
 
-  const bidIdx = store.orders[orderIdx].bids.findIndex(b => b.id === bidId);
-  if (bidIdx === -1) return NextResponse.json({ error: "Bid not found" }, { status: 404 });
+  const bids = await getBidsByOrderId(id);
+  const bid = bids.find(b => b.id === bidId);
+  if (!bid) return NextResponse.json({ error: "Bid not found" }, { status: 404 });
 
   if (action === "accept") {
-    const bid = store.orders[orderIdx].bids[bidIdx];
-    // Accept this bid
-    store.orders[orderIdx].bids[bidIdx].status = "accepted";
-    // Reject all other bids
-    store.orders[orderIdx].bids = store.orders[orderIdx].bids.map((b, i) =>
-      i === bidIdx ? b : { ...b, status: "rejected" }
-    );
-    store.orders[orderIdx].acceptedBidId = bidId;
-    store.orders[orderIdx].assignedAgentId = bid.agentId;
-    store.orders[orderIdx].compensationAmount = bid.amount;
-    store.orders[orderIdx].status = "in_progress";
-    store.orders[orderIdx].offerAcceptedAt = new Date().toISOString();
-
-    const agent = store.users.find(u => u.id === bid.agentId);
-    store.orders[orderIdx].statusHistory.push({
-      status: "in_progress",
-      timestamp: new Date().toISOString(),
-      note: `Bid accepted — assigned to ${agent?.name ?? bid.agentId} at $${bid.amount}`,
+    await updateBidStatus(bidId, "accepted");
+    await rejectOtherBids(id, bidId);
+    await updateOrder(id, {
+      acceptedBidId: bidId, assignedAgentId: bid.agentId,
+      compensationAmount: bid.amount, status: "in_progress",
+      offerAcceptedAt: new Date().toISOString(),
     });
-
-    store.emailLog.push({
-      timestamp: new Date().toISOString(),
-      type: "bid_accepted",
-      to: agent?.email ?? "",
-      subject: `Your bid was accepted — ${order.address}`,
-      body: `Your bid of $${bid.amount} was accepted. Please proceed with the job.`,
-    });
+    const agent = await getUserById(bid.agentId);
+    await addStatusHistory(id, "in_progress", `Bid accepted — assigned to ${agent?.name ?? bid.agentId} at $${bid.amount}`);
+    await addEmailLog({ type: "bid_accepted", to: agent?.email ?? "", subject: `Your bid was accepted — ${order.address}`, body: `Your bid of $${bid.amount} was accepted.` });
   } else {
-    // Reject just this bid
-    store.orders[orderIdx].bids[bidIdx].status = "rejected";
-    store.orders[orderIdx].statusHistory.push({
-      status: order.status,
-      timestamp: new Date().toISOString(),
-      note: `Bid ${bidId} rejected`,
-    });
+    await updateBidStatus(bidId, "rejected");
+    await addStatusHistory(id, order.status, `Bid ${bidId} rejected`);
   }
 
-  return NextResponse.json({ order: store.orders[orderIdx] });
+  return NextResponse.json({ ok: true });
 }

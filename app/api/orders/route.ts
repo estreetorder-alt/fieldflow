@@ -1,108 +1,70 @@
 import { NextRequest, NextResponse } from "next/server";
-import { store } from "@/lib/store";
-import { calculatePrice, calculateCompensation } from "@/lib/pricing";
-import type { TurnaroundTier } from "@/lib/store";
+import { getAllOrders, getOrdersByClientId, getOrdersByAgentId, createOrder } from "@/lib/db";
+import { addEmailLog } from "@/lib/db";
+import { getPricingConfig } from "@/lib/db";
+
+function calcPrice(serviceType: string, tier: string, configs: Awaited<ReturnType<typeof getPricingConfig>>) {
+  const cfg = configs.find(c => c.serviceType === serviceType);
+  const base = cfg?.basePrice ?? 100;
+  const mul = { standard: 1, rush_24hr: 1.25, rush_6hr: 1.75 }[tier as string] ?? 1;
+  return Math.round(base * mul);
+}
 
 export async function GET(request: NextRequest) {
   const userId = request.cookies.get("user_id")?.value;
   const userRole = request.cookies.get("user_role")?.value;
-
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  let orders = [...store.orders];
+  let orders;
+  if (userRole === "admin") orders = await getAllOrders();
+  else if (userRole === "client") orders = await getOrdersByClientId(userId);
+  else orders = await getOrdersByAgentId(userId);
 
-  if (userRole === "client") {
-    orders = orders.filter((o) => o.clientId === userId);
-  } else if (userRole === "agent") {
-    orders = orders.filter((o) => o.assignedAgentId === userId || o.status === "pending");
-  }
-
-  const enriched = orders.map((o) => {
-    const client = store.users.find((u) => u.id === o.clientId);
-    const agent = o.assignedAgentId ? store.users.find((u) => u.id === o.assignedAgentId) : null;
-    return {
-      ...o,
-      client: client ? { id: client.id, name: client.name, email: client.email } : null,
-      agent: agent ? { id: agent.id, name: agent.name, rating: agent.rating } : null,
-    };
-  });
-
-  return NextResponse.json({ orders: enriched });
+  return NextResponse.json({ orders });
 }
 
 export async function POST(request: NextRequest) {
   const userId = request.cookies.get("user_id")?.value;
   const userRole = request.cookies.get("user_role")?.value;
-
-  if (!userId || userRole !== "client") {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  if (!userId || userRole !== "client")
+    return NextResponse.json({ error: "Clients only" }, { status: 403 });
 
   const body = await request.json();
-  const { orders: bulkOrders } = body;
+  const configs = await getPricingConfig();
 
-  // Support both single order and bulk array
-  const ordersList: typeof bulkOrders = Array.isArray(bulkOrders) ? bulkOrders : [body];
-
-  if (ordersList.length === 0) {
-    return NextResponse.json({ error: "No orders provided" }, { status: 400 });
-  }
-  if (ordersList.length > 50) {
-    return NextResponse.json({ error: "Max 50 orders per batch" }, { status: 400 });
-  }
-
-  const batchId = ordersList.length > 1 ? `batch-${Date.now()}` : null;
-  const created = [];
-
-  for (const item of ordersList) {
-    const { address, serviceType, turnaroundTier = "standard", notes = "", customizeNotes = "" } = item;
-
-    if (!address || !serviceType) {
-      return NextResponse.json({ error: "Missing required fields: address, serviceType" }, { status: 400 });
+  if (body.orders && Array.isArray(body.orders)) {
+    // Bulk
+    const batchId = `batch-${Date.now()}`;
+    const created = [];
+    for (const row of body.orders) {
+      if (!row.address?.trim()) continue;
+      const price = calcPrice(row.serviceType ?? "inspection", row.turnaroundTier ?? "standard", configs);
+      const order = await createOrder({
+        address: row.address, clientId: userId,
+        totalPrice: price, compensationAmount: Math.round(price * 0.65),
+        serviceType: row.serviceType ?? "inspection",
+        turnaroundTier: row.turnaroundTier ?? "standard",
+        notes: "", customizeNotes: "", bulkBatchId: batchId,
+      });
+      created.push(order);
     }
-
-    const tier = turnaroundTier as TurnaroundTier;
-    const price = calculatePrice(serviceType, tier);
-    const compensation = calculateCompensation(price, tier);
-
-    const order = {
-      id: `ord-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-      address,
-      status: "pending" as const,
-      clientId: userId,
-      assignedAgentId: null,
-      totalPrice: price,
-      compensationAmount: compensation,
-      serviceType,
-      turnaroundTier: tier,
-      notes,
-      customizeNotes,
-      photos: [],
-      photoExpiresAt: null,
-      createdAt: new Date().toISOString(),
-      offerSentAt: new Date().toISOString(),
-      offerAcceptedAt: null,
-      bulkBatchId: batchId,
-      bids: [],
-      acceptedBidId: null,
-      invoicePaid: false,
-      statusHistory: [
-        { status: "pending", timestamp: new Date().toISOString(), note: "Order submitted by client" },
-      ],
-    };
-
-    store.orders.push(order);
-    created.push(order);
-
-    // Email stub
-    store.emailLog.push({
-      timestamp: new Date().toISOString(),
-      type: "new_order",
-      to: "agents@fieldflow.com",
-      subject: `New Order #${order.id} — ${serviceType} at ${address}`,
-      body: `Compensation: $${compensation}. Turnaround: ${tier}.`,
-    });
+    return NextResponse.json({ orders: created }, { status: 201 });
   }
 
-  return NextResponse.json({ orders: created, count: created.length }, { status: 201 });
+  const { address, serviceType, turnaroundTier, notes, customizeNotes } = body;
+  if (!address) return NextResponse.json({ error: "Address required" }, { status: 400 });
+
+  const price = calcPrice(serviceType ?? "inspection", turnaroundTier ?? "standard", configs);
+  const order = await createOrder({
+    address, clientId: userId,
+    totalPrice: price, compensationAmount: Math.round(price * 0.65),
+    serviceType: serviceType ?? "inspection",
+    turnaroundTier: turnaroundTier ?? "standard",
+    notes: notes ?? "", customizeNotes: customizeNotes ?? "",
+    bulkBatchId: null,
+  });
+
+  await addEmailLog({ type: "new_order", to: "admin@fieldflow.com", subject: `New Order — ${address}`, body: `Client submitted a ${serviceType} order.` });
+
+  return NextResponse.json({ order }, { status: 201 });
 }

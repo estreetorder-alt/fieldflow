@@ -1,28 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { store } from "@/lib/store";
+import { getPricingConfig, updatePricingConfig } from "@/lib/db";
 
-export async function GET() {
-  return NextResponse.json({ pricing: store.pricingConfig });
+export async function GET(request: NextRequest) {
+  const userId = request.cookies.get("user_id")?.value;
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const pricing = await getPricingConfig();
+  return NextResponse.json({ pricing });
 }
 
 export async function PATCH(request: NextRequest) {
   const userRole = request.cookies.get("user_role")?.value;
-
-  if (userRole !== "admin") {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
+  if (userRole !== "admin") return NextResponse.json({ error: "Admin only" }, { status: 403 });
   const { id, basePrice, urgencyMultiplier, active } = await request.json();
-
-  const idx = store.pricingConfig.findIndex((p) => p.id === id);
-
-  if (idx === -1) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
-  }
-
-  if (basePrice !== undefined) store.pricingConfig[idx].basePrice = Number(basePrice);
-  if (urgencyMultiplier !== undefined) store.pricingConfig[idx].urgencyMultiplier = Number(urgencyMultiplier);
-  if (active !== undefined) store.pricingConfig[idx].active = Boolean(active);
-
-  return NextResponse.json({ pricing: store.pricingConfig[idx] });
+  await updatePricingConfig(id, { basePrice, urgencyMultiplier, active });
+  return NextResponse.json({ ok: true });
 }
