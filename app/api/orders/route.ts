@@ -83,6 +83,8 @@ export async function POST(request: NextRequest) {
       offerSentAt: new Date().toISOString(),
       offerAcceptedAt: null,
       bulkBatchId: batchId,
+      bids: [],
+      acceptedBidId: null,
       invoicePaid: false,
       statusHistory: [
         { status: "pending", timestamp: new Date().toISOString(), note: "Order submitted by client" },

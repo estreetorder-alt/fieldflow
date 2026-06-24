@@ -61,4 +61,3 @@ Data lives in Node.js `global` memory. On Vercel:
 - [ ] Integrate real email sending (Resend)
 - [ ] Add file storage for photos (Cloudflare R2 or S3)
 - [ ] Move to Oracle Cloud VM + custom domain
-"# fieldflow" 

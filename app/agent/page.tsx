@@ -5,15 +5,17 @@ import { useRouter } from "next/navigation";
 import {
   LogOut, Camera, MapPin, Clock, CheckCircle, RefreshCw, Upload, X,
   User, Wifi, WifiOff, DollarSign, Star, ToggleLeft, ToggleRight,
-  Edit3, Save, Car, AlertCircle, Zap, Package, Image as ImageIcon, Trash2,
+  Edit3, Save, Car, AlertCircle, Zap, Package, Image as ImageIcon, Trash2, Gavel,
 } from "lucide-react";
 
 interface Photo { id: string; filename: string; url: string; description: string; selectedByClient: boolean; }
+interface Bid { id: string; orderId: string; agentId: string; amount: number; message: string; placedAt: string; status: string; placedByAdmin?: boolean; }
 interface Order {
   id: string; address: string; status: string; totalPrice: number; compensationAmount: number;
   serviceType: string; turnaroundTier: string; notes: string; customizeNotes: string;
   photos: Photo[]; createdAt: string; offerSentAt: string | null; offerAcceptedAt: string | null;
   client?: { name: string; email: string } | null; assignedAgentId: string | null;
+  bids?: Bid[]; acceptedBidId?: string | null;
 }
 interface AgentProfile {
   id: string; name: string; email: string; phone: string; bio: string;
@@ -40,9 +42,8 @@ function Countdown({ from, hours, label }: { from: string; hours: number; label:
     return () => clearInterval(t);
   }, [from, hours]);
   const overdue = remaining === "Overdue";
-  const urgent = !overdue && parseInt(remaining) < 2;
   return (
-    <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${overdue ? "bg-red-100 text-red-700" : urgent ? "bg-amber-100 text-amber-700" : "bg-green-50 text-green-700"}`}>
+    <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${overdue ? "bg-red-100 text-red-700" : "bg-green-50 text-green-700"}`}>
       <Clock className="w-3 h-3" /> {label}: {remaining}
     </span>
   );
@@ -59,7 +60,7 @@ export default function AgentPage() {
   const [togglingAvail, setTogglingAvail] = useState(false);
   const esRef = useRef<EventSource | null>(null);
 
-  // Photo upload state
+  // Photo upload
   const [uploadingFor, setUploadingFor] = useState<string | null>(null);
   const [uploadDesc, setUploadDesc] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -70,6 +71,14 @@ export default function AgentPage() {
   const [profileForm, setProfileForm] = useState({ bio: "", coverageZone: "", vehicle: "", phone: "" });
   const [savingProfile, setSavingProfile] = useState(false);
 
+  // Bid state
+  const [biddingOrder, setBiddingOrder] = useState<string | null>(null);
+  const [bidAmount, setBidAmount] = useState("");
+  const [bidMessage, setBidMessage] = useState("");
+  const [submittingBid, setSubmittingBid] = useState(false);
+  const [bidError, setBidError] = useState("");
+  const [myBids, setMyBids] = useState<Record<string, Bid>>({});
+
   const fetchProfile = useCallback(async (id: string) => {
     const r = await fetch(`/api/agents/${id}`);
     const d = await r.json();
@@ -79,6 +88,16 @@ export default function AgentPage() {
     }
   }, []);
 
+  const fetchMyBids = useCallback(async (orderIds: string[]) => {
+    const results: Record<string, Bid> = {};
+    await Promise.all(orderIds.map(async (oid) => {
+      const r = await fetch(`/api/orders/${oid}/bids`);
+      const d = await r.json();
+      if (d.bids?.length > 0) results[oid] = d.bids[0];
+    }));
+    setMyBids(results);
+  }, []);
+
   useEffect(() => {
     fetch("/api/auth/me").then(r => r.json()).then(d => {
       if (d.user) fetchProfile(d.user.id);
@@ -86,10 +105,17 @@ export default function AgentPage() {
     const es = new EventSource("/api/events");
     esRef.current = es;
     es.addEventListener("connected", () => setLiveConnected(true));
-    es.addEventListener("orders", (e) => { setOrders(JSON.parse(e.data) as Order[]); setLoading(false); });
+    es.addEventListener("orders", (e) => {
+      const parsed = JSON.parse(e.data) as Order[];
+      setOrders(parsed);
+      setLoading(false);
+      // Fetch my bids for pending orders
+      const pendingIds = parsed.filter(o => o.status === "pending" && !o.assignedAgentId).map(o => o.id);
+      if (pendingIds.length > 0) fetchMyBids(pendingIds);
+    });
     es.onerror = () => setLiveConnected(false);
     return () => { es.close(); };
-  }, [fetchProfile]);
+  }, [fetchProfile, fetchMyBids]);
 
   async function toggleAvailability() {
     if (!profile) return;
@@ -102,64 +128,74 @@ export default function AgentPage() {
     setTogglingAvail(false);
   }
 
-  async function acceptJob(orderId: string) {
+  async function directAccept(orderId: string) {
     setActing(orderId);
-    await fetch(`/api/orders/${orderId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ accept: true }) });
+    await fetch(`/api/orders/${orderId}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ accept: true }),
+    });
     setActing(null);
   }
 
-  async function declineJob(orderId: string) {
+  async function submitBid(orderId: string) {
+    if (!bidAmount || Number(bidAmount) <= 0) { setBidError("Enter a valid amount"); return; }
+    setSubmittingBid(true); setBidError("");
+    const r = await fetch(`/api/orders/${orderId}/bids`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ amount: Number(bidAmount), message: bidMessage }),
+    });
+    const d = await r.json();
+    if (!r.ok) { setBidError(d.error ?? "Failed to place bid"); setSubmittingBid(false); return; }
+    setMyBids(prev => ({ ...prev, [orderId]: d.bid }));
+    setBiddingOrder(null); setBidAmount(""); setBidMessage("");
+    setSubmittingBid(false);
+  }
+
+  async function updateStatus(orderId: string, status: string) {
     setActing(orderId);
-    await fetch(`/api/orders/${orderId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ decline: true }) });
+    await fetch(`/api/orders/${orderId}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    });
     setActing(null);
   }
 
-  async function completeJob(orderId: string) {
-    setActing(orderId);
-    await fetch(`/api/orders/${orderId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: "completed" }) });
-    setActing(null);
-    if (profile) fetchProfile(profile.id);
+  async function saveProfile() {
+    if (!profile) return;
+    setSavingProfile(true);
+    await fetch(`/api/agents/${profile.id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(profileForm),
+    });
+    setProfile(p => p ? { ...p, ...profileForm } : p);
+    setEditingProfile(false); setSavingProfile(false);
   }
 
   async function uploadPhoto(orderId: string, file: File) {
     setUploading(true);
     const reader = new FileReader();
     reader.onload = async () => {
-      const url = reader.result as string;
       await fetch(`/api/orders/${orderId}/photos`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ filename: file.name, url, description: uploadDesc }),
+        body: JSON.stringify({ filename: file.name, url: reader.result, description: uploadDesc }),
       });
       setUploadingFor(null); setUploadDesc(""); setUploading(false);
     };
     reader.readAsDataURL(file);
   }
 
-  async function deletePhoto(orderId: string, photoId: string) {
-    await fetch(`/api/orders/${orderId}/photos`, { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ photoId }) });
-  }
-
-  async function saveProfile() {
-    if (!profile) return;
-    setSavingProfile(true);
-    await fetch(`/api/agents/${profile.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(profileForm) });
-    setProfile(p => p ? { ...p, ...profileForm } : p);
-    setEditingProfile(false); setSavingProfile(false);
-  }
-
   async function logout() { await fetch("/api/auth/logout", { method: "POST" }); router.push("/"); }
 
-  const myJobs = orders.filter(o => o.assignedAgentId === profile?.id && o.status === "in_progress");
-  const offers = orders.filter(o => o.status === "pending" && o.assignedAgentId === null);
+  const myOrders = orders.filter(o => o.assignedAgentId === profile?.id);
+  const availableOrders = orders.filter(o => o.status === "pending" && !o.assignedAgentId);
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Header */}
       <header className="bg-white border-b border-slate-100 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
         <div className="flex items-center gap-3">
           <span className="w-9 h-9 bg-blue-600 text-white rounded-xl flex items-center justify-center text-base font-bold">📷</span>
           <span className="font-bold text-slate-900">FieldFlow</span>
-          <span className="text-xs bg-green-50 text-green-600 border border-green-100 rounded-full px-2 py-0.5 font-medium">Agent Portal</span>
+          <span className="text-xs bg-green-50 text-green-700 border border-green-100 rounded-full px-2 py-0.5 font-medium">Agent Portal</span>
         </div>
         <div className="flex items-center gap-4">
           <div className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border ${liveConnected ? "bg-green-50 text-green-600 border-green-200" : "bg-slate-50 text-slate-400 border-slate-200"}`}>
@@ -174,35 +210,16 @@ export default function AgentPage() {
       </header>
 
       <div className="max-w-4xl mx-auto px-6 py-8">
-        {/* Availability toggle — prominent */}
-        {profile && (
-          <div className={`rounded-2xl p-5 mb-6 border-2 flex items-center justify-between transition-all ${profile.available ? "bg-green-50 border-green-200" : "bg-slate-100 border-slate-200"}`}>
-            <div>
-              <p className={`font-bold text-lg ${profile.available ? "text-green-800" : "text-slate-600"}`}>
-                {profile.available ? "✓ You're Available" : "You're Unavailable"}
-              </p>
-              <p className={`text-sm ${profile.available ? "text-green-600" : "text-slate-400"}`}>
-                {profile.available ? "Job offers will be sent to you • Respond within 3 hours" : "You won't receive new job offers until you toggle on"}
-              </p>
-            </div>
-            <button onClick={toggleAvailability} disabled={togglingAvail}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm transition-all ${profile.available ? "bg-green-600 hover:bg-green-700 text-white" : "bg-slate-600 hover:bg-slate-700 text-white"}`}>
-              {profile.available ? <ToggleRight className="w-5 h-5" /> : <ToggleLeft className="w-5 h-5" />}
-              {togglingAvail ? "Saving…" : profile.available ? "Toggle Off" : "Go Available"}
-            </button>
-          </div>
-        )}
-
         {/* Stats */}
         {profile && (
           <div className="grid grid-cols-4 gap-4 mb-6">
             {[
-              { label: "Active Jobs", val: myJobs.length, color: "text-blue-600" },
-              { label: "Open Offers", val: offers.length, color: "text-amber-600" },
+              { label: "My Jobs", val: myOrders.length, color: "text-blue-600" },
+              { label: "Available Orders", val: availableOrders.length, color: "text-amber-600" },
               { label: "Completed", val: profile.completedJobs, color: "text-green-600" },
               { label: "Pending Payout", val: `$${profile.pendingPayout}`, color: "text-purple-600" },
             ].map(({ label, val, color }) => (
-              <div key={label} className="bg-white rounded-2xl border border-slate-100 p-4 text-center">
+              <div key={label} className="bg-white rounded-2xl border border-slate-100 p-5 text-center">
                 <div className={`text-2xl font-bold ${color}`}>{val}</div>
                 <div className="text-xs text-slate-400 mt-1">{label}</div>
               </div>
@@ -210,274 +227,284 @@ export default function AgentPage() {
           </div>
         )}
 
-        {/* Rating */}
-        {profile && (
-          <div className="flex items-center gap-3 mb-6 bg-white rounded-xl px-4 py-3 border border-slate-100">
-            <div className="flex items-center gap-1">
-              {[1,2,3,4,5].map(n => (
-                <Star key={n} className={`w-5 h-5 ${n <= Math.round(profile.rating) ? "text-amber-400 fill-amber-400" : "text-slate-200"}`} />
-              ))}
-            </div>
-            <span className="font-bold text-slate-800">{profile.rating.toFixed(1)}</span>
-            <span className="text-sm text-slate-400">· {profile.completedJobs} jobs completed · Total earned: <span className="font-semibold text-slate-700">${profile.totalEarnings}</span></span>
-          </div>
-        )}
-
         {/* Tabs */}
-        <div className="flex gap-1 bg-slate-100 rounded-xl p-1 mb-6 w-fit">
-          {([["mine", "My Active Jobs", myJobs.length], ["offers", "Job Offers", offers.length], ["profile", "My Profile", ""]] as const).map(([t, label, count]) => (
+        <div className="flex gap-1 bg-slate-100 p-1 rounded-xl mb-6 w-fit">
+          {([["mine", "My Jobs"], ["offers", "Available Orders"], ["profile", "Profile"]] as const).map(([t, label]) => (
             <button key={t} onClick={() => setActiveTab(t)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === t ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>
-              {label}
-              {count !== "" && count > 0 && <span className={`text-xs px-1.5 py-0.5 rounded-full font-bold ${t === "offers" ? "bg-amber-100 text-amber-700" : "bg-blue-100 text-blue-700"}`}>{count}</span>}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === t ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>
+              {label}{t === "offers" && availableOrders.length > 0 && (
+                <span className="ml-1.5 bg-amber-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">{availableOrders.length}</span>
+              )}
             </button>
           ))}
         </div>
 
-        {/* My Active Jobs */}
-        {activeTab === "mine" && (
+        {loading ? (
+          <div className="text-center py-20 text-slate-400 text-sm">Connecting…</div>
+        ) : activeTab === "mine" ? (
           <div className="space-y-4">
-            {loading ? <div className="text-slate-400 text-center py-12">Loading…</div>
-              : myJobs.length === 0 ? (
-                <div className="bg-white rounded-2xl border border-dashed border-slate-200 p-12 text-center">
-                  <Camera className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-                  <p className="text-slate-500 font-medium">No active jobs</p>
-                  <p className="text-slate-400 text-sm mt-1">Check the Job Offers tab to accept new work</p>
-                </div>
-              ) : myJobs.map(order => (
-                <div key={order.id} className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-                  <div className="p-5">
-                    <div className="flex items-start justify-between gap-3 mb-3">
-                      <div>
-                        <div className="flex items-center gap-2 mb-1 flex-wrap">
-                          <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
-                            <RefreshCw className="w-3 h-3" /> In Progress
-                          </span>
-                          {order.turnaroundTier !== "standard" && (
-                            <span className="inline-flex items-center gap-1 text-xs bg-amber-50 text-amber-700 border border-amber-200 font-medium px-2 py-0.5 rounded-full">
-                              <Zap className="w-3 h-3" /> {TIER_LABELS[order.turnaroundTier]}
-                            </span>
-                          )}
-                          {order.offerAcceptedAt && (
-                            <Countdown from={order.offerAcceptedAt} hours={TIER_HOURS[order.turnaroundTier] ?? 24} label="Complete by" />
-                          )}
-                        </div>
-                        <div className="flex items-center gap-1.5 font-medium text-slate-800">
-                          <MapPin className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                          {order.address}
-                        </div>
-                        {order.client && <p className="text-xs text-slate-400 mt-1">Client: {order.client.name}</p>}
-                        {order.customizeNotes && (
-                          <div className="mt-2 p-2 bg-blue-50 border border-blue-100 rounded-lg text-xs text-blue-700">
-                            <span className="font-medium">Customize instructions:</span> {order.customizeNotes}
-                          </div>
-                        )}
-                      </div>
-                      <div className="text-right flex-shrink-0">
-                        <div className="text-xs text-slate-400">Your pay</div>
-                        <div className="text-xl font-bold text-green-600">${order.compensationAmount}</div>
-                      </div>
+            {myOrders.length === 0 ? (
+              <div className="bg-white rounded-2xl border border-dashed border-slate-200 p-12 text-center">
+                <Camera className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+                <p className="text-slate-500 font-medium">No active jobs</p>
+                <p className="text-slate-400 text-sm mt-1">Check Available Orders to bid on new work</p>
+              </div>
+            ) : myOrders.map(order => (
+              <div key={order.id} className="bg-white border border-slate-200 rounded-2xl p-5">
+                <div className="flex items-start justify-between gap-3 mb-3">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${order.status === "in_progress" ? "bg-blue-100 text-blue-700" : order.status === "completed" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}`}>
+                        {order.status.replace("_", " ")}
+                      </span>
+                      <span className="text-xs text-slate-400">{TIER_LABELS[order.turnaroundTier]}</span>
                     </div>
-
-                    {/* Photos uploaded */}
-                    {order.photos.length > 0 && (
-                      <div className="mb-3">
-                        <p className="text-xs font-medium text-slate-500 mb-2">{order.photos.length} photo{order.photos.length !== 1 ? "s" : ""} uploaded</p>
-                        <div className="flex gap-2 flex-wrap">
-                          {order.photos.map(ph => (
-                            <div key={ph.id} className="relative group">
-                              {ph.url.startsWith("data:") ? (
-                                <img src={ph.url} alt={ph.description} className="w-16 h-16 object-cover rounded-lg border border-slate-200" />
-                              ) : (
-                                <div className="w-16 h-16 bg-slate-100 rounded-lg border border-slate-200 flex items-center justify-center">
-                                  <ImageIcon className="w-5 h-5 text-slate-400" />
-                                </div>
-                              )}
-                              <button onClick={() => deletePhoto(order.id, ph.id)}
-                                className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                                <X className="w-3 h-3" />
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Upload / Actions */}
-                    {uploadingFor === order.id ? (
-                      <div className="border border-blue-200 rounded-xl p-3 bg-blue-50 space-y-2">
-                        <input ref={fileInputRef} type="file" accept="image/*" className="hidden"
-                          onChange={e => { const f = e.target.files?.[0]; if (f) uploadPhoto(order.id, f); }} />
-                        <input value={uploadDesc} onChange={e => setUploadDesc(e.target.value)}
-                          placeholder="Photo description (optional)…"
-                          className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                        <div className="flex gap-2">
-                          <button onClick={() => fileInputRef.current?.click()} disabled={uploading}
-                            className="flex-1 flex items-center justify-center gap-2 bg-blue-600 text-white text-sm font-medium py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50">
-                            <Upload className="w-4 h-4" /> {uploading ? "Uploading…" : "Choose Photo"}
-                          </button>
-                          <button onClick={() => { setUploadingFor(null); setUploadDesc(""); }}
-                            className="px-3 border border-slate-200 rounded-lg text-slate-500 hover:bg-slate-100">
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex gap-2">
-                        <button onClick={() => setUploadingFor(order.id)}
-                          className="flex items-center gap-1.5 text-sm border border-slate-200 text-slate-700 font-medium px-3 py-2 rounded-xl hover:bg-slate-50">
-                          <Upload className="w-4 h-4" /> Upload Photo
-                        </button>
-                        <button onClick={() => completeJob(order.id)} disabled={acting === order.id}
-                          className="flex items-center gap-1.5 text-sm bg-green-600 hover:bg-green-700 text-white font-medium px-4 py-2 rounded-xl disabled:opacity-50">
-                          <CheckCircle className="w-4 h-4" /> {acting === order.id ? "Saving…" : "Mark Complete"}
-                        </button>
-                      </div>
-                    )}
+                    <div className="flex items-center gap-1.5 text-slate-700 font-medium">
+                      <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                      {order.address}
+                    </div>
+                    <div className="text-xs text-slate-500 mt-1 capitalize">{order.serviceType.replace(/_/g, " ")}</div>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <div className="text-lg font-bold text-green-700">${order.compensationAmount}</div>
+                    <div className="text-xs text-slate-400">your earnings</div>
                   </div>
                 </div>
-              ))
-            }
-          </div>
-        )}
 
-        {/* Job Offers */}
-        {activeTab === "offers" && (
-          <div className="space-y-4">
-            {!profile?.available && (
-              <div className="flex items-center gap-3 p-4 bg-amber-50 border border-amber-200 rounded-2xl text-sm text-amber-800">
-                <AlertCircle className="w-5 h-5 flex-shrink-0" />
-                You&apos;re currently unavailable. Toggle your availability to see and accept new offers.
+                {order.notes && (
+                  <div className="text-xs text-slate-500 bg-slate-50 rounded-lg px-3 py-2 mb-3">{order.notes}</div>
+                )}
+
+                {order.offerAcceptedAt && order.status === "in_progress" && (
+                  <div className="mb-3">
+                    <Countdown from={order.offerAcceptedAt} hours={TIER_HOURS[order.turnaroundTier]} label="Deadline" />
+                  </div>
+                )}
+
+                {/* Photos */}
+                {order.photos.length > 0 && (
+                  <div className="mb-3">
+                    <p className="text-xs font-medium text-slate-600 mb-2">{order.photos.length} photo(s) uploaded</p>
+                    <div className="flex gap-2 flex-wrap">
+                      {order.photos.map(ph => (
+                        <div key={ph.id} className="w-16 h-16 rounded-lg overflow-hidden bg-slate-100 border border-slate-200">
+                          {ph.url?.startsWith("data:") ? (
+                            <img src={ph.url} alt={ph.description} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center"><Camera className="w-5 h-5 text-slate-400" /></div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Actions */}
+                {order.status === "in_progress" && (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <button onClick={() => setUploadingFor(uploadingFor === order.id ? null : order.id)}
+                      className="flex items-center gap-1.5 text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium px-3 py-2 rounded-lg">
+                      <Upload className="w-3.5 h-3.5" /> Upload Photo
+                    </button>
+                    <button onClick={() => updateStatus(order.id, "completed")} disabled={acting === order.id}
+                      className="flex items-center gap-1.5 text-xs bg-green-600 hover:bg-green-700 text-white font-medium px-3 py-2 rounded-lg disabled:opacity-50">
+                      <CheckCircle className="w-3.5 h-3.5" /> {acting === order.id ? "…" : "Mark Complete"}
+                    </button>
+                  </div>
+                )}
+
+                {/* Upload panel */}
+                {uploadingFor === order.id && (
+                  <div className="mt-3 p-3 bg-blue-50 rounded-xl border border-blue-100">
+                    <input type="text" placeholder="Photo description" value={uploadDesc}
+                      onChange={e => setUploadDesc(e.target.value)}
+                      className="w-full text-sm border border-blue-200 rounded-lg px-3 py-2 mb-2 focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                    <input ref={fileInputRef} type="file" accept="image/*" className="hidden"
+                      onChange={e => { if (e.target.files?.[0]) uploadPhoto(order.id, e.target.files[0]); }} />
+                    <div className="flex gap-2">
+                      <button onClick={() => fileInputRef.current?.click()} disabled={uploading}
+                        className="flex items-center gap-1.5 text-xs bg-blue-600 text-white font-medium px-3 py-2 rounded-lg disabled:opacity-50">
+                        {uploading ? "Uploading…" : <><ImageIcon className="w-3.5 h-3.5" /> Choose File</>}
+                      </button>
+                      <button onClick={() => setUploadingFor(null)} className="text-xs text-slate-500 px-2">Cancel</button>
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
-            {loading ? <div className="text-slate-400 text-center py-12">Loading…</div>
-              : offers.length === 0 ? (
-                <div className="bg-white rounded-2xl border border-dashed border-slate-200 p-12 text-center">
-                  <Package className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-                  <p className="text-slate-500 font-medium">No open job offers</p>
-                  <p className="text-slate-400 text-sm mt-1">New offers appear here in real-time</p>
-                </div>
-              ) : offers.map(order => (
-                <div key={order.id} className="bg-white rounded-2xl border border-slate-200 p-5">
-                  <div className="flex items-start justify-between gap-3">
+            ))}
+          </div>
+
+        ) : activeTab === "offers" ? (
+          <div className="space-y-4">
+            {availableOrders.length === 0 ? (
+              <div className="bg-white rounded-2xl border border-dashed border-slate-200 p-12 text-center">
+                <Package className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+                <p className="text-slate-500 font-medium">No available orders right now</p>
+                <p className="text-slate-400 text-sm mt-1">Check back soon — new orders appear here in real time</p>
+              </div>
+            ) : availableOrders.map(order => {
+              const myBid = myBids[order.id];
+              const isBidding = biddingOrder === order.id;
+              return (
+                <div key={order.id} className="bg-white border border-slate-200 rounded-2xl p-5">
+                  <div className="flex items-start justify-between gap-3 mb-3">
                     <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2 flex-wrap">
-                        {order.turnaroundTier !== "standard" ? (
-                          <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full border ${order.turnaroundTier === "rush_6hr" ? "bg-red-50 text-red-700 border-red-200" : "bg-amber-50 text-amber-700 border-amber-200"}`}>
-                            <Zap className="w-3 h-3" /> {TIER_LABELS[order.turnaroundTier]}
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 text-xs bg-slate-50 text-slate-600 border border-slate-200 font-medium px-2 py-0.5 rounded-full">
-                            <Package className="w-3 h-3" /> Standard
-                          </span>
-                        )}
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">Open</span>
+                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${order.turnaroundTier === "rush_6hr" ? "bg-red-50 text-red-600" : order.turnaroundTier === "rush_24hr" ? "bg-amber-50 text-amber-700" : "bg-slate-50 text-slate-500"}`}>
+                          {order.turnaroundTier === "rush_6hr" ? "⚡ " : order.turnaroundTier === "rush_24hr" ? "⚡ " : ""}{TIER_LABELS[order.turnaroundTier]}
+                        </span>
                         <span className="text-xs text-slate-400 capitalize">{order.serviceType.replace(/_/g, " ")}</span>
-                        {order.offerSentAt && (
-                          <Countdown from={order.offerSentAt} hours={3} label="Offer expires" />
-                        )}
                       </div>
-                      <div className="flex items-center gap-1.5 font-medium text-slate-800 mb-1">
-                        <MapPin className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                      <div className="flex items-center gap-1.5 text-slate-700 font-medium">
+                        <MapPin className="w-3.5 h-3.5 text-slate-400" />
                         {order.address}
                       </div>
-                      {order.notes && <p className="text-xs text-slate-400">{order.notes}</p>}
-                      {order.customizeNotes && (
-                        <div className="mt-2 p-2 bg-blue-50 border border-blue-100 rounded-lg text-xs text-blue-700">
-                          <span className="font-medium">Custom instructions:</span> {order.customizeNotes}
-                        </div>
-                      )}
+                      {order.notes && <p className="text-xs text-slate-500 mt-1">{order.notes}</p>}
                     </div>
                     <div className="text-right flex-shrink-0">
-                      <div className="text-xs text-slate-400">Compensation</div>
-                      <div className="text-2xl font-bold text-green-600">${order.compensationAmount}</div>
-                      <div className="text-xs text-slate-400">of ${order.totalPrice} order</div>
+                      <div className="text-xs text-slate-400">Offered</div>
+                      <div className="text-lg font-bold text-green-700">${order.compensationAmount}</div>
                     </div>
                   </div>
-                  <div className="flex gap-2 mt-4 pt-4 border-t border-slate-100">
-                    <button onClick={() => declineJob(order.id)} disabled={acting === order.id || !profile?.available}
-                      className="flex-1 border border-slate-200 text-slate-600 font-medium py-2 rounded-xl hover:bg-slate-50 text-sm disabled:opacity-40">
-                      Decline
-                    </button>
-                    <button onClick={() => acceptJob(order.id)} disabled={acting === order.id || !profile?.available}
-                      className="flex-1 bg-green-600 hover:bg-green-700 disabled:opacity-40 text-white font-medium py-2 rounded-xl text-sm flex items-center justify-center gap-1.5">
-                      <CheckCircle className="w-4 h-4" /> {acting === order.id ? "Accepting…" : `Accept — $${order.compensationAmount}`}
+
+                  {/* Bids on this order */}
+                  {(order.bids?.length ?? 0) > 0 && (
+                    <div className="mb-3 text-xs text-slate-400">{order.bids!.length} bid(s) placed</div>
+                  )}
+
+                  {myBid ? (
+                    // Agent already bid
+                    <div className={`flex items-center gap-2 p-3 rounded-xl text-sm ${myBid.status === "accepted" ? "bg-green-50 text-green-700" : myBid.status === "rejected" ? "bg-red-50 text-red-700" : "bg-blue-50 text-blue-700"}`}>
+                      <Gavel className="w-4 h-4" />
+                      <div>
+                        <span className="font-semibold">Your bid: ${myBid.amount}</span>
+                        {myBid.message && <span className="ml-2 text-xs opacity-75">"{myBid.message}"</span>}
+                        <span className={`ml-2 font-medium capitalize ${myBid.status === "pending" ? "text-blue-600" : myBid.status === "accepted" ? "text-green-700" : "text-red-600"}`}>
+                          — {myBid.status}
+                        </span>
+                        {myBid.placedByAdmin && <span className="ml-1 text-xs opacity-60">(placed by admin)</span>}
+                      </div>
+                    </div>
+                  ) : isBidding ? (
+                    // Bid form
+                    <div className="p-3 bg-blue-50 rounded-xl border border-blue-100 space-y-2">
+                      {bidError && <p className="text-xs text-red-600">{bidError}</p>}
+                      <div className="flex gap-2">
+                        <div className="relative flex-1">
+                          <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                          <input type="number" min="1" placeholder={`${order.compensationAmount}`}
+                            value={bidAmount} onChange={e => setBidAmount(e.target.value)}
+                            className="w-full pl-7 pr-3 py-2 text-sm border border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                        </div>
+                        <input type="text" placeholder="Message (optional)" value={bidMessage}
+                          onChange={e => setBidMessage(e.target.value)}
+                          className="flex-1 px-3 py-2 text-sm border border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                      </div>
+                      <div className="flex gap-2">
+                        <button onClick={() => submitBid(order.id)} disabled={submittingBid}
+                          className="flex items-center gap-1.5 text-xs bg-blue-600 hover:bg-blue-700 text-white font-medium px-3 py-2 rounded-lg disabled:opacity-50">
+                          <Gavel className="w-3.5 h-3.5" />{submittingBid ? "Placing…" : "Place Bid"}
+                        </button>
+                        <button onClick={() => { setActing(order.id); directAccept(order.id); }} disabled={acting === order.id}
+                          className="flex items-center gap-1.5 text-xs bg-green-600 hover:bg-green-700 text-white font-medium px-3 py-2 rounded-lg disabled:opacity-50">
+                          <CheckCircle className="w-3.5 h-3.5" /> Accept at ${order.compensationAmount}
+                        </button>
+                        <button onClick={() => { setBiddingOrder(null); setBidAmount(""); setBidMessage(""); setBidError(""); }}
+                          className="text-xs text-slate-500 px-2">Cancel</button>
+                      </div>
+                    </div>
+                  ) : (
+                    // Default actions
+                    <div className="flex gap-2">
+                      <button onClick={() => { setBiddingOrder(order.id); setBidAmount(String(order.compensationAmount)); }}
+                        className="flex items-center gap-1.5 text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold px-3 py-2 rounded-lg border border-blue-200">
+                        <Gavel className="w-3.5 h-3.5" /> Place Bid
+                      </button>
+                      <button onClick={() => directAccept(order.id)} disabled={acting === order.id}
+                        className="flex items-center gap-1.5 text-xs bg-green-600 hover:bg-green-700 text-white font-semibold px-3 py-2 rounded-lg disabled:opacity-50">
+                        <CheckCircle className="w-3.5 h-3.5" /> {acting === order.id ? "…" : `Accept at $${order.compensationAmount}`}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+        ) : (
+          // Profile tab
+          <div className="bg-white rounded-2xl border border-slate-200 p-6">
+            {profile && (
+              <>
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h2 className="text-lg font-bold text-slate-900">{profile.name}</h2>
+                    <p className="text-sm text-slate-500">{profile.email}</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1.5">
+                      <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
+                      <span className="font-bold text-slate-700">{profile.rating?.toFixed(1)}</span>
+                    </div>
+                    <button onClick={toggleAvailability} disabled={togglingAvail}
+                      className={`flex items-center gap-2 text-sm font-medium px-3 py-2 rounded-xl border transition-all ${profile.available ? "bg-green-50 text-green-700 border-green-200" : "bg-slate-50 text-slate-600 border-slate-200"}`}>
+                      {profile.available ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
+                      {togglingAvail ? "…" : profile.available ? "Available" : "Unavailable"}
                     </button>
                   </div>
                 </div>
-              ))
-            }
-          </div>
-        )}
 
-        {/* Profile */}
-        {activeTab === "profile" && profile && (
-          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-            <div className="p-5 border-b border-slate-100 flex items-center justify-between">
-              <h3 className="font-bold text-slate-900">My Profile</h3>
-              {!editingProfile ? (
-                <button onClick={() => setEditingProfile(true)} className="flex items-center gap-1.5 text-sm text-blue-600 font-medium hover:text-blue-700">
-                  <Edit3 className="w-4 h-4" /> Edit
-                </button>
-              ) : (
-                <button onClick={saveProfile} disabled={savingProfile} className="flex items-center gap-1.5 text-sm bg-blue-600 text-white font-medium px-3 py-1.5 rounded-lg">
-                  <Save className="w-4 h-4" /> {savingProfile ? "Saving…" : "Save Changes"}
-                </button>
-              )}
-            </div>
-            <div className="p-5 space-y-4">
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <label className="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-1">Name</label>
-                  <p className="font-medium text-slate-800">{profile.name}</p>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-1">Email</label>
-                  <p className="font-medium text-slate-800">{profile.email}</p>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-1">Phone</label>
-                  {editingProfile ? (
-                    <input value={profileForm.phone} onChange={e => setProfileForm(f => ({ ...f, phone: e.target.value }))}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                  ) : <p className="font-medium text-slate-800">{profile.phone}</p>}
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1"><Car className="w-3 h-3" /> Vehicle</label>
-                  {editingProfile ? (
-                    <input value={profileForm.vehicle} onChange={e => setProfileForm(f => ({ ...f, vehicle: e.target.value }))}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                  ) : <p className="font-medium text-slate-800">{profile.vehicle}</p>}
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1"><MapPin className="w-3 h-3" /> Coverage Zone</label>
                 {editingProfile ? (
-                  <input value={profileForm.coverageZone} onChange={e => setProfileForm(f => ({ ...f, coverageZone: e.target.value }))}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                ) : <p className="font-medium text-slate-800">{profile.coverageZone}</p>}
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1"><User className="w-3 h-3" /> Bio</label>
-                {editingProfile ? (
-                  <textarea value={profileForm.bio} onChange={e => setProfileForm(f => ({ ...f, bio: e.target.value }))}
-                    rows={3} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
-                ) : <p className="text-slate-700 text-sm leading-relaxed">{profile.bio || "No bio added yet."}</p>}
-              </div>
-              <div className="grid grid-cols-3 gap-3 pt-2 border-t border-slate-100">
-                <div className="bg-green-50 rounded-xl p-3 text-center">
-                  <div className="text-lg font-bold text-green-700">${profile.totalEarnings}</div>
-                  <div className="text-xs text-green-600">Total Earned</div>
-                </div>
-                <div className="bg-purple-50 rounded-xl p-3 text-center">
-                  <div className="text-lg font-bold text-purple-700">${profile.pendingPayout}</div>
-                  <div className="text-xs text-purple-600">Pending Payout</div>
-                </div>
-                <div className="bg-blue-50 rounded-xl p-3 text-center">
-                  <div className="text-lg font-bold text-blue-700">{profile.completedJobs}</div>
-                  <div className="text-xs text-blue-600">Jobs Done</div>
-                </div>
-              </div>
-            </div>
+                  <div className="space-y-3">
+                    {[
+                      { label: "Phone", key: "phone", placeholder: "555-0101" },
+                      { label: "Coverage Zone", key: "coverageZone", placeholder: "Chicago, IL" },
+                      { label: "Vehicle", key: "vehicle", placeholder: "2022 Honda CR-V" },
+                    ].map(({ label, key, placeholder }) => (
+                      <div key={key}>
+                        <label className="text-xs font-medium text-slate-600 block mb-1">{label}</label>
+                        <input value={profileForm[key as keyof typeof profileForm]}
+                          onChange={e => setProfileForm(f => ({ ...f, [key]: e.target.value }))}
+                          placeholder={placeholder}
+                          className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                      </div>
+                    ))}
+                    <div>
+                      <label className="text-xs font-medium text-slate-600 block mb-1">Bio</label>
+                      <textarea value={profileForm.bio} onChange={e => setProfileForm(f => ({ ...f, bio: e.target.value }))}
+                        rows={3} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none" />
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={saveProfile} disabled={savingProfile}
+                        className="flex items-center gap-1.5 bg-blue-600 text-white text-sm font-semibold px-4 py-2 rounded-xl disabled:opacity-50">
+                        <Save className="w-4 h-4" />{savingProfile ? "Saving…" : "Save"}
+                      </button>
+                      <button onClick={() => setEditingProfile(false)} className="text-sm text-slate-500 px-3">Cancel</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {[
+                      { icon: <User className="w-4 h-4" />, label: "Phone", val: profile.phone },
+                      { icon: <MapPin className="w-4 h-4" />, label: "Coverage Zone", val: profile.coverageZone },
+                      { icon: <Car className="w-4 h-4" />, label: "Vehicle", val: profile.vehicle },
+                    ].map(({ icon, label, val }) => (
+                      <div key={label} className="flex items-center gap-3 text-sm">
+                        <span className="text-slate-400">{icon}</span>
+                        <span className="text-slate-500 w-28">{label}</span>
+                        <span className="text-slate-700 font-medium">{val || "—"}</span>
+                      </div>
+                    ))}
+                    {profile.bio && <p className="text-sm text-slate-600 italic mt-2">"{profile.bio}"</p>}
+                    <button onClick={() => setEditingProfile(true)}
+                      className="flex items-center gap-1.5 text-sm text-blue-600 font-medium hover:text-blue-700 mt-2">
+                      <Edit3 className="w-4 h-4" /> Edit Profile
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         )}
       </div>
