@@ -9,6 +9,8 @@ export interface User {
   available?: boolean; rating?: number; bio?: string;
   coverageZone?: string; vehicle?: string;
   totalEarnings?: number; pendingPayout?: number; completedJobs?: number;
+  grade?: number; completionRate?: number; responseRate?: number; approved?: boolean;
+  parentClientId?: string;
 }
 
 export interface Bid {
@@ -67,6 +69,11 @@ function mapUser(row: Record<string, unknown>): User {
     totalEarnings: row.total_earnings as number,
     pendingPayout: row.pending_payout as number,
     completedJobs: row.completed_jobs as number,
+    grade: row.grade as number | undefined,
+    completionRate: row.completion_rate as number | undefined,
+    responseRate: row.response_rate as number | undefined,
+    approved: row.approved as boolean | undefined,
+    parentClientId: row.parent_client_id as string | undefined,
   };
 }
 
@@ -434,4 +441,190 @@ export async function getEmailLog(): Promise<{ timestamp: string; type: string; 
     const row = r as Record<string, unknown>;
     return { timestamp: row.created_at as string, type: row.type as string, to: row.to_email as string, subject: row.subject as string, body: row.body as string };
   });
+}
+
+// ── ZIP Codes ─────────────────────────────────────────────────
+
+export async function getAgentZipCodes(agentId: string): Promise<string[]> {
+  const { data } = await supabase.from("agent_zip_codes").select("zip_code").eq("agent_id", agentId);
+  return (data ?? []).map(r => (r as Record<string,unknown>).zip_code as string);
+}
+
+export async function setAgentZipCodes(agentId: string, zipCodes: string[]): Promise<void> {
+  await supabase.from("agent_zip_codes").delete().eq("agent_id", agentId);
+  if (zipCodes.length > 0) {
+    await supabase.from("agent_zip_codes").insert(zipCodes.map(z => ({ agent_id: agentId, zip_code: z.trim() })));
+  }
+}
+
+export async function findAgentsByZip(zip: string): Promise<User[]> {
+  const { data } = await supabase
+    .from("agent_zip_codes")
+    .select("agent_id, users!agent_zip_codes_agent_id_fkey(*)")
+    .eq("zip_code", zip);
+  return (data ?? [])
+    .map(r => (r as Record<string,unknown>).users)
+    .filter(Boolean)
+    .map(u => mapUser(u as Record<string,unknown>))
+    .filter(u => u.available && u.approved);
+}
+
+// ── Auto-dispatch ─────────────────────────────────────────────
+
+export async function autoDispatch(orderId: string, zip: string): Promise<string | null> {
+  const agents = await findAgentsByZip(zip);
+  if (!agents.length) return null;
+  // Sort by grade desc, pick highest
+  agents.sort((a, b) => (b.grade ?? 3) - (a.grade ?? 3));
+  const best = agents[0];
+  const deadline = new Date(Date.now() + 3 * 3600000).toISOString();
+  await supabase.from("orders").update({
+    assigned_agent_id: best.id,
+    dispatched_at: new Date().toISOString(),
+    response_deadline: deadline,
+  }).eq("id", orderId);
+  await addStatusHistory(orderId, "pending", `Auto-dispatched to ${best.name} — must respond by ${new Date(deadline).toLocaleTimeString()}`);
+  return best.id;
+}
+
+// ── Messages ──────────────────────────────────────────────────
+
+export interface Message {
+  id: number; fromId: string; toId: string; orderId: string | null;
+  body: string; read: boolean; createdAt: string;
+  fromName?: string; toName?: string;
+}
+
+export async function getMessages(userId: string): Promise<Message[]> {
+  const { data } = await supabase
+    .from("messages")
+    .select("*, from:users!messages_from_id_fkey(name), to:users!messages_to_id_fkey(name)")
+    .or(`from_id.eq.${userId},to_id.eq.${userId}`)
+    .order("created_at", { ascending: false })
+    .limit(100);
+  return (data ?? []).map(r => {
+    const row = r as Record<string,unknown>;
+    return {
+      id: row.id as number, fromId: row.from_id as string, toId: row.to_id as string,
+      orderId: row.order_id as string | null, body: row.body as string,
+      read: row.read as boolean, createdAt: row.created_at as string,
+      fromName: (row.from as Record<string,unknown>)?.name as string,
+      toName: (row.to as Record<string,unknown>)?.name as string,
+    };
+  });
+}
+
+export async function sendMessage(fromId: string, toId: string, body: string, orderId?: string): Promise<void> {
+  await supabase.from("messages").insert({ from_id: fromId, to_id: toId, body, order_id: orderId ?? null });
+}
+
+export async function markMessagesRead(userId: string): Promise<void> {
+  await supabase.from("messages").update({ read: true }).eq("to_id", userId).eq("read", false);
+}
+
+export async function getUnreadCount(userId: string): Promise<number> {
+  const { count } = await supabase.from("messages").select("*", { count: "exact", head: true }).eq("to_id", userId).eq("read", false);
+  return count ?? 0;
+}
+
+// ── Agent samples ─────────────────────────────────────────────
+
+export interface AgentSample {
+  id: string; agentId: string; status: string;
+  photos: string[]; notes: string; createdAt: string; reviewedAt?: string;
+}
+
+export async function submitSample(agentId: string, photos: string[]): Promise<AgentSample> {
+  const { data, error } = await supabase.from("agent_samples").insert({
+    agent_id: agentId, photos: JSON.stringify(photos), status: "pending",
+  }).select().single();
+  if (error) throw new Error(error.message);
+  const r = data as Record<string,unknown>;
+  return { id: r.id as string, agentId: r.agent_id as string, status: r.status as string, photos, notes: "", createdAt: r.created_at as string };
+}
+
+export async function reviewSample(sampleId: string, decision: "approved" | "rejected", adminId: string, notes: string): Promise<void> {
+  const { data } = await supabase.from("agent_samples").select("agent_id").eq("id", sampleId).single();
+  const agentId = (data as Record<string,unknown>)?.agent_id as string;
+  await supabase.from("agent_samples").update({ status: decision, reviewed_at: new Date().toISOString(), reviewed_by: adminId, notes }).eq("id", sampleId);
+  if (decision === "approved") {
+    await supabase.from("users").update({ approved: true }).eq("id", agentId);
+  }
+}
+
+export async function getPendingSamples(): Promise<(AgentSample & { agentName: string; agentEmail: string })[]> {
+  const { data } = await supabase.from("agent_samples")
+    .select("*, users!agent_samples_agent_id_fkey(name, email)")
+    .eq("status", "pending").order("created_at");
+  return (data ?? []).map(r => {
+    const row = r as Record<string,unknown>;
+    const user = row.users as Record<string,unknown>;
+    return {
+      id: row.id as string, agentId: row.agent_id as string, status: row.status as string,
+      photos: (row.photos as string[]) ?? [], notes: row.notes as string ?? "",
+      createdAt: row.created_at as string,
+      agentName: user?.name as string, agentEmail: user?.email as string,
+    };
+  });
+}
+
+// ── Sub-accounts ──────────────────────────────────────────────
+
+export async function getSubAccounts(parentClientId: string): Promise<User[]> {
+  const { data } = await supabase.from("users").select("*").eq("parent_client_id", parentClientId);
+  return (data ?? []).map(r => mapUser(r as Record<string,unknown>));
+}
+
+export async function createSubAccount(sub: { name: string; email: string; password: string; parentClientId: string }): Promise<User> {
+  return createUser({
+    id: `user-${Date.now()}-${Math.random().toString(36).slice(2,5)}`,
+    email: sub.email, password: sub.password, role: "client",
+    name: sub.name, phone: "",
+  });
+}
+
+// ── Photo packages ────────────────────────────────────────────
+
+export interface PhotoPackage {
+  id: string; name: string; description: string;
+  shotList: string[]; basePrice: number; active: boolean;
+}
+
+export async function getPhotoPackages(): Promise<PhotoPackage[]> {
+  const { data } = await supabase.from("photo_packages").select("*").eq("active", true).order("base_price");
+  return (data ?? []).map(r => {
+    const row = r as Record<string,unknown>;
+    return {
+      id: row.id as string, name: row.name as string, description: row.description as string,
+      shotList: (row.shot_list as string[]) ?? [], basePrice: Number(row.base_price), active: row.active as boolean,
+    };
+  });
+}
+
+// ── Payout log ────────────────────────────────────────────────
+
+export async function createPayout(agentId: string, amount: number, paypalEmail: string): Promise<void> {
+  await supabase.from("payout_log").insert({ agent_id: agentId, amount, paypal_email: paypalEmail, status: "pending" });
+  await updateUser(agentId, { pendingPayout: 0 });
+}
+
+export async function getPayoutLog(agentId?: string): Promise<Record<string,unknown>[]> {
+  let q = supabase.from("payout_log").select("*, users!payout_log_agent_id_fkey(name, email)").order("created_at", { ascending: false });
+  if (agentId) q = q.eq("agent_id", agentId);
+  const { data } = await q;
+  return (data ?? []) as Record<string,unknown>[];
+}
+
+// ── Grade update ──────────────────────────────────────────────
+
+export async function updateAgentGrade(agentId: string): Promise<void> {
+  const { data: orders } = await supabase.from("orders")
+    .select("status").eq("assigned_agent_id", agentId);
+  const all = (orders ?? []) as Record<string,unknown>[];
+  const completed = all.filter(o => o.status === "completed").length;
+  const rate = all.length > 0 ? (completed / all.length) * 100 : 100;
+  const agent = await getUserById(agentId);
+  const rating = agent?.rating ?? 5.0;
+  const grade = Math.min(5.0, (rating * 0.6 + (rate / 100) * 5 * 0.4));
+  await supabase.from("users").update({ grade: Math.round(grade * 10) / 10, completion_rate: Math.round(rate * 10) / 10 }).eq("id", agentId);
 }
