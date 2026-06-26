@@ -12,7 +12,7 @@ const PERKS = [
   {
     icon: <DollarSign className="w-6 h-6 text-green-600" />,
     title: "Competitive Pay",
-    desc: "Earn $25–$90 per job depending on service type and urgency. Payments deposited weekly.",
+    desc: "Earn $40–$300+ per job depending on service type and urgency. Payments deposited weekly.",
   },
   {
     icon: <Clock className="w-6 h-6 text-blue-600" />,
@@ -100,7 +100,7 @@ export default function WorkPage() {
       <section className="py-10 bg-slate-50 border-y border-slate-200">
         <div className="max-w-4xl mx-auto px-4 grid grid-cols-2 sm:grid-cols-4 gap-6 text-center">
           {[
-            { value: "$25–$90", label: "Per Job" },
+            { value: "$40–$300+", label: "Per Job" },
             { value: "Weekly", label: "Payouts" },
             { value: "150+", label: "Active Agents" },
             { value: "2,400+", label: "Jobs Completed" },

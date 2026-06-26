@@ -1,7 +1,46 @@
+"use client";
+import { useState } from "react";
 import PublicNav from "../components/PublicNav";
 import PublicFooter from "../components/PublicFooter";
 import Link from "next/link";
-import { MapPin, CheckCircle, Clock, Star, ChevronRight } from "lucide-react";
+import { MapPin, CheckCircle, Clock, Star, ChevronRight, Search, AlertTriangle } from "lucide-react";
+
+function ZipChecker() {
+  const [zip, setZip] = useState("");
+  const [result, setResult] = useState<{covered:boolean;agentCount:number}|null>(null);
+  const [loading, setLoading] = useState(false);
+
+  async function check() {
+    if (zip.length !== 5) return;
+    setLoading(true);
+    const r = await fetch("/api/coverage-check", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({zip}) });
+    const d = await r.json();
+    setResult(d);
+    setLoading(false);
+  }
+
+  return (
+    <div>
+      <div className="flex gap-2">
+        <input value={zip} onChange={e=>setZip(e.target.value.replace(/\D/g,"").slice(0,5))}
+          placeholder="e.g. 60601" maxLength={5}
+          onKeyDown={e=>{ if(e.key==="Enter") check(); }}
+          className="flex-1 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"/>
+        <button onClick={check} disabled={loading||zip.length!==5}
+          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold px-4 py-2.5 rounded-xl text-sm">
+          <Search className="w-4 h-4"/>{loading?"…":"Check"}
+        </button>
+      </div>
+      {result && (
+        <div className={`mt-3 flex items-center gap-2 p-3 rounded-xl text-sm font-medium ${result.covered?"bg-green-50 text-green-700 border border-green-200":"bg-amber-50 text-amber-700 border border-amber-200"}`}>
+          {result.covered
+            ? <><CheckCircle className="w-4 h-4"/>{result.agentCount} agent{result.agentCount!==1?"s":""} available in ZIP {zip} — <Link href="/register/client" className="underline font-bold">Order now</Link></>
+            : <><AlertTriangle className="w-4 h-4"/>No agents in ZIP {zip} yet — orders will be queued. <Link href="/contact" className="underline">Notify me</Link></>}
+        </div>
+      )}
+    </div>
+  );
+}
 
 const STATES = [
   { name: "Alabama", abbr: "AL", agents: 8 },
@@ -102,6 +141,13 @@ export default function CoveragePage() {
                 {l.label}
               </div>
             ))}
+          </div>
+
+          {/* ZIP check */}
+          <div className="max-w-lg mx-auto mb-10 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+            <h3 className="font-semibold text-slate-900 mb-1">Check your ZIP code</h3>
+            <p className="text-sm text-slate-500 mb-4">Enter a ZIP code to see if we have agents in that area right now.</p>
+            <ZipChecker />
           </div>
 
           {/* State Grid */}

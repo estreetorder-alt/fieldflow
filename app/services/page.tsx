@@ -1,111 +1,145 @@
 import PublicNav from "../components/PublicNav";
 import PublicFooter from "../components/PublicFooter";
 import Link from "next/link";
-import {
-  Camera, ClipboardList, Shield, Clock, CheckCircle,
-  Star, Building2, Home, Wrench, FileSearch, ChevronRight,
-} from "lucide-react";
+import { CheckCircle, Clock, ChevronRight, Star } from "lucide-react";
 
-const SERVICES = [
+const CATALOG = [
   {
-    icon: <Home className="w-7 h-7 text-blue-600" />,
-    title: "Property Inspection",
-    price: "From $100",
-    turnaround: "24–48 hrs",
-    desc: "Full interior and exterior walkthrough with photographic documentation. Ideal for buyers, sellers, and property managers needing a baseline condition report.",
-    includes: [
-      "Exterior condition & curb appeal",
-      "Interior room-by-room documentation",
-      "Roof, foundation & structural notes",
-      "Utility panel & HVAC overview",
-      "Timestamped photos delivered to dashboard",
-    ],
+    category: "BPO / REO Exterior Photo Sets",
     color: "blue",
+    desc: "Fixed-price exterior photo sets for BPO, REO, and property management. The most ordered services on the platform.",
+    services: [
+      { name:"3-Photo Set",   price:40,  rush24:55,  rush6:75,  shots:["Front of property","Address number","Street scene"] },
+      { name:"4-Photo Set A", price:50,  rush24:65,  rush6:85,  shots:["Front of property","Right or left side","Address number","Street scene"] },
+      { name:"4-Photo Set B", price:55,  rush24:70,  rush6:90,  shots:["Front of property","Address number","Street scene (left)","Street scene (right)"] },
+      { name:"5-Photo Set",   price:65,  rush24:80,  rush6:100, shots:["Front","Right side","Left side","Address number","Street scene"] },
+      { name:"6-Photo Set",   price:75,  rush24:90,  rush6:110, shots:["Front","Right side","Left side","Address number","Street scene (left)","Street scene (right)"] },
+      { name:"7-Photo Set",   price:85,  rush24:100, rush6:120, shots:["Front","Right side","Left side","Street sign","Address number","Street scene (left)","Street scene (right)"] },
+      { name:"8-Photo Set ★", price:95,  rush24:110, rush6:130, shots:["Front","Right side","Left side","Street sign","Address number","Street scene (left)","Street scene (right)","View from across street"] },
+    ],
   },
   {
-    icon: <FileSearch className="w-7 h-7 text-violet-600" />,
-    title: "Property Survey",
-    price: "From $150",
-    turnaround: "48–72 hrs",
-    desc: "Detailed survey and measurement documentation for pre-sale, refinancing, or insurance purposes. Our agents capture dimensions, lot boundaries, and condition notes.",
-    includes: [
-      "Exterior measurements & boundary notes",
-      "Comparable property context",
-      "Condition rating per room",
-      "Utility connections documentation",
-      "PDF report with photo attachments",
-    ],
+    category: "Interior Photo Packages",
     color: "violet",
+    desc: "Full interior documentation. Interior access required — coordinate with property contact before ordering.",
+    services: [
+      { name:"Interior Basic",           price:120, rush24:135, rush6:155, shots:["Living room","Kitchen","All bedrooms","All bathrooms","Any visible damage"] },
+      { name:"Interior Full Package",    price:160, rush24:175, rush6:195, shots:["All rooms","Basement","Garage","HVAC","Roof access","Any damage"] },
+      { name:"Interior + Exterior Combo",price:220, rush24:235, rush6:255, shots:["Full 7-photo exterior + full interior"] },
+    ],
   },
   {
-    icon: <Building2 className="w-7 h-7 text-emerald-600" />,
-    title: "Full Assessment",
-    price: "From $200",
-    turnaround: "72–96 hrs",
-    desc: "Comprehensive property assessment covering structural integrity, systems, and detailed condition scoring. Perfect for investors, lenders, or legal proceedings.",
-    includes: [
-      "Multi-point structural inspection",
-      "Systems assessment (HVAC, plumbing, electrical)",
-      "Deficiency log with severity ratings",
-      "Estimated repair cost ranges",
-      "Notarized report available on request",
-    ],
-    color: "emerald",
-  },
-  {
-    icon: <Camera className="w-7 h-7 text-rose-600" />,
-    title: "Photo Documentation",
-    price: "From $75",
-    turnaround: "Same day",
-    desc: "Rapid photo capture for insurance claims, occupancy verification, or marketing listings. Agents dispatch within hours.",
-    includes: [
-      "Exterior & interior photo sets",
-      "Timestamped GPS metadata",
-      "High-resolution uploads to dashboard",
-      "Occupancy status confirmation",
-      "Rush same-day availability",
-    ],
-    color: "rose",
-  },
-  {
-    icon: <Wrench className="w-7 h-7 text-amber-600" />,
-    title: "Maintenance Inspection",
-    price: "From $90",
-    turnaround: "24–48 hrs",
-    desc: "Routine check of property condition to proactively identify maintenance needs before they become costly repairs.",
-    includes: [
-      "Plumbing fixture check",
-      "Door, window & lock condition",
-      "HVAC filter & venting review",
-      "Grounds & exterior maintenance items",
-      "Prioritized action list",
-    ],
+    category: "Occupancy & Condition Checks",
     color: "amber",
+    desc: "Determine if a property is occupied, vacant, or in poor condition. No interior access required for basic checks.",
+    services: [
+      { name:"Occupancy Check",           price:80,  rush24:95,  rush6:115, shots:["Front","Mailbox","Utility meters","Signs of occupancy","Address"] },
+      { name:"Occupancy Check + Report",  price:110, rush24:125, rush6:145, shots:["Full occupancy check + written condition report"] },
+      { name:"Exterior Condition Report", price:95,  rush24:110, rush6:130, shots:["All four sides","Roof visible","Foundation","Driveway","Any damage"] },
+      { name:"Full Condition Report",     price:200, rush24:215, rush6:235, shots:["Complete interior + exterior condition documentation"] },
+    ],
   },
   {
-    icon: <Shield className="w-7 h-7 text-sky-600" />,
-    title: "Insurance Inspection",
-    price: "From $125",
-    turnaround: "24–48 hrs",
-    desc: "Carrier-accepted inspection reports for policy renewals, new purchases, or claims support.",
-    includes: [
-      "Roof condition & estimated age",
-      "Foundation & drainage review",
-      "Electrical panel documentation",
-      "Pool, fence & outbuilding check",
-      "Carrier-formatted summary",
+    category: "Vehicle Inspections",
+    color: "rose",
+    desc: "Full vehicle inspection and documentation for financing, insurance, estate, or private sale purposes.",
+    services: [
+      { name:"Car Exterior Only",           price:80,  rush24:95,  rush6:115, shots:["Front","Rear","Both sides","Any body damage"] },
+      { name:"Car Full Inspection",         price:120, rush24:135, rush6:155, shots:["All exterior angles","Interior","Dashboard","Engine bay","Odometer","VIN","Any damage"] },
+      { name:"Motorcycle Inspection",       price:45,  rush24:60,  rush6:80,  shots:["Both sides","Front","Rear","Engine","Odometer","VIN"] },
+      { name:"RV / Camper Inspection",      price:80,  rush24:95,  rush6:115, shots:["All exterior","Interior living","Kitchen","Bathroom","Sleeping","Engine","Roof","Damage"] },
+      { name:"Boat / Marine Inspection",    price:40,  rush24:55,  rush6:75,  shots:["Both sides","Bow","Stern","Interior","Engine","Hull","Any damage"] },
+      { name:"Truck / Commercial Vehicle",  price:150, rush24:165, rush6:185, shots:["All angles","Cab interior","Cargo area","Engine bay","Tires","VIN"] },
+      { name:"Trailer Inspection",          price:90,  rush24:105, rush6:125, shots:["All sides","Hitch","Floor","Tires","Any damage"] },
     ],
+  },
+  {
+    category: "Property Inspections",
+    color: "emerald",
+    desc: "Detailed inspection and documentation for buyers, sellers, lenders, investors, and insurance carriers.",
+    services: [
+      { name:"Pre-Sale Inspection Photos",   price:130, rush24:145, rush6:165, shots:["Document property condition before listing"] },
+      { name:"Construction Inspection",      price:175, rush24:190, rush6:210, shots:["Document construction progress and condition"] },
+      { name:"Disaster / Storm Inspection",  price:250, rush24:265, rush6:285, shots:["Document storm or disaster damage"] },
+      { name:"Insurance Inspection",         price:120, rush24:135, rush6:155, shots:["Roof","Foundation","Electrical panel","Pool/fence","Carrier-formatted summary"] },
+      { name:"Tax Lien Inspection",          price:100, rush24:115, rush6:135, shots:["Property condition for tax lien assessment"] },
+      { name:"REO Property Inspection",      price:150, rush24:165, rush6:185, shots:["Full bank-owned property documentation"] },
+      { name:"Investment Assessment",        price:200, rush24:215, rush6:235, shots:["Full property assessment for investment"] },
+    ],
+  },
+  {
+    category: "Commercial & Business",
     color: "sky",
+    desc: "Document commercial properties for acquisition, insurance, lease review, or project completion.",
+    services: [
+      { name:"Retail Space Inspection",     price:200, rush24:215, rush6:235, shots:["Full retail space documentation"] },
+      { name:"Restaurant Inspection",       price:220, rush24:235, rush6:255, shots:["Kitchen","Dining area","Storage","Equipment","Any issues"] },
+      { name:"Office Space Documentation",  price:180, rush24:195, rush6:215, shots:["Full office condition photography"] },
+      { name:"Warehouse Inspection",        price:250, rush24:265, rush6:285, shots:["Full warehouse condition report"] },
+      { name:"Project Completion Verify",   price:160, rush24:175, rush6:195, shots:["Verify project completed as agreed"] },
+    ],
+  },
+  {
+    category: "Rental & Lease",
+    color: "indigo",
+    desc: "Move-in, move-out, and mid-lease documentation. Interior access required.",
+    services: [
+      { name:"Move-In Condition Report",    price:130, rush24:145, rush6:165, shots:["All rooms","Appliances","Fixtures","Any pre-existing damage"] },
+      { name:"Move-Out Condition Report",   price:130, rush24:145, rush6:165, shots:["All rooms","Appliances","Fixtures","Damage comparison"] },
+      { name:"Mid-Lease Inspection",        price:110, rush24:125, rush6:145, shots:["Property condition mid-tenancy"] },
+      { name:"Short-Term Rental Inspection",price:120, rush24:135, rush6:155, shots:["Airbnb/VRBO condition verification"] },
+    ],
+  },
+  {
+    category: "Land & Lot Surveys",
+    color: "green",
+    desc: "Document vacant land, lot boundaries, and land condition.",
+    services: [
+      { name:"Vacant Lot Documentation",  price:80,  rush24:95,  rush6:115, shots:["All four corners","Street sign","Address/lot marker","Any improvements","Surrounding area"] },
+      { name:"Boundary Survey Photos",    price:100, rush24:115, rush6:135, shots:["Property boundary markers and lines"] },
+      { name:"Land Condition Survey",     price:120, rush24:135, rush6:155, shots:["Full land condition documentation with notes"] },
+    ],
+  },
+  {
+    category: "Videography",
+    color: "purple",
+    desc: "Full walkthrough video for listings, insurance, or documentation. Exterior or full interior.",
+    services: [
+      { name:"Exterior Walkthrough Video",   price:150, rush24:165, rush6:185, shots:["Full exterior 360-degree walkthrough"] },
+      { name:"Full Property Video",          price:250, rush24:265, rush6:285, shots:["Complete interior + exterior walkthrough — all rooms, all angles"] },
+      { name:"Aerial Drone Video",           price:300, rush24:315, rush6:335, shots:["Drone footage where permitted — property and surroundings"] },
+      { name:"Vehicle Video Inspection",     price:130, rush24:145, rush6:165, shots:["Full video walk-around of vehicle"] },
+    ],
+  },
+  {
+    category: "Specialty Services",
+    color: "slate",
+    desc: "Targeted documentation for specific needs.",
+    services: [
+      { name:"Neighborhood Assessment",      price:110, rush24:125, rush6:145, shots:["Subject property","Neighboring properties","Street both directions","Any concerns"] },
+      { name:"Pool & Spa Inspection",        price:120, rush24:135, rush6:155, shots:["Pool/spa condition and visible issues"] },
+      { name:"Roof Condition Photos",        price:100, rush24:115, rush6:135, shots:["Roof condition from ground and accessible angles"] },
+      { name:"Utility Meter Documentation",  price:75,  rush24:90,  rush6:110, shots:["All utility meters for occupancy/usage verification"] },
+      { name:"Lockbox Verification",         price:70,  rush24:85,  rush6:105, shots:["Verify lockbox present and accessible"] },
+      { name:"Sign Placement Verification",  price:65,  rush24:80,  rush6:100, shots:["Verify signage correctly placed at property"] },
+      { name:"Hoarding / Code Violation",    price:150, rush24:165, rush6:185, shots:["Document hoarding or code violation conditions"] },
+      { name:"Winterization Verification",   price:100, rush24:115, rush6:135, shots:["Verify property properly winterized"] },
+      { name:"Custom Order (You Set Price)", price:0,   rush24:0,   rush6:0,   shots:["Describe what you need — you set the price"] },
+    ],
   },
 ];
 
-const COLOR_MAP: Record<string, { bg: string; text: string; badge: string; border: string }> = {
-  blue:    { bg: "bg-blue-50",    text: "text-blue-600",    badge: "bg-blue-100 text-blue-700",    border: "border-blue-100" },
-  violet:  { bg: "bg-violet-50",  text: "text-violet-600",  badge: "bg-violet-100 text-violet-700",  border: "border-violet-100" },
-  emerald: { bg: "bg-emerald-50", text: "text-emerald-600", badge: "bg-emerald-100 text-emerald-700", border: "border-emerald-100" },
-  rose:    { bg: "bg-rose-50",    text: "text-rose-600",    badge: "bg-rose-100 text-rose-700",    border: "border-rose-100" },
-  amber:   { bg: "bg-amber-50",   text: "text-amber-600",   badge: "bg-amber-100 text-amber-700",   border: "border-amber-100" },
-  sky:     { bg: "bg-sky-50",     text: "text-sky-600",     badge: "bg-sky-100 text-sky-700",     border: "border-sky-100" },
+const COLOR_MAP: Record<string, { header: string; badge: string; check: string }> = {
+  blue:   { header:"bg-blue-700",   badge:"bg-blue-100 text-blue-700",   check:"text-blue-600" },
+  violet: { header:"bg-violet-700", badge:"bg-violet-100 text-violet-700",check:"text-violet-600" },
+  amber:  { header:"bg-amber-700",  badge:"bg-amber-100 text-amber-700",  check:"text-amber-600" },
+  rose:   { header:"bg-rose-700",   badge:"bg-rose-100 text-rose-700",    check:"text-rose-600" },
+  emerald:{ header:"bg-emerald-700",badge:"bg-emerald-100 text-emerald-700",check:"text-emerald-600" },
+  sky:    { header:"bg-sky-700",    badge:"bg-sky-100 text-sky-700",      check:"text-sky-600" },
+  indigo: { header:"bg-indigo-700", badge:"bg-indigo-100 text-indigo-700",check:"text-indigo-600" },
+  green:  { header:"bg-green-700",  badge:"bg-green-100 text-green-700",  check:"text-green-600" },
+  purple: { header:"bg-purple-700", badge:"bg-purple-100 text-purple-700",check:"text-purple-600" },
+  slate:  { header:"bg-slate-700",  badge:"bg-slate-100 text-slate-600",  check:"text-slate-500" },
 };
 
 export default function ServicesPage() {
@@ -118,103 +152,87 @@ export default function ServicesPage() {
         <div className="max-w-3xl mx-auto text-center">
           <div className="inline-flex items-center gap-2 bg-blue-500/20 border border-blue-400/30 text-blue-300 text-sm font-medium px-4 py-1.5 rounded-full mb-6">
             <Star className="w-3.5 h-3.5" />
-            Nationwide field agents · 48-hr turnaround
+            45+ services · Fixed transparent pricing · Rush available
           </div>
-          <h1 className="text-4xl sm:text-5xl font-extrabold mb-5 leading-tight">
-            Our Services
-          </h1>
+          <h1 className="text-4xl sm:text-5xl font-extrabold mb-5 leading-tight">Our Services & Pricing</h1>
           <p className="text-xl text-slate-300 max-w-2xl mx-auto leading-relaxed">
-            From quick photo documentation to comprehensive property assessments — every service delivered by verified, local field agents.
+            Every service has a fixed price shown before you pay. Rush orders add a flat fee — not a percentage. No surprises.
           </p>
         </div>
       </section>
 
-      {/* Services Grid */}
-      <section className="py-20 px-4">
-        <div className="max-w-6xl mx-auto">
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {SERVICES.map((svc) => {
-              const c = COLOR_MAP[svc.color];
-              return (
-                <div
-                  key={svc.title}
-                  className="bg-white border border-slate-200 rounded-2xl overflow-hidden hover:shadow-lg transition-shadow flex flex-col"
-                >
-                  <div className="p-6 flex-1">
-                    <div className={`w-14 h-14 ${c.bg} rounded-xl flex items-center justify-center mb-4`}>
-                      {svc.icon}
-                    </div>
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <h3 className="font-bold text-slate-900 text-lg">{svc.title}</h3>
-                      <span className={`text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${c.badge}`}>
-                        {svc.price}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-3">
-                      <Clock className="w-3.5 h-3.5" />
-                      {svc.turnaround} turnaround
-                    </div>
-                    <p className="text-slate-500 text-sm leading-relaxed mb-4">{svc.desc}</p>
-                    <ul className="space-y-2">
-                      {svc.includes.map((item) => (
-                        <li key={item} className="flex items-start gap-2 text-xs text-slate-600">
-                          <CheckCircle className={`w-3.5 h-3.5 mt-0.5 flex-shrink-0 ${c.text}`} />
-                          {item}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                  <div className={`px-6 py-4 ${c.bg} border-t ${c.border}`}>
-                    <Link
-                      href="/login"
-                      className={`text-sm font-semibold ${c.text} flex items-center gap-1 hover:gap-2 transition-all`}
-                    >
-                      Order this service
-                      <ChevronRight className="w-4 h-4" />
-                    </Link>
-                  </div>
+      {/* Rush pricing banner */}
+      <section className="py-8 px-4 bg-slate-50 border-b border-slate-200">
+        <div className="max-w-4xl mx-auto grid sm:grid-cols-3 gap-4 text-center">
+          {[
+            { tier:"Standard", note:"Orders before 10 AM → next business day", extra:"Base price", color:"text-slate-700" },
+            { tier:"Rush 24hr", note:"Completed within 24 hours on business days", extra:"+$15 flat", color:"text-amber-600" },
+            { tier:"Rush 6hr",  note:"Completed within 6 daylight hours", extra:"+$35 flat", color:"text-red-600" },
+          ].map(t=>(
+            <div key={t.tier} className="bg-white border border-slate-200 rounded-xl p-4">
+              <div className={`text-lg font-bold ${t.color}`}>{t.tier} — {t.extra}</div>
+              <div className="text-xs text-slate-400 mt-1">{t.note}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Service catalog */}
+      <section className="py-16 px-4">
+        <div className="max-w-6xl mx-auto space-y-12">
+          {CATALOG.map(cat=>{
+            const c = COLOR_MAP[cat.color] ?? COLOR_MAP.slate;
+            return (
+              <div key={cat.category} className="rounded-2xl overflow-hidden border border-slate-200 shadow-sm">
+                {/* Category header */}
+                <div className={`${c.header} text-white px-6 py-4`}>
+                  <h2 className="text-lg font-bold">{cat.category}</h2>
+                  <p className="text-sm opacity-80 mt-0.5">{cat.desc}</p>
                 </div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* Urgency Pricing Note */}
-      <section className="py-16 px-4 bg-slate-50 border-y border-slate-200">
-        <div className="max-w-3xl mx-auto text-center">
-          <h2 className="text-2xl font-bold text-slate-900 mb-4">Transparent Pricing</h2>
-          <p className="text-slate-500 mb-8 leading-relaxed">
-            All prices shown are base rates. Urgent orders (needed within 24 hours) carry a small multiplier — shown clearly at checkout before you confirm.
-          </p>
-          <div className="grid sm:grid-cols-2 gap-4 text-left">
-            <div className="bg-white border border-slate-200 rounded-xl p-5">
-              <div className="text-sm font-semibold text-slate-700 mb-1">Standard Delivery</div>
-              <div className="text-2xl font-bold text-slate-900 mb-1">Base price</div>
-              <div className="text-xs text-slate-500">24–96 hour turnaround depending on service type</div>
-            </div>
-            <div className="bg-white border border-red-100 rounded-xl p-5">
-              <div className="text-sm font-semibold text-red-700 mb-1">Urgent Delivery</div>
-              <div className="text-2xl font-bold text-slate-900 mb-1">Base × 1.3–1.5×</div>
-              <div className="text-xs text-slate-500">Same-day or next-day rush. Price shown before you pay.</div>
-            </div>
-          </div>
+                {/* Services grid */}
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-slate-100 bg-white">
+                  {cat.services.map(svc=>(
+                    <div key={svc.name} className="p-5 flex flex-col">
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <h3 className="font-semibold text-slate-900 text-sm leading-snug">{svc.name}</h3>
+                        {svc.price > 0 ? (
+                          <span className={`text-xs font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${c.badge}`}>${svc.price}</span>
+                        ) : (
+                          <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 whitespace-nowrap">You set price</span>
+                        )}
+                      </div>
+                      {svc.price > 0 && (
+                        <div className="flex items-center gap-3 text-xs text-slate-400 mb-3">
+                          <span>24hr: <span className="font-semibold text-amber-600">${svc.rush24}</span></span>
+                          <span>6hr: <span className="font-semibold text-red-500">${svc.rush6}</span></span>
+                        </div>
+                      )}
+                      <ul className="space-y-1 mt-auto">
+                        {svc.shots.map((shot,i)=>(
+                          <li key={i} className="flex items-start gap-1.5 text-xs text-slate-500">
+                            <CheckCircle className={`w-3 h-3 mt-0.5 flex-shrink-0 ${c.check}`}/>
+                            {shot}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </section>
 
       {/* CTA */}
       <section className="py-20 px-4 bg-blue-700 text-white text-center">
         <div className="max-w-2xl mx-auto">
-          <h2 className="text-3xl font-bold mb-4">Ready to book an inspection?</h2>
-          <p className="text-blue-200 mb-8 text-lg">
-            Create a free account and get an instant price quote in under 2 minutes.
-          </p>
-          <Link
-            href="/login"
-            className="inline-flex items-center gap-2 bg-white text-blue-700 hover:bg-blue-50 font-bold px-8 py-4 rounded-xl text-lg transition-colors"
-          >
-            Get Started
-            <ChevronRight className="w-5 h-5" />
+          <h2 className="text-3xl font-bold mb-4">Ready to place an order?</h2>
+          <p className="text-blue-200 mb-8 text-lg">Create a free account and submit your first order in under 2 minutes.</p>
+          <Link href="/register/client"
+            className="inline-flex items-center gap-2 bg-white text-blue-700 hover:bg-blue-50 font-bold px-8 py-4 rounded-xl text-lg transition-colors">
+            Get Started — Free Account
+            <ChevronRight className="w-5 h-5"/>
           </Link>
         </div>
       </section>

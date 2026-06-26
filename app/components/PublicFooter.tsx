@@ -14,37 +14,46 @@ export default function PublicFooter() {
               <span className="text-slate-200 font-bold text-lg">FieldFlow</span>
             </div>
             <p className="text-sm leading-relaxed text-slate-500">
-              Professional field inspection services for property managers and real estate professionals.
+              Professional field inspection and photo documentation services nationwide.
             </p>
+            <div className="mt-4 space-y-1 text-xs text-slate-500">
+              <p>support@fieldflow.app</p>
+              <p>Mon–Fri 8am–6pm CST</p>
+            </div>
+          </div>
+          <div>
+            <h4 className="text-slate-200 font-semibold text-sm mb-4">Services</h4>
+            <ul className="space-y-2 text-sm">
+              <li><Link href="/services" className="hover:text-slate-200 transition-colors">Photo Sets</Link></li>
+              <li><Link href="/services" className="hover:text-slate-200 transition-colors">Vehicle Inspections</Link></li>
+              <li><Link href="/services" className="hover:text-slate-200 transition-colors">Property Inspections</Link></li>
+              <li><Link href="/services" className="hover:text-slate-200 transition-colors">Videography</Link></li>
+              <li><Link href="/services" className="hover:text-slate-200 transition-colors">All Services</Link></li>
+            </ul>
           </div>
           <div>
             <h4 className="text-slate-200 font-semibold text-sm mb-4">Platform</h4>
             <ul className="space-y-2 text-sm">
-              <li><Link href="/services" className="hover:text-slate-200 transition-colors">Services</Link></li>
-              <li><Link href="/coverage" className="hover:text-slate-200 transition-colors">Coverage</Link></li>
+              <li><Link href="/coverage" className="hover:text-slate-200 transition-colors">Coverage Map</Link></li>
+              <li><Link href="/work" className="hover:text-slate-200 transition-colors">Become an Agent</Link></li>
               <li><Link href="/contact" className="hover:text-slate-200 transition-colors">Contact</Link></li>
-            </ul>
-          </div>
-          <div>
-            <h4 className="text-slate-200 font-semibold text-sm mb-4">Portals</h4>
-            <ul className="space-y-2 text-sm">
               <li><Link href="/login" className="hover:text-slate-200 transition-colors">Client Login</Link></li>
               <li><Link href="/login" className="hover:text-slate-200 transition-colors">Agent Login</Link></li>
-              <li><Link href="/register/client" className="hover:text-slate-200 transition-colors">Sign Up as Client</Link></li>
-              <li><Link href="/register/agent" className="hover:text-slate-200 transition-colors">Become a Field Agent</Link></li>
             </ul>
           </div>
           <div>
-            <h4 className="text-slate-200 font-semibold text-sm mb-4">Legal</h4>
+            <h4 className="text-slate-200 font-semibold text-sm mb-4">Company</h4>
             <ul className="space-y-2 text-sm">
+              <li><Link href="/register/client" className="hover:text-slate-200 transition-colors">Sign Up as Client</Link></li>
+              <li><Link href="/register/agent" className="hover:text-slate-200 transition-colors">Join as Field Agent</Link></li>
               <li><Link href="/privacy" className="hover:text-slate-200 transition-colors">Privacy Policy</Link></li>
               <li><Link href="/terms" className="hover:text-slate-200 transition-colors">Terms of Service</Link></li>
             </ul>
           </div>
         </div>
         <div className="border-t border-slate-800 pt-6 flex flex-col sm:flex-row justify-between items-center gap-3 text-xs text-slate-600">
-          <p>&copy; {new Date().getFullYear()} Velocity REOs, Inc. All rights reserved.</p>
-          <Link href="/admin" className="opacity-0 hover:opacity-20 transition-opacity" title="Admin">·</Link>
+          <p>&copy; {new Date().getFullYear()} FieldFlow. All rights reserved.</p>
+          <p className="text-slate-700">Trusted by 500+ property managers &amp; REO companies nationwide</p>
         </div>
       </div>
     </footer>
