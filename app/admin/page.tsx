@@ -12,7 +12,8 @@ interface Order { id: string; address: string; status: string; clientId: string;
 interface Bid { id: string; agentId: string; agentName: string; agentRating: number | null; amount: number; message: string; placedAt: string; status: string; placedByAdmin?: boolean; }
 interface Agent { id: string; name: string; email: string; phone: string; coverageZone: string; vehicle: string; available: boolean; rating: number; totalEarnings: number; pendingPayout: number; completedJobs: number; grade?: number; approved?: boolean; }
 interface AUser { id: string; name: string; email: string; role: string; phone: string; company?: string; createdAt?: string; }
-interface PricingConfig { id: string; serviceType: string; basePrice: number; urgencyMultiplier: number; active: boolean; }
+interface PricingConfig { id: string; serviceType: string; name: string; basePrice: number; compensation: number; urgencyMultiplier: number; active: boolean; category: string; description: string; photoCount?: number; isCustom?: boolean; requiresInterior?: boolean; }
+interface CatalogCategory { id: string; label: string; services: PricingConfig[]; }
 interface EmailEntry { timestamp: string; type: string; to: string; subject: string; body: string; }
 interface Msg { id: number; fromId: string; toId: string; body: string; createdAt: string; fromName: string; toName: string; }
 interface Sample { id: string; agentId: string; agentName: string; agentEmail: string; status: string; photos: string[]; notes: string; createdAt: string; }
@@ -29,6 +30,8 @@ export default function AdminPage() {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [allUsers, setAllUsers] = useState<AUser[]>([]);
   const [pricing, setPricing] = useState<PricingConfig[]>([]);
+  const [pricingCatalog, setPricingCatalog] = useState<CatalogCategory[]>([]);
+  const [expandedPricingCat, setExpandedPricingCat] = useState<string>("bpo_exterior");
   const [emails, setEmails] = useState<EmailEntry[]>([]);
   const [samples, setSamples] = useState<Sample[]>([]);
   const [messages, setMessages] = useState<Msg[]>([]);
@@ -80,6 +83,7 @@ export default function AdminPage() {
     ]);
     setAgents(agentsData.agents ?? []);
     setPricing(pricingData.pricing ?? []);
+    setPricingCatalog(pricingData.catalog ?? []);
     setEmails(emailsData.emails ?? []);
     setAllUsers(agentsData.allUsers ?? []);
     if (meData.user) { setUserName(meData.user.name); setAdminId(meData.user.id); }
@@ -673,50 +677,118 @@ export default function AdminPage() {
           </div>
 
         ) : tab==="pricing" ? (
-          <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-100">
-              <h2 className="font-semibold text-slate-900">Pricing Configuration</h2>
-              <p className="text-xs text-slate-500 mt-0.5">Std ×1.0 · Rush 24hr ×1.25 · Rush 6hr ×1.75</p>
+          <div className="space-y-4">
+            <div className="bg-white border border-slate-200 rounded-2xl p-5">
+              <h2 className="font-semibold text-slate-900 mb-1">Service Catalog &amp; Pricing</h2>
+              <p className="text-xs text-slate-500">Edit base price (standard tier) and agent compensation for all 45+ services. Rush prices are calculated: 24hr = base + $15, 6hr = base + $35.</p>
             </div>
-            <div className="p-6 space-y-4">
-              {pricing.map(p=>{
-                const edits=editingPrice[p.id]??{};
-                const basePrice=edits.basePrice??p.basePrice;
-                const active=edits.active??p.active;
-                const isDirty=Object.keys(edits).length>0;
-                return (
-                  <div key={p.id} className="border border-slate-200 rounded-xl p-5">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <h3 className="font-semibold text-slate-800 capitalize">{p.serviceType.replace(/_/g," ")}</h3>
-                        <div onClick={()=>setEditingPrice(prev=>({...prev,[p.id]:{...prev[p.id],active:!active}}))} className="flex items-center gap-1.5 cursor-pointer">
-                          <div className={`w-9 h-5 rounded-full relative transition-colors ${active?"bg-green-500":"bg-slate-300"}`}>
-                            <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${active?"translate-x-4":"translate-x-0.5"}`}/>
-                          </div>
-                          <span className="text-xs text-slate-500">{active?"Active":"Inactive"}</span>
-                        </div>
-                      </div>
-                      <div className="text-xs text-slate-400">
-                        Std: <span className="font-semibold text-slate-600">${basePrice}</span> · 24hr: <span className="font-semibold">${Math.round(Number(basePrice)*1.25)}</span> · 6hr: <span className="font-semibold">${Math.round(Number(basePrice)*1.75)}</span>
-                      </div>
-                    </div>
-                    <div className="flex gap-4 items-end">
-                      <div className="flex-1">
-                        <label className="text-xs font-medium text-slate-600 block mb-1.5">Base Price ($)</label>
-                        <input type="number" value={basePrice} onChange={e=>setEditingPrice(prev=>({...prev,[p.id]:{...prev[p.id],basePrice:Number(e.target.value)}}))}
-                          className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"/>
-                      </div>
-                      {isDirty&&(
-                        <button onClick={()=>savePricing(p.id)} disabled={saving===p.id}
-                          className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-4 py-2 rounded-lg disabled:opacity-60 h-9">
-                          <Save className="w-3.5 h-3.5"/>{saving===p.id?"Saving…":"Save"}
-                        </button>
-                      )}
-                    </div>
+            {(pricingCatalog.length > 0 ? pricingCatalog : [{id:"loading",label:"Loading…",services:[]}]).map(cat=>(
+              <div key={cat.id} className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+                {/* Category header */}
+                <button onClick={()=>setExpandedPricingCat(expandedPricingCat===cat.id?"":cat.id)}
+                  className="w-full flex items-center justify-between px-6 py-4 border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <h3 className="font-semibold text-slate-900">{cat.label}</h3>
+                    <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">{cat.services.length} services</span>
+                    <span className="text-xs text-green-600">{cat.services.filter(s=>s.active!==false).length} active</span>
                   </div>
-                );
-              })}
-            </div>
+                  {expandedPricingCat===cat.id ? <ChevronUp className="w-4 h-4 text-slate-400"/> : <ChevronDown className="w-4 h-4 text-slate-400"/>}
+                </button>
+
+                {expandedPricingCat===cat.id&&(
+                  <div className="divide-y divide-slate-100">
+                    {/* Column headers */}
+                    <div className="grid grid-cols-12 gap-2 px-6 py-2 bg-slate-50 text-xs font-medium text-slate-500 uppercase tracking-wide">
+                      <div className="col-span-4">Service</div>
+                      <div className="col-span-2 text-center">Standard $</div>
+                      <div className="col-span-2 text-center">Rush 24hr $</div>
+                      <div className="col-span-2 text-center">Rush 6hr $</div>
+                      <div className="col-span-1 text-center">Agent $</div>
+                      <div className="col-span-1 text-center">Active</div>
+                    </div>
+
+                    {cat.services.map(svc=>{
+                      const edits = editingPrice[svc.id] ?? {};
+                      const basePrice = edits.basePrice ?? svc.basePrice;
+                      const compensation = edits.compensation ?? svc.compensation;
+                      const active = edits.active ?? svc.active;
+                      const rush24 = Math.round(Number(basePrice) + 15);
+                      const rush6  = Math.round(Number(basePrice) + 35);
+                      const isDirty = Object.keys(edits).length > 0;
+
+                      return (
+                        <div key={svc.id} className={`grid grid-cols-12 gap-2 px-6 py-3 items-center ${!active?"opacity-50":""}`}>
+                          {/* Service name + description */}
+                          <div className="col-span-4">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="text-sm font-medium text-slate-800">{svc.name}</span>
+                              {svc.photoCount&&<span className="text-xs text-slate-400">{svc.photoCount}ph</span>}
+                              {svc.requiresInterior&&<span className="text-xs bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded">Interior</span>}
+                              {svc.isCustom&&<span className="text-xs bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded">Custom</span>}
+                            </div>
+                            <p className="text-xs text-slate-400 mt-0.5 truncate">{svc.description}</p>
+                          </div>
+
+                          {/* Standard price — editable */}
+                          <div className="col-span-2">
+                            {svc.isCustom ? (
+                              <span className="text-xs text-slate-400 text-center block">Client sets</span>
+                            ) : (
+                              <div className="relative">
+                                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-xs">$</span>
+                                <input type="number" min="0" value={basePrice}
+                                  onChange={e=>setEditingPrice(prev=>({...prev,[svc.id]:{...prev[svc.id],basePrice:Number(e.target.value)}}))}
+                                  className="w-full pl-5 pr-2 py-1.5 border border-slate-200 rounded-lg text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-400"/>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Rush 24hr — auto calculated */}
+                          <div className="col-span-2 text-center">
+                            {svc.isCustom ? <span className="text-xs text-slate-300">—</span>
+                            : <span className="text-sm font-medium text-amber-600">${rush24}</span>}
+                          </div>
+
+                          {/* Rush 6hr — auto calculated */}
+                          <div className="col-span-2 text-center">
+                            {svc.isCustom ? <span className="text-xs text-slate-300">—</span>
+                            : <span className="text-sm font-medium text-red-500">${rush6}</span>}
+                          </div>
+
+                          {/* Agent compensation — editable */}
+                          <div className="col-span-1">
+                            {svc.isCustom ? (
+                              <span className="text-xs text-slate-400 text-center block">65%</span>
+                            ) : (
+                              <div className="relative">
+                                <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs">$</span>
+                                <input type="number" min="0" value={compensation}
+                                  onChange={e=>setEditingPrice(prev=>({...prev,[svc.id]:{...prev[svc.id],compensation:Number(e.target.value)}}))}
+                                  className="w-full pl-4 pr-1 py-1.5 border border-slate-200 rounded-lg text-xs text-center focus:outline-none focus:ring-2 focus:ring-green-400"/>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Active toggle + save */}
+                          <div className="col-span-1 flex items-center justify-center gap-1.5">
+                            <button onClick={()=>setEditingPrice(prev=>({...prev,[svc.id]:{...prev[svc.id],active:!active}}))}
+                              className={`w-9 h-5 rounded-full relative transition-colors flex-shrink-0 ${active?"bg-green-500":"bg-slate-300"}`}>
+                              <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${active?"translate-x-4":"translate-x-0.5"}`}/>
+                            </button>
+                            {isDirty&&(
+                              <button onClick={()=>savePricing(svc.id)} disabled={saving===svc.id}
+                                className="text-xs bg-blue-600 hover:bg-blue-700 text-white font-semibold px-2 py-1 rounded-lg disabled:opacity-50 whitespace-nowrap">
+                                {saving===svc.id?"…":"Save"}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
 
         ) : (
