@@ -118,3 +118,27 @@ insert into messages (from_id, to_id, order_id, body) values
 update users set grade = 4.8, completion_rate = 97.5, response_rate = 95.0, approved = true where id = 'user-2';
 update users set grade = 4.2, completion_rate = 89.0, response_rate = 88.0, approved = true where id = 'user-3';
 update users set grade = 4.9, completion_rate = 99.0, response_rate = 98.0, approved = true where id = 'user-6';
+
+-- ── Services catalog table (synced from lib/services.ts) ─────
+create table if not exists services_catalog (
+  id                text primary key,
+  name              text not null,
+  description       text not null,
+  base_price        numeric(10,2) not null default 0,
+  compensation      numeric(10,2) not null default 0,
+  category          text not null,
+  photo_count       integer,
+  shot_list         jsonb default '[]',
+  is_custom         boolean default false,
+  requires_interior boolean default false,
+  active            boolean default true
+);
+alter table services_catalog enable row level security;
+create policy "service role full access" on services_catalog for all using (true) with check (true);
+
+-- Stripe payment fields on orders
+alter table orders add column if not exists stripe_payment_intent_id text default null;
+alter table orders add column if not exists payment_status text not null default 'unpaid'; -- unpaid | paid | refunded
+alter table orders add column if not exists custom_shot_list text default null;
+alter table orders add column if not exists custom_client_price numeric(10,2) default null;
+alter table orders add column if not exists service_id text default null;
