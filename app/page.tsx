@@ -1,133 +1,161 @@
 "use client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  Camera, ClipboardList, Shield, Clock, Star, ChevronRight,
-  MapPin, Users, CheckCircle, Car, Building2, Home, Gavel, DollarSign, Zap,
-} from "lucide-react";
+import { Camera, ChevronRight, MapPin, Star, CheckCircle, DollarSign, Clock, Shield, Zap, Users, Car, Building2, Home, ClipboardList } from "lucide-react";
 import PublicNav from "./components/PublicNav";
 import PublicFooter from "./components/PublicFooter";
 
-const FEATURES = [
-  { icon:<ClipboardList className="w-6 h-6 text-blue-600"/>, title:"45+ Services", desc:"BPO photo sets, vehicle inspections, property assessments, occupancy checks, videography, and more — all in one platform." },
-  { icon:<Camera className="w-6 h-6 text-blue-600"/>, title:"Photo Documentation", desc:"Field agents capture and upload photos directly to your dashboard. 30-day secure storage with download and email delivery." },
-  { icon:<Shield className="w-6 h-6 text-blue-600"/>, title:"Verified & Graded Agents", desc:"Every agent submits a sample photo set before approval. Agents are graded on quality, speed, and reliability." },
-  { icon:<Clock className="w-6 h-6 text-blue-600"/>, title:"Real-Time Updates", desc:"Live status feed, SSE push notifications, and automatic email on completion. Know exactly where your order stands." },
-  { icon:<Zap className="w-6 h-6 text-blue-600"/>, title:"Auto-Dispatch", desc:"Orders are automatically dispatched to the highest-graded agent in your ZIP code within minutes of submission." },
-  { icon:<Users className="w-6 h-6 text-blue-600"/>, title:"Multi-Role Access", desc:"Separate portals for clients (with employee sub-accounts), field agents, and administrators." },
+const TESTIMONIALS = [
+  { name:"Arthur", city:"Jacksonville, FL", text:"We placed an order at 12:20 PM and received the photographs at 1:25 PM — that's 65 minutes later! It saved me an 8-hour round trip drive!" },
+  { name:"Will", city:"Marietta, GA", text:"I used WeGoLook in former times, and this company is significantly cheaper, covers more areas, and so much faster." },
+  { name:"Kelly", city:"California", text:"My life is all new thanks to FieldFlow. I went from putting 200+ miles on my car each week to next to nothing. Cannot thank you enough." },
+  { name:"Bruce", city:"Keller Williams", text:"I am now in the BPO business full time with 3 employees. I could not have reached this level without your company." },
 ];
 
-const SERVICE_HIGHLIGHTS = [
-  { icon:<Home className="w-5 h-5"/>, category:"BPO / REO Photo Sets", examples:"3, 4, 5, 6, 7, 8-photo exterior sets", from:"$40", color:"blue" },
-  { icon:<Car className="w-5 h-5"/>, category:"Vehicle Inspections", examples:"Car, motorcycle, RV, boat, truck", from:"$45", color:"violet" },
-  { icon:<Building2 className="w-5 h-5"/>, category:"Property Inspections", examples:"Pre-sale, REO, insurance, disaster", from:"$80", color:"emerald" },
-  { icon:<MapPin className="w-5 h-5"/>, category:"Occupancy & Condition", examples:"Occupancy check, condition reports", from:"$80", color:"amber" },
-  { icon:<Camera className="w-5 h-5"/>, category:"Videography", examples:"Exterior walkthrough, full interior, drone", from:"$150", color:"rose" },
-  { icon:<ClipboardList className="w-5 h-5"/>, category:"Commercial & Rental", examples:"Retail, office, move-in/move-out", from:"$110", color:"sky" },
+const SERVICES = [
+  { icon:<Home className="w-5 h-5"/>, name:"BPO / REO Photo Sets", desc:"3–8 photo exterior sets", from:"$40" },
+  { icon:<Car className="w-5 h-5"/>, name:"Vehicle Inspections", desc:"Car, motorcycle, RV, boat", from:"$45" },
+  { icon:<Building2 className="w-5 h-5"/>, name:"Property Inspections", desc:"Pre-sale, REO, insurance", from:"$80" },
+  { icon:<MapPin className="w-5 h-5"/>, name:"Occupancy Checks", desc:"Occupied / vacant verification", from:"$80" },
+  { icon:<Camera className="w-5 h-5"/>, name:"Videography", desc:"Full walkthrough + drone", from:"$150" },
+  { icon:<ClipboardList className="w-5 h-5"/>, name:"Commercial & Rental", desc:"Move-in/out, office, retail", from:"$110" },
 ];
 
-const COLOR_MAP: Record<string, string> = {
-  blue:"bg-blue-50 text-blue-700 border-blue-200",
-  violet:"bg-violet-50 text-violet-700 border-violet-200",
-  emerald:"bg-emerald-50 text-emerald-700 border-emerald-200",
-  amber:"bg-amber-50 text-amber-700 border-amber-200",
-  rose:"bg-rose-50 text-rose-700 border-rose-200",
-  sky:"bg-sky-50 text-sky-700 border-sky-200",
-};
+const STEPS = [
+  { n:"01", title:"Enter the Address", desc:"Type the property or vehicle address. We serve 8,500+ cities across the US. Our system validates and checks agent coverage instantly." },
+  { n:"02", title:"Select Your Service", desc:"Choose from 45+ predefined services — each has a fixed price, a specific shot list, and clear instructions for the field agent. Or customize your own order." },
+  { n:"03", title:"Choose Turnaround", desc:"Next business day (standard), 24-hour rush (+$15), or 6-hour rush (+$35). Orders before 10 AM local time are dispatched same day." },
+  { n:"04", title:"Add Date Stamp (Optional)", desc:"Request a complimentary date stamp burned into every photo at no extra charge — useful for legal, insurance, or BPO documentation." },
+  { n:"05", title:"Pay & Submit", desc:"Review your order details and pay securely via Stripe. Your order is dispatched to the highest-graded nearest agent within seconds." },
+];
 
-export default function LandingPage() {
+export default function HomePage() {
   const router = useRouter();
+
   return (
     <div className="min-h-screen bg-white">
       <PublicNav />
 
       {/* Hero */}
-      <section className="bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 text-white py-24 px-4">
-        <div className="max-w-4xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 bg-blue-500/20 border border-blue-400/30 text-blue-300 text-sm font-medium px-4 py-1.5 rounded-full mb-8">
-            <Star className="w-3.5 h-3.5" />
-            Trusted by 500+ property managers &amp; REO companies
+      <section className="bg-[#0f1f3d] text-white py-24 px-4 relative overflow-hidden">
+        <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg width=60 height=60 viewBox=0 0 60 60 xmlns=http://www.w3.org/2000/svg%3E%3Cg fill=none fill-rule=evenodd%3E%3Cg fill=%23ffffff opacity=0.03%3E%3Cpath d=M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] opacity-100" />
+        <div className="max-w-5xl mx-auto text-center relative z-10">
+          <div className="inline-flex items-center gap-2 bg-[#c8991a]/20 border border-[#c8991a]/40 text-[#f0b429] text-sm font-semibold px-4 py-1.5 rounded-full mb-8">
+            <Star className="w-3.5 h-3.5 fill-current" />
+            America&apos;s Trusted Field Inspection &amp; Photo Documentation Platform
           </div>
           <h1 className="text-5xl sm:text-6xl font-extrabold leading-tight mb-6 tracking-tight">
-            Field Inspections &amp;<br />
-            <span className="text-blue-400">Photo Documentation</span>
+            BPO &amp; REO Photo Sets<br />
+            <span className="text-[#f0b429]">Delivered in Hours</span>
           </h1>
-          <p className="text-xl text-slate-300 mb-10 max-w-2xl mx-auto leading-relaxed">
-            45+ services — BPO photo sets, vehicle inspections, property assessments, occupancy checks, and videography. Verified local agents dispatched within hours.
+          <p className="text-xl text-slate-300 mb-4 max-w-2xl mx-auto leading-relaxed">
+            45+ services · Verified local agents · 35 states · 87% of standard orders completed within 24 hours
           </p>
+          <p className="text-slate-400 text-sm mb-10">Vehicle inspections · Property assessments · Occupancy checks · Videography</p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <button onClick={() => router.push("/register/client")}
-              className="bg-blue-500 hover:bg-blue-400 text-white font-bold px-8 py-4 rounded-xl text-lg transition-colors flex items-center justify-center gap-2">
+              className="bg-[#c8991a] hover:bg-[#f0b429] text-[#0f1f3d] font-bold px-8 py-4 rounded-xl text-lg transition-colors flex items-center justify-center gap-2 shadow-lg">
               Order an Inspection
               <ChevronRight className="w-5 h-5" />
             </button>
             <Link href="/services"
-              className="border border-slate-500 hover:border-slate-400 text-slate-300 hover:text-white font-semibold px-8 py-4 rounded-xl text-lg transition-colors flex items-center justify-center">
-              View All Services
+              className="border-2 border-[#1a3260] hover:border-[#c8991a] text-slate-300 hover:text-[#f0b429] font-semibold px-8 py-4 rounded-xl text-lg transition-colors flex items-center justify-center">
+              View All 45+ Services
             </Link>
           </div>
         </div>
       </section>
 
-      {/* Stats */}
-      <section className="py-12 bg-slate-50 border-y border-slate-200">
-        <div className="max-w-5xl mx-auto px-4 grid grid-cols-2 sm:grid-cols-4 gap-8 text-center">
-          {[
-            { value:"2,400+", label:"Orders Completed" },
-            { value:"98%",    label:"Client Satisfaction" },
-            { value:"45+",    label:"Service Types" },
-            { value:"150+",   label:"Verified Agents" },
-          ].map((s) => (
-            <div key={s.label}>
-              <div className="text-3xl font-extrabold text-blue-700 mb-1">{s.value}</div>
-              <div className="text-sm text-slate-500">{s.label}</div>
+      {/* Stats bar */}
+      <section className="bg-[#c8991a] py-4 px-4">
+        <div className="max-w-5xl mx-auto flex flex-wrap items-center justify-center gap-8 text-[#0f1f3d] text-sm font-bold">
+          {[["2,400+","Orders Completed"],["87%","Done Within 24hrs"],["45+","Service Types"],["35","States Covered"],["150+","Verified Agents"]].map(([v,l])=>(
+            <div key={l} className="text-center">
+              <div className="text-2xl font-extrabold">{v}</div>
+              <div className="text-xs font-medium opacity-80">{l}</div>
             </div>
           ))}
         </div>
       </section>
 
-      {/* Service highlights */}
-      <section className="py-20 px-4">
+      {/* Services */}
+      <section className="py-20 px-4 bg-[#faf8f3]">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-slate-900 mb-3">45+ Services Available</h2>
-            <p className="text-slate-500 text-lg max-w-xl mx-auto">From quick photo sets to full property assessments — fixed transparent pricing on every service.</p>
+            <p className="text-[#c8991a] font-bold text-sm uppercase tracking-wider mb-2">45+ Services Available</p>
+            <h2 className="text-3xl font-bold text-[#0f1f3d] mb-3">Fixed Pricing. No Surprises.</h2>
+            <p className="text-slate-500 max-w-xl mx-auto">Every service has a flat price shown before you pay. Rush orders add a flat fee — not a percentage.</p>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {SERVICE_HIGHLIGHTS.map((s) => (
-              <div key={s.category} className={`border rounded-2xl p-5 hover:shadow-md transition-shadow ${COLOR_MAP[s.color]}`}>
+            {SERVICES.map(s=>(
+              <div key={s.name} className="bg-white border border-slate-200 rounded-2xl p-5 hover:border-[#c8991a] hover:shadow-md transition-all group">
                 <div className="flex items-start justify-between gap-3 mb-2">
                   <div className="flex items-center gap-2">
-                    {s.icon}
-                    <h3 className="font-bold text-slate-900">{s.category}</h3>
+                    <div className="w-9 h-9 bg-[#0f1f3d] text-[#c8991a] rounded-xl flex items-center justify-center group-hover:bg-[#c8991a] group-hover:text-[#0f1f3d] transition-colors">{s.icon}</div>
+                    <h3 className="font-bold text-[#0f1f3d]">{s.name}</h3>
                   </div>
-                  <span className="text-sm font-bold whitespace-nowrap">From {s.from}</span>
+                  <span className="text-[#c8991a] font-bold text-sm whitespace-nowrap">From {s.from}</span>
                 </div>
-                <p className="text-sm opacity-80">{s.examples}</p>
+                <p className="text-sm text-slate-500 ml-11">{s.desc}</p>
               </div>
             ))}
           </div>
           <div className="text-center mt-8">
-            <Link href="/services" className="inline-flex items-center gap-2 text-blue-600 font-semibold hover:text-blue-800 transition-colors">
-              See all 45+ services &amp; pricing
-              <ChevronRight className="w-4 h-4" />
+            <Link href="/services" className="inline-flex items-center gap-2 text-[#0f1f3d] font-bold hover:text-[#c8991a] transition-colors border-2 border-[#0f1f3d] hover:border-[#c8991a] px-6 py-3 rounded-xl">
+              See All 45+ Services &amp; Prices <ChevronRight className="w-4 h-4"/>
             </Link>
           </div>
         </div>
       </section>
 
+      {/* How it works — 5 steps like Velocity */}
+      <section className="py-20 px-4 bg-white">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-14">
+            <p className="text-[#c8991a] font-bold text-sm uppercase tracking-wider mb-2">Simple Process</p>
+            <h2 className="text-3xl font-bold text-[#0f1f3d] mb-3">How It Works</h2>
+            <p className="text-slate-500">From order to delivered photos in as little as 6 hours</p>
+          </div>
+          <div className="space-y-5">
+            {STEPS.map((s,i)=>(
+              <div key={s.n} className="flex gap-6 items-start bg-[#faf8f3] border border-slate-200 rounded-2xl p-6 hover:border-[#c8991a] transition-colors">
+                <div className="w-14 h-14 bg-[#0f1f3d] text-[#c8991a] rounded-xl flex items-center justify-center text-xl font-black flex-shrink-0">{s.n}</div>
+                <div>
+                  <h3 className="font-bold text-[#0f1f3d] text-lg mb-1">{s.title}</h3>
+                  <p className="text-slate-500 text-sm leading-relaxed">{s.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-8 p-5 bg-[#0f1f3d] rounded-2xl text-white text-center">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <Zap className="w-5 h-5 text-[#f0b429]"/>
+              <span className="font-bold text-[#f0b429]">After you submit:</span>
+            </div>
+            <p className="text-slate-300 text-sm">The highest-graded field agent nearest to the property is dispatched automatically. You can track your order in real time. Photos delivered via email and stored on your dashboard for 30 days.</p>
+          </div>
+        </div>
+      </section>
+
       {/* Features */}
-      <section className="py-20 px-4 bg-slate-50">
+      <section className="py-20 px-4 bg-[#faf8f3]">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-14">
-            <h2 className="text-3xl font-bold text-slate-900 mb-3">Built for property professionals</h2>
-            <p className="text-slate-500 text-lg max-w-xl mx-auto">Everything you need, nothing you don't</p>
+            <p className="text-[#c8991a] font-bold text-sm uppercase tracking-wider mb-2">Why Choose FieldFlow</p>
+            <h2 className="text-3xl font-bold text-[#0f1f3d]">Built for Property Professionals</h2>
           </div>
-          <div className="grid md:grid-cols-3 gap-8">
-            {FEATURES.map((f) => (
-              <div key={f.title} className="bg-white border border-slate-200 rounded-2xl p-6 hover:shadow-md transition-shadow">
-                <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center mb-4">{f.icon}</div>
-                <h3 className="font-semibold text-slate-900 mb-2">{f.title}</h3>
+          <div className="grid md:grid-cols-3 gap-6">
+            {[
+              { icon:<Shield className="w-6 h-6"/>, title:"Verified & Graded Agents", desc:"Every agent submits a 7-photo sample set before approval. Agents earn grades based on quality, speed, and reliability. Highest-graded agents get priority dispatch." },
+              { icon:<Zap className="w-6 h-6"/>, title:"Auto-Dispatch in Seconds", desc:"The majority of orders are sent to field agents within seconds of being placed. The system finds the highest-graded available agent in your ZIP code automatically." },
+              { icon:<Clock className="w-6 h-6"/>, title:"87% Done Within 24 Hours", desc:"Orders submitted before 10 AM local time are completed by next business day. Rush options available for 24-hour and 6-hour completion with flat fees." },
+              { icon:<DollarSign className="w-6 h-6"/>, title:"Fixed Transparent Pricing", desc:"No dynamic pricing, no surprises. Every service has a fixed price. Rush adds a flat fee (+$15 or +$35). You see the full cost before paying." },
+              { icon:<Camera className="w-6 h-6"/>, title:"30-Day Photo Storage", desc:"Photos delivered instantly by email and stored securely on your dashboard for 30 days. Download, email, or select specific photos anytime." },
+              { icon:<Users className="w-6 h-6"/>, title:"Multi-User & Sub-Accounts", desc:"Create employee sub-accounts under your organization. Each employee can place orders tracked to your billing. Ideal for BPO companies with large teams." },
+            ].map(f=>(
+              <div key={f.title} className="bg-white border border-slate-200 rounded-2xl p-6 hover:border-[#c8991a] hover:shadow-md transition-all">
+                <div className="w-12 h-12 bg-[#0f1f3d] text-[#c8991a] rounded-xl flex items-center justify-center mb-4">{f.icon}</div>
+                <h3 className="font-bold text-[#0f1f3d] mb-2">{f.title}</h3>
                 <p className="text-slate-500 text-sm leading-relaxed">{f.desc}</p>
               </div>
             ))}
@@ -135,24 +163,24 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* How it works */}
-      <section className="py-20 px-4">
-        <div className="max-w-4xl mx-auto">
+      {/* Testimonials */}
+      <section className="py-20 px-4 bg-[#0f1f3d]">
+        <div className="max-w-6xl mx-auto">
           <div className="text-center mb-14">
-            <h2 className="text-3xl font-bold text-slate-900 mb-3">How it works</h2>
-            <p className="text-slate-500 text-lg">Order to delivery in 3 steps</p>
+            <p className="text-[#c8991a] font-bold text-sm uppercase tracking-wider mb-2">What Our Clients Say</p>
+            <h2 className="text-3xl font-bold text-white">Trusted by 500+ Property Professionals</h2>
+            <p className="text-slate-400 mt-2">Some clients have been with us since 2008</p>
           </div>
-          <div className="space-y-6">
-            {[
-              { step:"01", title:"Submit Your Order", desc:"Enter the property address, select your service from 45+ options, choose turnaround (standard or rush), and pay securely via Stripe. Orders before 10 AM are dispatched same day." },
-              { step:"02", title:"Agent Auto-Dispatched", desc:"Our system finds the highest-graded agent in your ZIP code and assigns them automatically. They have 3 hours to confirm. You receive email confirmation." },
-              { step:"03", title:"Photos Delivered to Dashboard", desc:"Agent uploads photos directly to your client portal. You get an email the moment it's done. Photos stored for 30 days — download or email anytime." },
-            ].map((s) => (
-              <div key={s.step} className="flex gap-6 items-start bg-white rounded-2xl p-6 border border-slate-200 hover:shadow-sm transition-shadow">
-                <div className="text-4xl font-black text-blue-100 leading-none flex-shrink-0 w-14">{s.step}</div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            {TESTIMONIALS.map(t=>(
+              <div key={t.name} className="bg-[#1a3260] border border-[#1a3260] rounded-2xl p-5">
+                <div className="flex mb-3">
+                  {[1,2,3,4,5].map(i=><Star key={i} className="w-4 h-4 text-[#c8991a] fill-current"/>)}
+                </div>
+                <p className="text-slate-300 text-sm leading-relaxed mb-4">"{t.text}"</p>
                 <div>
-                  <h3 className="font-semibold text-slate-900 mb-1">{s.title}</h3>
-                  <p className="text-slate-500 text-sm leading-relaxed">{s.desc}</p>
+                  <p className="text-white font-semibold text-sm">{t.name}</p>
+                  <p className="text-slate-500 text-xs">{t.city}</p>
                 </div>
               </div>
             ))}
@@ -160,55 +188,42 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Pricing transparency */}
-      <section className="py-16 px-4 bg-slate-50 border-y border-slate-200">
-        <div className="max-w-3xl mx-auto text-center">
-          <DollarSign className="w-10 h-10 text-blue-600 mx-auto mb-4"/>
-          <h2 className="text-2xl font-bold text-slate-900 mb-3">Fixed, transparent pricing</h2>
-          <p className="text-slate-500 mb-8 leading-relaxed">No surprises. Every service has a flat price shown before you pay. Rush orders add a flat fee — not a percentage multiplier.</p>
-          <div className="grid sm:grid-cols-3 gap-4 text-left">
-            {[
-              { tier:"Standard", timing:"Next business day", note:"Orders before 10 AM dispatch same day", color:"border-slate-200" },
-              { tier:"Rush 24hr", timing:"+$15 flat fee", note:"Completed within 24 hours on business days", color:"border-amber-200 bg-amber-50" },
-              { tier:"Rush 6hr", timing:"+$35 flat fee", note:"Completed within 6 hours during daylight", color:"border-red-200 bg-red-50" },
-            ].map((t) => (
-              <div key={t.tier} className={`border rounded-xl p-4 bg-white ${t.color}`}>
-                <div className="font-bold text-slate-900 mb-1">{t.tier}</div>
-                <div className="text-lg font-bold text-blue-700 mb-1">{t.timing}</div>
-                <div className="text-xs text-slate-500">{t.note}</div>
-              </div>
-            ))}
+      {/* Agent CTA */}
+      <section className="py-16 px-4 bg-[#faf8f3] border-y border-slate-200">
+        <div className="max-w-4xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8">
+          <div>
+            <p className="text-[#c8991a] font-bold text-sm uppercase tracking-wider mb-2">Earn Money as a Field Agent</p>
+            <h2 className="text-2xl font-bold text-[#0f1f3d] mb-2">Work your own schedule. Earn $40–$300+ per job.</h2>
+            <p className="text-slate-500 text-sm">Paid every Friday via PayPal. No equipment needed — just your smartphone. 3-minute application.</p>
+            <ul className="mt-4 space-y-1">
+              {["No photography license required","Only local jobs in your area","Respond to orders within 3 hours","Weekly PayPal payout"].map(p=>(
+                <li key={p} className="flex items-center gap-2 text-sm text-slate-600"><CheckCircle className="w-4 h-4 text-[#c8991a]"/>{p}</li>
+              ))}
+            </ul>
+          </div>
+          <div className="flex-shrink-0 text-center">
+            <Link href="/work"
+              className="inline-flex items-center gap-2 bg-[#c8991a] hover:bg-[#f0b429] text-[#0f1f3d] font-bold px-8 py-4 rounded-xl text-lg transition-colors shadow-lg">
+              Apply Now — 3 Minutes
+              <ChevronRight className="w-5 h-5"/>
+            </Link>
+            <p className="text-xs text-slate-400 mt-3">One-time $15 non-refundable application fee</p>
           </div>
         </div>
       </section>
 
-      {/* Agent CTA */}
-      <section className="py-16 px-4">
-        <div className="max-w-4xl mx-auto bg-gradient-to-br from-emerald-900 to-slate-900 rounded-3xl p-10 text-white text-center">
-          <Camera className="w-12 h-12 text-emerald-400 mx-auto mb-4"/>
-          <h2 className="text-2xl font-bold mb-3">Earn money as a field agent</h2>
-          <p className="text-slate-300 mb-6 max-w-lg mx-auto">Accept inspection jobs in your area. Earn $40–$300+ per job. Paid weekly via PayPal. Work your own schedule.</p>
-          <Link href="/work"
-            className="inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-white font-bold px-6 py-3 rounded-xl transition-colors">
-            Join as Field Agent
-            <ChevronRight className="w-5 h-5"/>
-          </Link>
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section className="py-20 px-4 bg-blue-700 text-white text-center">
-        <div className="max-w-2xl mx-auto">
-          <h2 className="text-3xl font-bold mb-4">Ready to place your first order?</h2>
-          <p className="text-blue-200 mb-8 text-lg">Join hundreds of property managers and REO companies who trust FieldFlow.</p>
+      {/* Main CTA */}
+      <section className="py-20 px-4 bg-[#c8991a]">
+        <div className="max-w-2xl mx-auto text-center">
+          <h2 className="text-3xl font-bold text-[#0f1f3d] mb-4">Ready to place your first order?</h2>
+          <p className="text-[#0f1f3d]/70 mb-8 text-lg">Create a free account. Your first order can be dispatched within seconds.</p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <button onClick={() => router.push("/register/client")}
-              className="bg-white text-blue-700 hover:bg-blue-50 font-bold px-8 py-4 rounded-xl text-lg transition-colors inline-flex items-center justify-center gap-2">
-              Create Free Account
-              <ChevronRight className="w-5 h-5"/>
+              className="bg-[#0f1f3d] hover:bg-[#1a3260] text-white font-bold px-8 py-4 rounded-xl text-lg transition-colors inline-flex items-center justify-center gap-2">
+              Create Free Account <ChevronRight className="w-5 h-5"/>
             </button>
             <Link href="/contact"
-              className="border border-blue-400 text-white hover:bg-blue-600 font-semibold px-8 py-4 rounded-xl text-lg transition-colors inline-flex items-center justify-center">
+              className="border-2 border-[#0f1f3d] text-[#0f1f3d] hover:bg-[#0f1f3d] hover:text-white font-semibold px-8 py-4 rounded-xl text-lg transition-colors inline-flex items-center justify-center">
               Contact Us
             </Link>
           </div>

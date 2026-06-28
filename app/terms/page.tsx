@@ -1,127 +1,43 @@
-import Link from "next/link";
+import PublicNav from "../components/PublicNav";
+import PublicFooter from "../components/PublicFooter";
+import { FileText } from "lucide-react";
 
 export default function TermsPage() {
   return (
     <div className="min-h-screen bg-white">
-      <header className="border-b border-slate-100 py-4 px-6 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2 text-blue-600 font-semibold text-lg">
-          <span className="text-2xl">📷</span> FieldFlow
-        </Link>
-        <Link href="/" className="text-sm text-slate-500 hover:text-slate-700">← Back to home</Link>
-      </header>
-
-      <main className="max-w-3xl mx-auto px-6 py-16">
-        <div className="mb-10">
-          <p className="text-sm text-blue-600 font-medium uppercase tracking-wider mb-2">Legal</p>
-          <h1 className="text-4xl font-bold text-slate-900 mb-4">Terms of Service</h1>
-          <p className="text-slate-500">Last updated: June 21, 2026</p>
+      <PublicNav />
+      <section className="bg-[#0f1f3d] text-white py-16 px-4">
+        <div className="max-w-3xl mx-auto text-center">
+          <FileText className="w-12 h-12 text-[#c8991a] mx-auto mb-4"/>
+          <h1 className="text-4xl font-extrabold mb-3">Terms of Service</h1>
+          <p className="text-slate-300">Last updated: January 1, 2025 · FieldFlow is a Florida corporation.</p>
         </div>
-
-        <div className="space-y-8 text-slate-700 leading-relaxed">
-          <section>
-            <h2 className="text-xl font-bold text-slate-900 mb-3">1. Acceptance of Terms</h2>
-            <p>By accessing or using FieldFlow (operated by Velocity REOs, Inc., &quot;we,&quot; &quot;us,&quot; or &quot;the Company&quot;), you agree to be bound by these Terms of Service. If you do not agree, do not use the platform.</p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-bold text-slate-900 mb-3">2. Services</h2>
-            <p>FieldFlow provides a technology platform that connects property inspection clients with independent field agents. Velocity REOs, Inc. does not perform inspections directly. Field agents are independent contractors, not employees.</p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-bold text-slate-900 mb-3">3. Client Responsibilities</h2>
-            <ul className="list-disc pl-6 space-y-2">
-              <li>Provide accurate property addresses and access information</li>
-              <li>Ensure the property is accessible on the scheduled date</li>
-              <li>Use inspection photos solely for lawful purposes</li>
-              <li>Pay all fees at the time of order submission</li>
-              <li>Not share, resell, or redistribute inspection photos without written consent</li>
-            </ul>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-bold text-slate-900 mb-3">4. Field Agent Responsibilities</h2>
-            <ul className="list-disc pl-6 space-y-2">
-              <li>Maintain accurate coverage zone and vehicle information</li>
-              <li>Respond to job offers within 3 hours during 9 AM – 6 PM local time</li>
-              <li>Upload photos at minimum 1280×960 resolution</li>
-              <li>Not disclose client information to any third party</li>
-              <li>Carry valid vehicle insurance and a functional GPS device</li>
-              <li>Complete accepted orders within the specified turnaround window</li>
-            </ul>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-bold text-slate-900 mb-3">5. Fees & Payments</h2>
-            <p>All order fees are displayed before submission. Field agent application requires a one-time non-refundable fee of $15.00. Refunds for completed orders are not provided except in cases of documented agent error. Agent compensation is paid within 7–14 business days of order completion.</p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-bold text-slate-900 mb-3">6. Turnaround & Service Levels</h2>
-            <div className="overflow-hidden rounded-xl border border-slate-200 mt-3">
-              <table className="w-full text-sm">
-                <thead className="bg-slate-50">
-                  <tr>
-                    <th className="text-left px-4 py-3 font-medium text-slate-600">Service Level</th>
-                    <th className="text-left px-4 py-3 font-medium text-slate-600">Turnaround</th>
-                    <th className="text-left px-4 py-3 font-medium text-slate-600">Conditions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  <tr>
-                    <td className="px-4 py-3 font-medium">Standard</td>
-                    <td className="px-4 py-3">Next business day</td>
-                    <td className="px-4 py-3 text-slate-500">Orders before 10 AM local time</td>
-                  </tr>
-                  <tr>
-                    <td className="px-4 py-3 font-medium">Rush 24-Hour</td>
-                    <td className="px-4 py-3">Within 24 hours</td>
-                    <td className="px-4 py-3 text-slate-500">Additional fee applies</td>
-                  </tr>
-                  <tr>
-                    <td className="px-4 py-3 font-medium">Rush 6-Hour</td>
-                    <td className="px-4 py-3">Within 6 daylight hours</td>
-                    <td className="px-4 py-3 text-slate-500">Subject to agent availability</td>
-                  </tr>
-                </tbody>
-              </table>
+      </section>
+      <section className="py-16 px-4">
+        <div className="max-w-3xl mx-auto">
+          {[
+            { title:"1. Acceptance of Terms", body:"By creating an account or placing an order on FieldFlow, you agree to be bound by these Terms of Service. If you do not agree, do not use the platform." },
+            { title:"2. Client Terms", body:"Clients submit orders for field inspection and photography services. All orders are binding upon submission. Orders cannot be modified after submission — please verify the address and service selection before paying. Cancellations are permitted before an agent accepts an order. Once an agent accepts, cancellations may incur a fee of up to 50% of the order total." },
+            { title:"3. No Substitutions or Changes to Orders", body:"Field agents carry out orders exactly as submitted. Clients may not request changes, additional shots, or substitutions after an order is placed. If additional services are needed, a new order must be submitted." },
+            { title:"4. Photo Review & Delivery", body:"All photos submitted by field agents are reviewed by FieldFlow administrators before being marked complete and released to the client. Photos are stored for 30 days after completion, then permanently deleted. FieldFlow is not liable for photos deleted after the 30-day window." },
+            { title:"5. Payment Terms", body:"All orders must be paid in full at the time of submission via Stripe. Prices displayed are final. Rush fees are non-refundable. Refunds for completed orders are not available — if you believe an order was not completed correctly, contact support within 5 business days." },
+            { title:"6. Agent Terms", body:"Field agents are independent contractors, not employees of FieldFlow. Agents must (a) submit a 7-photo sample set within 48 hours of registration, (b) respond to order offers within 3 hours during 9 AM–6 PM local time, (c) complete orders within 30 hours unless otherwise specified, and (d) maintain professional quality standards. FieldFlow reserves the right to terminate agent access for poor performance, missed deadlines, or quality issues." },
+            { title:"7. Application Fee", body:"The one-time $15 agent application fee is non-refundable. It covers background check processing and account setup. Payment does not guarantee approval." },
+            { title:"8. Agent Grade & Rotation", body:"When multiple agents serve the same ZIP code, a rotating system is used, with higher-graded agents receiving priority access to orders. Grades are calculated based on completion rate, on-time performance, and photo quality scores." },
+            { title:"9. Payments to Agents", body:"Agent compensation is paid every Friday via PayPal for all orders approved that week. FieldFlow covers PayPal transaction fees. A minimum balance of $40 is required for payout. Unpaid balances under $40 roll to the following week." },
+            { title:"10. Prohibited Use", body:"Users may not use FieldFlow to order inspections of properties they do not have authorization to photograph, to harass or surveil individuals, or to violate any applicable local, state, or federal laws. FieldFlow reserves the right to cancel any order it deems suspicious and to cooperate with law enforcement requests." },
+            { title:"11. Limitation of Liability", body:"FieldFlow is not liable for: inaccurate addresses provided by clients, inability to access a property, weather or environmental conditions preventing completion, or any indirect, incidental, or consequential damages. Maximum liability is limited to the amount paid for the specific order in question." },
+            { title:"12. Governing Law", body:"These Terms are governed by the laws of the State of Florida. Any disputes shall be resolved in the courts of Sarasota County, Florida." },
+            { title:"13. Changes to Terms", body:"FieldFlow reserves the right to update these Terms at any time. Continued use of the platform after changes constitutes acceptance of the new Terms." },
+          ].map(s=>(
+            <div key={s.title} className="mb-8">
+              <h2 className="text-xl font-bold text-[#0f1f3d] mb-3 border-b border-[#c8991a]/30 pb-2">{s.title}</h2>
+              <p className="text-slate-600 leading-relaxed">{s.body}</p>
             </div>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-bold text-slate-900 mb-3">7. Photo Availability</h2>
-            <p>Inspection photos are stored for <strong>30 days</strong> after order completion. After this period, photos are permanently deleted. Clients are responsible for downloading and backing up their photos within this window. FieldFlow is not liable for photos deleted after the retention period.</p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-bold text-slate-900 mb-3">8. Limitation of Liability</h2>
-            <p>FieldFlow's liability is limited to the amount paid for the specific order giving rise to the claim. We are not liable for consequential, indirect, or punitive damages arising from use of the platform.</p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-bold text-slate-900 mb-3">9. Termination</h2>
-            <p>We reserve the right to suspend or terminate accounts that violate these terms, including accounts with repeated order cancellations, fraudulent submissions, or misuse of the field agent network.</p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-bold text-slate-900 mb-3">10. Governing Law</h2>
-            <p>These Terms are governed by the laws of the State of Florida. Disputes shall be resolved by binding arbitration in Manatee County, Florida.</p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-bold text-slate-900 mb-3">11. Contact</h2>
-            <div className="p-4 bg-slate-50 rounded-xl text-sm">
-              <p className="font-medium">Velocity REOs, Inc.</p>
-              <p>Email: legal@fieldflow.com</p>
-              <p>Phone: (941) 723-3200</p>
-            </div>
-          </section>
+          ))}
         </div>
-      </main>
-
-      <footer className="border-t border-slate-100 py-8 text-center text-sm text-slate-400">
-        <p>© {new Date().getFullYear()} Velocity REOs, Inc. · <Link href="/privacy" className="hover:text-slate-600">Privacy Policy</Link></p>
-      </footer>
+      </section>
+      <PublicFooter />
     </div>
   );
 }

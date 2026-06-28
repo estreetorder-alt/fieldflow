@@ -1,221 +1,74 @@
-"use client";
-
-import { useState } from "react";
 import PublicNav from "../components/PublicNav";
 import PublicFooter from "../components/PublicFooter";
-import {
-  Mail, Phone, MapPin, Clock, CheckCircle, Send,
-  MessageSquare, Building2, Users,
-} from "lucide-react";
-
-const CONTACT_REASONS = [
-  "Request a quote",
-  "Technical support",
-  "Billing question",
-  "Partnership inquiry",
-  "Join as a field agent",
-  "Other",
-];
+import { Mail, Phone, Clock, MapPin, MessageSquare, Users, HelpCircle } from "lucide-react";
 
 export default function ContactPage() {
-  const [form, setForm] = useState({
-    name: "",
-    email: "",
-    company: "",
-    reason: "",
-    message: "",
-  });
-  const [submitted, setSubmitted] = useState(false);
-  const [loading, setLoading] = useState(false);
-
-  function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-    await new Promise((r) => setTimeout(r, 900));
-    setSubmitted(true);
-    setLoading(false);
-  }
-
   return (
     <div className="min-h-screen bg-white">
       <PublicNav />
 
-      {/* Hero */}
-      <section className="bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 text-white py-20 px-4">
+      <section className="bg-[#0f1f3d] text-white py-20 px-4">
         <div className="max-w-3xl mx-auto text-center">
-          <h1 className="text-4xl sm:text-5xl font-extrabold mb-5">Get in Touch</h1>
-          <p className="text-xl text-slate-300 max-w-xl mx-auto leading-relaxed">
-            Questions about pricing, coverage, or how FieldFlow works? We&apos;re here to help.
-          </p>
+          <p className="text-[#c8991a] font-bold text-sm uppercase tracking-wider mb-3">Get in Touch</p>
+          <h1 className="text-4xl sm:text-5xl font-extrabold mb-5">Contact Us</h1>
+          <p className="text-xl text-slate-300">Questions about orders, services, or agent applications? We're here to help.</p>
         </div>
       </section>
 
-      <section className="py-20 px-4">
-        <div className="max-w-6xl mx-auto grid lg:grid-cols-3 gap-12">
-          {/* Contact Info */}
-          <div className="space-y-8">
-            <div>
-              <h2 className="text-2xl font-bold text-slate-900 mb-6">Contact Information</h2>
-              <div className="space-y-5">
-                {[
-                  {
-                    icon: <Mail className="w-5 h-5 text-blue-600" />,
-                    label: "Email",
-                    value: "support@fieldflow.com",
-                    sub: "We reply within 4 business hours",
-                  },
-                  {
-                    icon: <Phone className="w-5 h-5 text-blue-600" />,
-                    label: "Phone",
-                    value: "1-800-FIELDFLOW",
-                    sub: "Mon–Fri, 8am–6pm CST",
-                  },
-                  {
-                    icon: <MapPin className="w-5 h-5 text-blue-600" />,
-                    label: "Headquarters",
-                    value: "Chicago, IL",
-                    sub: "Serving all 50 states",
-                  },
-                ].map((item) => (
-                  <div key={item.label} className="flex items-start gap-4">
-                    <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center flex-shrink-0">
-                      {item.icon}
-                    </div>
-                    <div>
-                      <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-0.5">{item.label}</div>
-                      <div className="font-semibold text-slate-900">{item.value}</div>
-                      <div className="text-xs text-slate-500 mt-0.5">{item.sub}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+      <section className="py-16 px-4 bg-[#faf8f3]">
+        <div className="max-w-5xl mx-auto grid sm:grid-cols-3 gap-6 mb-12">
+          {[
+            { icon:<Mail className="w-6 h-6"/>, title:"Email Us", lines:["support@fieldflow.app","We reply within 1 business day"], note:"For order issues, include your order ID" },
+            { icon:<Phone className="w-6 h-6"/>, title:"Phone", lines:["(941) 723-3200","Mon–Fri 8 AM – 6 PM CST"], note:"Please do not call to check application status" },
+            { icon:<Clock className="w-6 h-6"/>, title:"Support Hours", lines:["Monday – Friday","8:00 AM – 6:00 PM CST"], note:"Closed weekends and federal holidays" },
+          ].map(c=>(
+            <div key={c.title} className="bg-white border border-slate-200 rounded-2xl p-6 text-center hover:border-[#c8991a] transition-colors">
+              <div className="w-12 h-12 bg-[#0f1f3d] text-[#c8991a] rounded-xl flex items-center justify-center mx-auto mb-4">{c.icon}</div>
+              <h3 className="font-bold text-[#0f1f3d] mb-2">{c.title}</h3>
+              {c.lines.map(l=><p key={l} className="text-slate-600 text-sm">{l}</p>)}
+              <p className="text-xs text-slate-400 mt-2 italic">{c.note}</p>
             </div>
+          ))}
+        </div>
 
-            <div className="border-t border-slate-100 pt-8 space-y-4">
-              <h3 className="font-semibold text-slate-900">Other ways to connect</h3>
-              {[
-                { icon: <Clock className="w-4 h-4" />, text: "Typical response: under 4 hours" },
-                { icon: <MessageSquare className="w-4 h-4" />, text: "Live chat available on the client portal" },
-                { icon: <Building2 className="w-4 h-4" />, text: "Enterprise accounts get a dedicated rep" },
-                { icon: <Users className="w-4 h-4" />, text: "Agent inquiries: join our staff page" },
-              ].map((item) => (
-                <div key={item.text} className="flex items-center gap-3 text-sm text-slate-600">
-                  <span className="text-blue-500">{item.icon}</span>
-                  {item.text}
-                </div>
-              ))}
-            </div>
+        {/* FAQ */}
+        <div className="max-w-3xl mx-auto">
+          <h2 className="text-2xl font-bold text-[#0f1f3d] mb-6 flex items-center gap-2"><HelpCircle className="w-6 h-6 text-[#c8991a]"/>Common Questions</h2>
+          <div className="space-y-4">
+            {[
+              { q:"How quickly will my order be completed?", a:"87% of standard orders are completed within 24 hours. Orders submitted before 10 AM local time are dispatched same day. Rush options (24hr, 6hr) are available for an additional flat fee." },
+              { q:"I registered as an agent — when will I be approved?", a:"Our team reviews sample sets within 1–2 business days. Do not call or email to check status — we will contact you by email. Make sure to submit your 7-photo sample within 48 hours of registering." },
+              { q:"What if no agent is available in my area?", a:"Your order will be queued and assigned as soon as an agent becomes available. You can also check coverage before ordering at our Coverage page. We're always expanding into new ZIP codes." },
+              { q:"How long are my photos stored?", a:"Photos are stored securely for 30 days after order completion. After that they are permanently deleted. Download your photos within this window — we cannot recover deleted photos." },
+              { q:"Can I cancel or modify an order?", a:"Orders can be cancelled before an agent accepts them. Once accepted, cancellations may incur a fee. Orders cannot be modified after submission — please double-check your address and service selection before paying." },
+              { q:"How do agents get paid?", a:"Agents are paid every Friday via PayPal for all orders completed and approved that week. We cover the PayPal processing fees. Minimum balance of $40 required for payout — otherwise balance rolls to next week." },
+            ].map(({q,a})=>(
+              <div key={q} className="bg-white border border-slate-200 rounded-xl p-5 hover:border-[#c8991a] transition-colors">
+                <h3 className="font-semibold text-[#0f1f3d] mb-2">{q}</h3>
+                <p className="text-slate-500 text-sm leading-relaxed">{a}</p>
+              </div>
+            ))}
           </div>
+        </div>
+      </section>
 
-          {/* Form */}
-          <div className="lg:col-span-2">
-            {submitted ? (
-              <div className="bg-green-50 border border-green-200 rounded-2xl p-12 text-center">
-                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <CheckCircle className="w-8 h-8 text-green-600" />
-                </div>
-                <h3 className="text-2xl font-bold text-slate-900 mb-2">Message Sent!</h3>
-                <p className="text-slate-500 max-w-sm mx-auto">
-                  Thanks for reaching out. A member of our team will follow up within 4 business hours.
-                </p>
-                <button
-                  onClick={() => { setSubmitted(false); setForm({ name: "", email: "", company: "", reason: "", message: "" }); }}
-                  className="mt-6 text-sm text-blue-600 hover:text-blue-800 font-medium"
-                >
-                  Send another message
-                </button>
-              </div>
-            ) : (
-              <form onSubmit={handleSubmit} className="bg-white border border-slate-200 rounded-2xl p-8 shadow-sm space-y-5">
-                <h2 className="text-xl font-bold text-slate-900 mb-2">Send us a message</h2>
-
-                <div className="grid sm:grid-cols-2 gap-5">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Full Name *</label>
-                    <input
-                      required
-                      name="name"
-                      value={form.name}
-                      onChange={handleChange}
-                      placeholder="Jane Smith"
-                      className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Email Address *</label>
-                    <input
-                      required
-                      type="email"
-                      name="email"
-                      value={form.email}
-                      onChange={handleChange}
-                      placeholder="jane@company.com"
-                      className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid sm:grid-cols-2 gap-5">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Company</label>
-                    <input
-                      name="company"
-                      value={form.company}
-                      onChange={handleChange}
-                      placeholder="Acme Realty (optional)"
-                      className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Reason for Contact *</label>
-                    <select
-                      required
-                      name="reason"
-                      value={form.reason}
-                      onChange={handleChange}
-                      className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-white"
-                    >
-                      <option value="">Select a reason…</option>
-                      {CONTACT_REASONS.map((r) => (
-                        <option key={r} value={r}>{r}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Message *</label>
-                  <textarea
-                    required
-                    name="message"
-                    value={form.message}
-                    onChange={handleChange}
-                    rows={5}
-                    placeholder="Tell us how we can help…"
-                    className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all resize-none"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full bg-blue-700 hover:bg-blue-800 disabled:opacity-60 text-white font-semibold py-3 rounded-xl transition-colors flex items-center justify-center gap-2"
-                >
-                  {loading ? (
-                    <span className="animate-pulse">Sending…</span>
-                  ) : (
-                    <>
-                      <Send className="w-4 h-4" />
-                      Send Message
-                    </>
-                  )}
-                </button>
-              </form>
-            )}
+      <section className="py-16 px-4 bg-[#0f1f3d]">
+        <div className="max-w-3xl mx-auto grid sm:grid-cols-2 gap-6">
+          <div className="bg-[#1a3260] rounded-2xl p-6">
+            <Users className="w-8 h-8 text-[#c8991a] mb-3"/>
+            <h3 className="font-bold text-white mb-2">Clients</h3>
+            <p className="text-slate-300 text-sm mb-4">For order help, billing questions, or account issues:</p>
+            <a href="mailto:support@fieldflow.app" className="inline-flex items-center gap-2 bg-[#c8991a] text-[#0f1f3d] font-bold px-4 py-2.5 rounded-xl text-sm hover:bg-[#f0b429] transition-colors">
+              <Mail className="w-4 h-4"/>Email Client Support
+            </a>
+          </div>
+          <div className="bg-[#1a3260] rounded-2xl p-6">
+            <MessageSquare className="w-8 h-8 text-[#c8991a] mb-3"/>
+            <h3 className="font-bold text-white mb-2">Field Agents</h3>
+            <p className="text-slate-300 text-sm mb-4">For application status, payment questions, or technical issues:</p>
+            <a href="mailto:agents@fieldflow.app" className="inline-flex items-center gap-2 bg-[#c8991a] text-[#0f1f3d] font-bold px-4 py-2.5 rounded-xl text-sm hover:bg-[#f0b429] transition-colors">
+              <Mail className="w-4 h-4"/>Email Agent Support
+            </a>
           </div>
         </div>
       </section>

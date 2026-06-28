@@ -3,57 +3,57 @@ import { Camera } from "lucide-react";
 
 export default function PublicFooter() {
   return (
-    <footer className="bg-slate-900 text-slate-400 py-12 px-4">
+    <footer className="bg-[#0f1f3d] text-slate-400 py-14 px-4">
       <div className="max-w-6xl mx-auto">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-10">
-          <div className="col-span-2 md:col-span-1">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-7 h-7 bg-blue-600 rounded-lg flex items-center justify-center">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-8 mb-10">
+          <div className="col-span-2">
+            <div className="flex items-center gap-2.5 mb-4">
+              <div className="w-8 h-8 bg-[#c8991a] rounded-lg flex items-center justify-center">
                 <Camera className="w-4 h-4 text-white" />
               </div>
-              <span className="text-slate-200 font-bold text-lg">FieldFlow</span>
+              <span className="text-white font-bold text-lg">FieldFlow</span>
             </div>
-            <p className="text-sm leading-relaxed text-slate-500">
-              Professional field inspection and photo documentation services nationwide.
+            <p className="text-sm leading-relaxed text-slate-400 max-w-xs">
+              America's trusted field inspection and photo documentation platform. 45+ services, 35 states, thousands of verified agents.
             </p>
             <div className="mt-4 space-y-1 text-xs text-slate-500">
               <p>support@fieldflow.app</p>
-              <p>Mon–Fri 8am–6pm CST</p>
+              <p>Mon–Fri · 8 AM – 6 PM CST</p>
             </div>
           </div>
           <div>
-            <h4 className="text-slate-200 font-semibold text-sm mb-4">Services</h4>
+            <h4 className="text-white font-semibold text-sm mb-4 uppercase tracking-wider">Services</h4>
             <ul className="space-y-2 text-sm">
-              <li><Link href="/services" className="hover:text-slate-200 transition-colors">Photo Sets</Link></li>
-              <li><Link href="/services" className="hover:text-slate-200 transition-colors">Vehicle Inspections</Link></li>
-              <li><Link href="/services" className="hover:text-slate-200 transition-colors">Property Inspections</Link></li>
-              <li><Link href="/services" className="hover:text-slate-200 transition-colors">Videography</Link></li>
-              <li><Link href="/services" className="hover:text-slate-200 transition-colors">All Services</Link></li>
+              <li><Link href="/services" className="hover:text-[#f0b429] transition-colors">BPO Photo Sets</Link></li>
+              <li><Link href="/services" className="hover:text-[#f0b429] transition-colors">Vehicle Inspections</Link></li>
+              <li><Link href="/services" className="hover:text-[#f0b429] transition-colors">Property Inspections</Link></li>
+              <li><Link href="/services" className="hover:text-[#f0b429] transition-colors">Videography</Link></li>
+              <li><Link href="/services" className="hover:text-[#f0b429] transition-colors">All 45+ Services</Link></li>
             </ul>
           </div>
           <div>
-            <h4 className="text-slate-200 font-semibold text-sm mb-4">Platform</h4>
+            <h4 className="text-white font-semibold text-sm mb-4 uppercase tracking-wider">Platform</h4>
             <ul className="space-y-2 text-sm">
-              <li><Link href="/coverage" className="hover:text-slate-200 transition-colors">Coverage Map</Link></li>
-              <li><Link href="/work" className="hover:text-slate-200 transition-colors">Become an Agent</Link></li>
-              <li><Link href="/contact" className="hover:text-slate-200 transition-colors">Contact</Link></li>
-              <li><Link href="/login" className="hover:text-slate-200 transition-colors">Client Login</Link></li>
-              <li><Link href="/login" className="hover:text-slate-200 transition-colors">Agent Login</Link></li>
+              <li><Link href="/coverage" className="hover:text-[#f0b429] transition-colors">Coverage Map</Link></li>
+              <li><Link href="/work" className="hover:text-[#f0b429] transition-colors">Become an Agent</Link></li>
+              <li><Link href="/contact" className="hover:text-[#f0b429] transition-colors">Contact Us</Link></li>
+              <li><Link href="/login" className="hover:text-[#f0b429] transition-colors">Client Portal</Link></li>
+              <li><Link href="/login" className="hover:text-[#f0b429] transition-colors">Agent Portal</Link></li>
             </ul>
           </div>
           <div>
-            <h4 className="text-slate-200 font-semibold text-sm mb-4">Company</h4>
+            <h4 className="text-white font-semibold text-sm mb-4 uppercase tracking-wider">Legal</h4>
             <ul className="space-y-2 text-sm">
-              <li><Link href="/register/client" className="hover:text-slate-200 transition-colors">Sign Up as Client</Link></li>
-              <li><Link href="/register/agent" className="hover:text-slate-200 transition-colors">Join as Field Agent</Link></li>
-              <li><Link href="/privacy" className="hover:text-slate-200 transition-colors">Privacy Policy</Link></li>
-              <li><Link href="/terms" className="hover:text-slate-200 transition-colors">Terms of Service</Link></li>
+              <li><Link href="/privacy" className="hover:text-[#f0b429] transition-colors">Privacy Policy</Link></li>
+              <li><Link href="/terms" className="hover:text-[#f0b429] transition-colors">Terms of Service</Link></li>
+              <li><Link href="/register/client" className="hover:text-[#f0b429] transition-colors">Client Sign Up</Link></li>
+              <li><Link href="/register/agent" className="hover:text-[#f0b429] transition-colors">Agent Registration</Link></li>
             </ul>
           </div>
         </div>
-        <div className="border-t border-slate-800 pt-6 flex flex-col sm:flex-row justify-between items-center gap-3 text-xs text-slate-600">
+        <div className="border-t border-[#1a3260] pt-6 flex flex-col sm:flex-row justify-between items-center gap-3 text-xs text-slate-600">
           <p>&copy; {new Date().getFullYear()} FieldFlow. All rights reserved.</p>
-          <p className="text-slate-700">Trusted by 500+ property managers &amp; REO companies nationwide</p>
+          <p>Trusted by 500+ property managers &amp; REO companies · 87% of standard orders completed within 24hrs</p>
         </div>
       </div>
     </footer>
