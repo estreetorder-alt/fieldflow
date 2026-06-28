@@ -241,3 +241,6 @@ export default function ServicesPage() {
     </div>
   );
 }
+
+// SEO
+// metadata already exported above - this is just for reference

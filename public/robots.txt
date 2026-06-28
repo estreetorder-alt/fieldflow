@@ -1,2 +1,9 @@
 User-agent: *
 Allow: /
+
+Disallow: /admin
+Disallow: /agent
+Disallow: /client
+Disallow: /api/
+
+Sitemap: https://fieldflow.app/sitemap.xml
