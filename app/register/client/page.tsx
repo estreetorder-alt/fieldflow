@@ -107,9 +107,17 @@ export default function ClientRegisterPage() {
                       <input required type={showPw?"text":"password"} value={form.confirm} onChange={set("confirm")} placeholder="Repeat password" className={inp}/></div>
                   </div>
                 </div>
+                {/* $30 signup fee notice */}
+                <div className="flex items-center justify-between bg-[#0f1f3d] rounded-xl px-4 py-3 mt-2">
+                  <div>
+                    <p className="font-bold text-white text-sm">One-Time Account Setup Fee</p>
+                    <p className="text-xs text-slate-400 mt-0.5">Non-refundable · Required to activate your account</p>
+                  </div>
+                  <span className="text-2xl font-black text-[#f0b429]">$30</span>
+                </div>
                 <button type="submit" disabled={loading}
                   className="w-full flex items-center justify-center gap-2 bg-[#c8991a] hover:bg-[#f0b429] disabled:opacity-50 text-[#0f1f3d] font-bold py-3 rounded-xl transition-colors mt-2">
-                  {loading?"Creating account…":<><span>Create Free Account</span><ArrowRight className="w-4 h-4"/></>}
+                  {loading?"Creating account…":<><span>Create Account — $30 Fee Applies</span><ArrowRight className="w-4 h-4"/></>}
                 </button>
               </form>
               <div className="mt-5 pt-5 border-t border-slate-100">

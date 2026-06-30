@@ -5,7 +5,7 @@ import {
   LogOut, Users, DollarSign, ClipboardList, RefreshCw, Save, Camera,
   CheckCircle, Clock, XCircle, Wifi, WifiOff, Star, ToggleLeft, ToggleRight,
   Mail, MapPin, Car, Download, Package, Gavel, UserPlus, Eye, EyeOff, X,
-  MessageSquare, Send, ShieldCheck, CreditCard, AlertCircle, ZapIcon, ChevronDown, ChevronUp,
+  ShieldCheck, CreditCard, AlertCircle, ZapIcon, ChevronDown, ChevronUp, Link as LinkIcon, Plus as PlusIcon, Trash as TrashIcon,
 } from "lucide-react";
 
 interface Order { id: string; address: string; status: string; clientId: string; assignedAgentId: string | null; totalPrice: number; compensationAmount: number; serviceType: string; turnaroundTier: string; notes: string; createdAt: string; client?: { name: string; email: string } | null; agent?: { name: string; rating?: number } | null; bids?: Bid[]; acceptedBidId?: string | null; }
@@ -25,7 +25,7 @@ const TIER_BADGES: Record<string,string> = { standard:"bg-slate-50 text-slate-50
 
 export default function AdminPage() {
   const router = useRouter();
-  const [tab, setTab] = useState<"orders"|"agents"|"users"|"samples"|"messages"|"payouts"|"pricing"|"emails">("orders");
+  const [tab, setTab] = useState<"orders"|"agents"|"users"|"samples"|"payouts"|"payment-links"|"pricing"|"emails">("orders");
   const [orders, setOrders] = useState<Order[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [allUsers, setAllUsers] = useState<AUser[]>([]);
@@ -34,7 +34,6 @@ export default function AdminPage() {
   const [expandedPricingCat, setExpandedPricingCat] = useState<string>("bpo_exterior");
   const [emails, setEmails] = useState<EmailEntry[]>([]);
   const [samples, setSamples] = useState<Sample[]>([]);
-  const [messages, setMessages] = useState<Msg[]>([]);
   const [payouts, setPayouts] = useState<Payout[]>([]);
   const [editingPrice, setEditingPrice] = useState<Record<string,Partial<PricingConfig>>>({});
   const [ratingEdit, setRatingEdit] = useState<Record<string,number>>({});
@@ -64,10 +63,12 @@ export default function AdminPage() {
   const [addUserSuccess, setAddUserSuccess] = useState("");
   const [showPass, setShowPass] = useState(false);
 
-  // Messages
-  const [msgTo, setMsgTo] = useState("");
-  const [msgBody, setMsgBody] = useState("");
-  const [sendingMsg, setSendingMsg] = useState(false);
+
+  // Payment Links
+  const [paymentLinks, setPaymentLinks] = useState<{id:string;label:string;url:string;amount?:number;description:string;active:boolean}[]>([]);
+  const [newLink, setNewLink] = useState({label:"",url:"",amount:"",description:""});
+  const [addingLink, setAddingLink] = useState(false);
+  const [linkError, setLinkError] = useState("");
 
   // Payouts
   const [payoutModal, setPayoutModal] = useState<{agentId:string;agentName:string;pendingPayout:number}|null>(null);
@@ -95,10 +96,11 @@ export default function AdminPage() {
     setSamples(d.samples ?? []);
   }, []);
 
-  const fetchMessages = useCallback(async () => {
-    const r = await fetch("/api/messages");
+
+  const fetchPaymentLinks = useCallback(async () => {
+    const r = await fetch("/api/payment-links");
     const d = await r.json();
-    setMessages(d.messages ?? []);
+    setPaymentLinks(d.links ?? []);
   }, []);
 
   const fetchPayouts = useCallback(async () => {
@@ -119,8 +121,9 @@ export default function AdminPage() {
   }, [fetchAll]);
 
   useEffect(() => { if (tab === "samples") fetchSamples(); }, [tab, fetchSamples]);
-  useEffect(() => { if (tab === "messages") fetchMessages(); }, [tab, fetchMessages]);
+
   useEffect(() => { if (tab === "payouts") fetchPayouts(); }, [tab, fetchPayouts]);
+  useEffect(() => { if (tab === "payment-links") fetchPaymentLinks(); }, [tab, fetchPaymentLinks]);
 
   async function handleLogout() { await fetch("/api/auth/logout", { method:"POST" }); router.push("/"); }
 
@@ -199,11 +202,28 @@ export default function AdminPage() {
     fetchAll();
   }
 
-  async function sendMessage() {
-    if (!msgTo||!msgBody.trim()) return;
-    setSendingMsg(true);
-    await fetch("/api/messages", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ toId:msgTo, body:msgBody.trim() }) });
-    setMsgBody(""); setSendingMsg(false); fetchMessages();
+  async function addPaymentLink() {
+    if (!newLink.label || !newLink.url) { setLinkError("Label and URL required"); return; }
+    setAddingLink(true); setLinkError("");
+    await fetch("/api/payment-links", {
+      method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({ label: newLink.label, url: newLink.url, amount: newLink.amount ? Number(newLink.amount) : undefined, description: newLink.description }),
+    });
+    setNewLink({label:"",url:"",amount:"",description:""});
+    setAddingLink(false); fetchPaymentLinks();
+  }
+
+  async function deleteLink(id: string) {
+    await fetch(`/api/payment-links/${id}`, { method: "DELETE" });
+    fetchPaymentLinks();
+  }
+
+  async function toggleLink(id: string, active: boolean) {
+    await fetch(`/api/payment-links/${id}`, {
+      method: "PATCH", headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({ active: !active }),
+    });
+    fetchPaymentLinks();
   }
 
   async function processPayout() {
@@ -219,9 +239,9 @@ export default function AdminPage() {
     ["agents","Agents",<Users key="a" className="w-4 h-4"/>],
     ["users","Add Users",<UserPlus key="u" className="w-4 h-4"/>],
     ["samples","Samples",<ShieldCheck key="s" className="w-4 h-4"/>],
-    ["messages","Messages",<MessageSquare key="m" className="w-4 h-4"/>],
     ["payouts","Payouts",<CreditCard key="pay" className="w-4 h-4"/>],
     ["pricing","Pricing",<DollarSign key="p" className="w-4 h-4"/>],
+    ["payment-links","Payment Links",<DollarSign key="pl" className="w-4 h-4 text-emerald-600"/>],
     ["emails","Email Log",<Mail key="e" className="w-4 h-4"/>],
   ] as const;
 
@@ -348,6 +368,14 @@ export default function AdminPage() {
                                   </button>
                                 </>
                               )}
+                              {/* Confirm payment button for under-review orders */}
+                              {(order as unknown as Record<string,unknown>).payment_status === "pending" && (
+                                <button onClick={async()=>{
+                                  await fetch(`/api/orders/${order.id}`, {method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({confirmPayment:true})});
+                                }} className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2 py-1.5 rounded-lg whitespace-nowrap">
+                                  ✓ Confirm Pay
+                                </button>
+                              )}
                               <button onClick={()=>window.open(`/api/orders/${order.id}/invoice`,"_blank")}
                                 className="p-1.5 text-slate-400 hover:text-blue-600 border border-slate-200 rounded-lg">
                                 <Download className="w-3.5 h-3.5"/>
@@ -456,10 +484,6 @@ export default function AdminPage() {
                           <CreditCard className="w-3.5 h-3.5"/>Pay ${agent.pendingPayout}
                         </button>
                       )}
-                      <button onClick={()=>{setTab("messages");setMsgTo(agent.id);}}
-                        className="flex items-center gap-1.5 text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium px-3 py-2 rounded-lg">
-                        <MessageSquare className="w-3.5 h-3.5"/>Message
-                      </button>
                     </div>
                   </div>
                 );
@@ -579,53 +603,7 @@ export default function AdminPage() {
                 </div>
               </div>
             ))}
-          </div>
-
-        ) : tab==="messages" ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-white border border-slate-200 rounded-2xl p-4">
-              <h3 className="font-semibold text-slate-900 mb-3">Send Message</h3>
-              <div className="space-y-3">
-                <div>
-                  <label className="text-xs font-medium text-slate-600 block mb-1">To (Agent)</label>
-                  <select value={msgTo} onChange={e=>setMsgTo(e.target.value)}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
-                    <option value="">Select agent…</option>
-                    {agents.map(a=><option key={a.id} value={a.id}>{a.name}</option>)}
-                  </select>
-                </div>
-                <textarea value={msgBody} onChange={e=>setMsgBody(e.target.value)} rows={4}
-                  placeholder="Type your message…"
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"/>
-                <button onClick={sendMessage} disabled={sendingMsg||!msgTo||!msgBody.trim()}
-                  className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-semibold py-2.5 rounded-xl">
-                  <Send className="w-4 h-4"/>{sendingMsg?"Sending…":"Send Message"}
-                </button>
-              </div>
-            </div>
-            <div className="md:col-span-2 bg-white border border-slate-200 rounded-2xl overflow-hidden">
-              <div className="px-5 py-4 border-b border-slate-100"><h3 className="font-semibold text-slate-900">All Messages</h3></div>
-              <div className="divide-y divide-slate-100 max-h-96 overflow-y-auto">
-                {messages.length===0 ? (
-                  <div className="text-center py-12 text-slate-400"><MessageSquare className="w-8 h-8 mx-auto mb-2 text-slate-300"/><p>No messages yet</p></div>
-                ) : messages.map(m=>(
-                  <div key={m.id} className="px-5 py-4">
-                    <div className="flex items-center justify-between mb-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-semibold text-slate-700">{m.fromName}</span>
-                        <span className="text-xs text-slate-400">→</span>
-                        <span className="text-xs font-semibold text-slate-700">{m.toName}</span>
-                      </div>
-                      <span className="text-xs text-slate-400" suppressHydrationWarning>{new Date(m.createdAt).toLocaleString()}</span>
-                    </div>
-                    <p className="text-sm text-slate-600">{m.body}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-        ) : tab==="payouts" ? (
+          </div>) : tab==="payouts" ? (
           <div className="space-y-4">
             <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
               <div className="px-6 py-4 border-b border-slate-100">

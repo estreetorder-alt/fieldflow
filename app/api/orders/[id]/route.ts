@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getOrderById, updateOrder, addStatusHistory, getUserById, updatePhotoSelection } from "@/lib/db";
 import { sendOrderCompletionEmail } from "@/lib/email";
+import { notifyPaymentReceived } from "@/lib/notify";
+import { supabase } from "@/lib/supabase";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -24,41 +26,51 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 
   const body = await request.json();
 
-  // Agent direct-accept
+  // Agent direct-accept — show as agent action only
   if (body.accept === true && userRole === "agent") {
     if (order.status !== "pending" || order.assignedAgentId)
       return NextResponse.json({ error: "Order not available" }, { status: 409 });
     await updateOrder(id, { status: "in_progress", assignedAgentId: userId, offerAcceptedAt: new Date().toISOString() });
     const agent = await getUserById(userId);
-    await addStatusHistory(id, "in_progress", `Directly accepted by ${agent?.name ?? userId}`);
+    await addStatusHistory(id, "in_progress", `${agent?.name ?? "Agent"} accepted the order`);
+    return NextResponse.json({ ok: true });
+  }
+
+  // Admin confirms payment — marks order as active/pending for dispatch
+  if (body.confirmPayment === true && userRole === "admin") {
+    const client = await getUserById(order.clientId);
+    await supabase.from("orders").update({
+      payment_status: "confirmed",
+      invoice_paid: true,
+      paid_at: new Date().toISOString(),
+      status: "pending", // now active and dispatchable
+    }).eq("id", id);
+    await addStatusHistory(id, "pending", "Payment confirmed — order is now active");
+    await notifyPaymentReceived({
+      clientName: client?.name ?? "Client",
+      amount: order.totalPrice,
+      address: order.address,
+      orderId: id,
+    });
     return NextResponse.json({ ok: true });
   }
 
   // Status update
   if (body.status) {
     await updateOrder(id, { status: body.status });
-    await addStatusHistory(id, body.status, body.note ?? `Status changed to ${body.status}`);
-
+    await addStatusHistory(id, body.status, body.note ?? `Order ${body.status.replace("_"," ")}`);
     if (body.status === "completed") {
-      // Set 30-day photo expiry
       const expires = new Date();
       expires.setDate(expires.getDate() + 30);
       await updateOrder(id, { photoExpiresAt: expires.toISOString() });
-
-      // Auto-email client
       const client = await getUserById(order.clientId);
       if (client?.email) {
         await sendOrderCompletionEmail({
-          clientEmail: client.email,
-          clientName: client.name,
-          address: order.address,
-          orderId: id,
-          photoCount: order.photos.length,
-          baseUrl: process.env.NEXT_PUBLIC_BASE_URL ?? "https://fieldflow-livid.vercel.app",
+          clientEmail: client.email, clientName: client.name,
+          address: order.address, orderId: id, photoCount: order.photos.length,
+          baseUrl: process.env.NEXT_PUBLIC_BASE_URL ?? "https://fieldflow.app",
         });
       }
-
-      // Update agent stats
       if (order.assignedAgentId) {
         const agent = await getUserById(order.assignedAgentId);
         if (agent) {
@@ -75,24 +87,18 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     }
   }
 
-  // Admin assign agent
+  // Admin assign agent — show as system action
   if (body.assignedAgentId !== undefined) {
     await updateOrder(id, { assignedAgentId: body.assignedAgentId || null, status: body.status ?? order.status });
     if (body.assignedAgentId) {
       const agent = await getUserById(body.assignedAgentId);
-      await addStatusHistory(id, "in_progress", `Manually assigned to ${agent?.name ?? body.assignedAgentId}`);
+      await addStatusHistory(id, "in_progress", `${agent?.name ?? "Agent"} assigned to this order`);
     }
   }
 
   // Photo selection
-  if (body.selectedPhotos) {
-    await updatePhotoSelection(id, body.selectedPhotos);
-  }
-
-  // Invoice paid
-  if (body.invoicePaid !== undefined) {
-    await updateOrder(id, { invoicePaid: body.invoicePaid });
-  }
+  if (body.selectedPhotos) { await updatePhotoSelection(id, body.selectedPhotos); }
+  if (body.invoicePaid !== undefined) { await updateOrder(id, { invoicePaid: body.invoicePaid }); }
 
   return NextResponse.json({ ok: true });
 }

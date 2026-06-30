@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getOrderById, getBidsByOrderId, createBid, updateBidStatus, rejectOtherBids, updateOrder, addStatusHistory, getUserById, addEmailLog } from "@/lib/db";
+import { notifyBidPlaced } from "@/lib/notify";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -27,15 +28,13 @@ export async function POST(request: NextRequest, { params }: Params) {
   const body = await request.json();
   const { amount, message, actingAsAgentId } = body;
 
+  // Admin bids on behalf of an agent — but we show it as the agent's action
   let bidderAgentId: string;
-  let placedByAdmin = false;
-
   if (userRole === "admin") {
     if (!actingAsAgentId) return NextResponse.json({ error: "actingAsAgentId required" }, { status: 400 });
     const agent = await getUserById(actingAsAgentId);
     if (!agent || agent.role !== "agent") return NextResponse.json({ error: "Agent not found" }, { status: 404 });
     bidderAgentId = actingAsAgentId;
-    placedByAdmin = true;
   } else if (userRole === "agent") {
     bidderAgentId = userId;
   } else {
@@ -45,9 +44,19 @@ export async function POST(request: NextRequest, { params }: Params) {
   if (!amount || Number(amount) <= 0)
     return NextResponse.json({ error: "Valid bid amount required" }, { status: 400 });
 
-  const bid = await createBid({ orderId: id, agentId: bidderAgentId, amount: Number(amount), message: message ?? "", placedByAdmin });
+  // placedByAdmin kept internally for audit but NEVER shown to users
+  const bid = await createBid({
+    orderId: id, agentId: bidderAgentId,
+    amount: Number(amount), message: message ?? "",
+    placedByAdmin: userRole === "admin",
+  });
+
   const agent = await getUserById(bidderAgentId);
-  await addEmailLog({ type: "bid_placed", to: "client@fieldflow.com", subject: `New bid on order ${id} from ${agent?.name}`, body: `Bid: $${amount}. ${message ?? ""}` });
+  // Status history shows agent name only — no admin mention
+  await addStatusHistory(id, order.status, `${agent?.name ?? "Agent"} placed a bid of $${amount}`);
+  await addEmailLog({ type: "bid_placed", to: "admin@fieldflow.com",
+    subject: `Bid placed on order ${id}`, body: `${agent?.name} bid $${amount}. ${message ?? ""}` });
+  await notifyBidPlaced({ agentName: agent?.name ?? "Agent", amount: Number(amount), address: order.address });
 
   return NextResponse.json({ bid }, { status: 201 });
 }
@@ -82,11 +91,13 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       offerAcceptedAt: new Date().toISOString(),
     });
     const agent = await getUserById(bid.agentId);
-    await addStatusHistory(id, "in_progress", `Bid accepted — assigned to ${agent?.name ?? bid.agentId} at $${bid.amount}`);
-    await addEmailLog({ type: "bid_accepted", to: agent?.email ?? "", subject: `Your bid was accepted — ${order.address}`, body: `Your bid of $${bid.amount} was accepted.` });
+    // No admin mention — just agent name
+    await addStatusHistory(id, "in_progress", `Bid accepted — ${agent?.name ?? "Agent"} assigned at $${bid.amount}`);
+    await addEmailLog({ type: "bid_accepted", to: agent?.email ?? "",
+      subject: `Bid accepted — ${order.address}`, body: `Bid of $${bid.amount} accepted.` });
   } else {
     await updateBidStatus(bidId, "rejected");
-    await addStatusHistory(id, order.status, `Bid ${bidId} rejected`);
+    await addStatusHistory(id, order.status, `Bid rejected`);
   }
 
   return NextResponse.json({ ok: true });

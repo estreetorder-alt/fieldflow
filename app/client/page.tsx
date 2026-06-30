@@ -21,9 +21,10 @@ interface Order {
 interface ServiceItem { id: string; name: string; description: string; basePrice: number; compensation: number; category: string; photoCount?: number; shotList?: string[]; isCustom?: boolean; requiresInterior?: boolean; }
 interface ServiceCategory { id: string; label: string; services: ServiceItem[]; }
 interface SubAccount { id: string; name: string; email: string; createdAt: string; }
+interface PaymentLink { id: string; label: string; url: string; amount?: number; description: string; active: boolean; }
 
-const STATUS_COLORS: Record<string,string> = { pending:"bg-amber-100 text-amber-700 border-amber-200", in_progress:"bg-blue-100 text-blue-700 border-blue-200", completed:"bg-green-100 text-green-700 border-green-200", cancelled:"bg-red-100 text-red-700 border-red-200" };
-const STATUS_ICONS: Record<string,React.ReactNode> = { pending:<Clock className="w-3.5 h-3.5"/>, in_progress:<RefreshCw className="w-3.5 h-3.5"/>, completed:<CheckCircle className="w-3.5 h-3.5"/>, cancelled:<XCircle className="w-3.5 h-3.5"/> };
+const STATUS_COLORS: Record<string,string> = { under_review:"bg-purple-100 text-purple-700 border-purple-200", pending:"bg-amber-100 text-amber-700 border-amber-200", in_progress:"bg-blue-100 text-blue-700 border-blue-200", completed:"bg-green-100 text-green-700 border-green-200", cancelled:"bg-red-100 text-red-700 border-red-200" };
+const STATUS_ICONS: Record<string,React.ReactNode> = { under_review:<Clock className="w-3.5 h-3.5"/>, pending:<Clock className="w-3.5 h-3.5"/>, in_progress:<RefreshCw className="w-3.5 h-3.5"/>, completed:<CheckCircle className="w-3.5 h-3.5"/>, cancelled:<XCircle className="w-3.5 h-3.5"/> };
 const TIER_LABELS: Record<string,string> = { standard:"Next Business Day", rush_24hr:"24-Hour Rush (+25%)", rush_6hr:"6-Hour Rush (+75%)" };
 const TIER_MULS: Record<string,number> = { standard:1, rush_24hr:1.25, rush_6hr:1.75 };
 
@@ -85,6 +86,10 @@ function ClientPageInner() {
   const [bidsData, setBidsData] = useState<Record<string,Bid[]>>({});
   const [actingBid, setActingBid] = useState<string|null>(null);
 
+  // Payment links
+  const [paymentLinks, setPaymentLinks] = useState<PaymentLink[]>([]);
+  const [showPaymentLinks, setShowPaymentLinks] = useState<string | null>(null);
+
   // Sub-accounts
   const [subAccounts, setSubAccounts] = useState<SubAccount[]>([]);
   const [showAddSub, setShowAddSub] = useState(false);
@@ -135,6 +140,7 @@ function ClientPageInner() {
 
   useEffect(() => {
     fetch("/api/auth/me").then(r=>r.json()).then(d=>{ if(d.user){ setUserName(d.user.name); setUserId(d.user.id); } });
+    fetch("/api/payment-links").then(r=>r.json()).then(d=>{ setPaymentLinks(d.links?.filter((l: PaymentLink) => l.active) ?? []); });
     const es = new EventSource("/api/events");
     esRef.current = es;
     es.addEventListener("connected",()=>setLiveConnected(true));
@@ -194,7 +200,6 @@ function ClientPageInner() {
       // skip=true means Stripe not configured, fall through
     }
 
-    // Direct order creation (no Stripe or custom order)
     const r = await fetch("/api/orders", {
       method:"POST", headers:{"Content-Type":"application/json"},
       body: JSON.stringify(orderData),
@@ -202,6 +207,10 @@ function ClientPageInner() {
     const d = await r.json();
     if (!r.ok) { setFormError(d.error ?? "Failed to submit"); setSubmitting(false); return; }
     setShowNewOrder(false); resetForm(); setSubmitting(false);
+    // Show payment links modal if any active
+    if (paymentLinks.length > 0) {
+      setShowPaymentLinks(d.order?.id ?? "new");
+    }
   }
 
   async function submitBulk() {
@@ -473,6 +482,48 @@ function ClientPageInner() {
           </>
         )}
       </div>
+
+      {/* Payment Links Modal — shown after order placed */}
+      {showPaymentLinks && paymentLinks.length > 0 && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
+            <div className="bg-[#0f1f3d] rounded-t-2xl p-6 text-white text-center">
+              <div className="w-14 h-14 bg-[#c8991a] rounded-full flex items-center justify-center mx-auto mb-3">
+                <DollarSign className="w-7 h-7 text-white"/>
+              </div>
+              <h2 className="text-xl font-bold mb-1">Order Submitted!</h2>
+              <p className="text-slate-300 text-sm">Your order is being processed. Complete payment to activate it.</p>
+            </div>
+            <div className="p-6">
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-5 text-sm text-amber-800">
+                <p className="font-bold mb-1">⏳ Order Under Review</p>
+                <p>Your order has been placed and is being processed. Once we confirm your payment, your order will be activated and an agent will be dispatched.</p>
+              </div>
+              <p className="text-sm font-semibold text-slate-700 mb-3">Choose a payment method:</p>
+              <div className="space-y-3">
+                {paymentLinks.map(link => (
+                  <a key={link.id} href={link.url} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center justify-between gap-3 p-4 border-2 border-[#c8991a] rounded-xl hover:bg-[#c8991a]/5 transition-colors group">
+                    <div>
+                      <p className="font-bold text-[#0f1f3d]">{link.label}</p>
+                      {link.description && <p className="text-xs text-slate-500">{link.description}</p>}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {link.amount && <span className="font-bold text-[#c8991a]">${link.amount}</span>}
+                      <span className="text-xs bg-[#c8991a] text-white font-bold px-3 py-1.5 rounded-lg group-hover:bg-[#f0b429] transition-colors">Pay Now →</span>
+                    </div>
+                  </a>
+                ))}
+              </div>
+              <p className="text-xs text-slate-400 text-center mt-4">After paying, your order status will update to "Active" within a few hours once we verify your payment.</p>
+              <button onClick={() => setShowPaymentLinks(null)}
+                className="w-full mt-4 border border-slate-300 text-slate-600 font-medium py-2.5 rounded-xl hover:bg-slate-50 text-sm">
+                I've completed payment — close this window
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* New Order Modal */}
       {showNewOrder&&(

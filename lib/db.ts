@@ -628,3 +628,39 @@ export async function updateAgentGrade(agentId: string): Promise<void> {
   const grade = Math.min(5.0, (rating * 0.6 + (rate / 100) * 5 * 0.4));
   await supabase.from("users").update({ grade: Math.round(grade * 10) / 10, completion_rate: Math.round(rate * 10) / 10 }).eq("id", agentId);
 }
+
+// ── Payment Links ─────────────────────────────────────────────
+
+export interface PaymentLink {
+  id: string; label: string; url: string;
+  amount?: number; description: string; active: boolean; createdAt: string;
+}
+
+export async function getPaymentLinks(): Promise<PaymentLink[]> {
+  const { data } = await supabase.from("payment_links").select("*").order("created_at");
+  return (data ?? []).map(r => {
+    const row = r as Record<string,unknown>;
+    return { id:row.id as string, label:row.label as string, url:row.url as string,
+      amount:row.amount as number|undefined, description:row.description as string,
+      active:row.active as boolean, createdAt:row.created_at as string };
+  });
+}
+
+export async function upsertPaymentLink(link: Partial<PaymentLink> & { label: string; url: string }): Promise<PaymentLink> {
+  const payload: Record<string,unknown> = {
+    label: link.label, url: link.url, active: link.active ?? true,
+    description: link.description ?? "", updated_at: new Date().toISOString(),
+  };
+  if (link.amount) payload.amount = link.amount;
+  if (link.id) payload.id = link.id;
+  const { data, error } = await supabase.from("payment_links").upsert(payload, { onConflict:"id" }).select().single();
+  if (error) throw new Error(error.message);
+  const r = data as Record<string,unknown>;
+  return { id:r.id as string, label:r.label as string, url:r.url as string,
+    amount:r.amount as number|undefined, description:r.description as string,
+    active:r.active as boolean, createdAt:r.created_at as string };
+}
+
+export async function deletePaymentLink(id: string): Promise<void> {
+  await supabase.from("payment_links").delete().eq("id", id);
+}

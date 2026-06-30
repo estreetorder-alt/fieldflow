@@ -144,3 +144,22 @@ on conflict do nothing;
 update users set grade=4.8, completion_rate=97.5, response_rate=95.0, approved=true where id='user-2';
 update users set grade=4.2, completion_rate=89.0, response_rate=88.0, approved=true where id='user-3';
 update users set grade=4.9, completion_rate=99.0, response_rate=98.0, approved=true where id='user-6';
+
+-- Payment link management
+create table if not exists payment_links (
+  id          text primary key default ('plink-' || substr(uuid_generate_v4()::text,1,8)),
+  label       text not null,
+  url         text not null,
+  amount      numeric(10,2),
+  description text default '',
+  active      boolean not null default true,
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now()
+);
+alter table payment_links enable row level security;
+create policy "service role full access" on payment_links for all using (true) with check (true);
+
+-- Order payment tracking
+alter table orders add column if not exists payment_link_id text references payment_links(id) on delete set null;
+alter table orders add column if not exists payment_status text not null default 'pending'; -- pending|under_review|confirmed
+alter table orders add column if not exists paid_at timestamptz default null;

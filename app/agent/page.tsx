@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import {
   LogOut, Camera, MapPin, Clock, CheckCircle, Upload, X, User, Wifi, WifiOff,
   DollarSign, Star, ToggleLeft, ToggleRight, Edit3, Save, Car, Package, Image as ImageIcon,
-  Gavel, MessageSquare, Send, AlertCircle, ShieldCheck, Plus, Trash2, ZapIcon,
+  Gavel, AlertCircle, ShieldCheck, Plus, Trash2, ZapIcon,
 } from "lucide-react";
 
 interface Bid { id: string; orderId: string; agentId: string; amount: number; message: string; placedAt: string; status: string; placedByAdmin?: boolean; }
@@ -15,7 +15,6 @@ interface Order {
   createdAt: string; offerAcceptedAt: string | null; assignedAgentId: string | null;
   bids?: Bid[]; acceptedBidId?: string | null; responseDeadline?: string | null;
 }
-interface Msg { id: number; fromId: string; toId: string; body: string; createdAt: string; fromName: string; toName: string; orderId?: string | null; }
 interface AgentProfile {
   id: string; name: string; email: string; phone: string; bio: string;
   coverageZone: string; vehicle: string; available: boolean; rating: number;
@@ -44,7 +43,7 @@ export default function AgentPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [profile, setProfile] = useState<AgentProfile|null>(null);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<"mine"|"offers"|"messages"|"coverage"|"sample"|"profile">("mine");
+  const [tab, setTab] = useState<"mine"|"offers"|"coverage"|"sample"|"profile">("mine");
   const [liveConnected, setLiveConnected] = useState(false);
   const [acting, setActing] = useState<string|null>(null);
   const esRef = useRef<EventSource|null>(null);
@@ -69,12 +68,6 @@ export default function AgentPage() {
   const [savingProfile, setSavingProfile] = useState(false);
   const [togglingAvail, setTogglingAvail] = useState(false);
 
-  // Messages
-  const [messages, setMessages] = useState<Msg[]>([]);
-  const [adminId, setAdminId] = useState<string>("");
-  const [msgBody, setMsgBody] = useState("");
-  const [sendingMsg, setSendingMsg] = useState(false);
-  const [unread, setUnread] = useState(0);
 
   // ZIP codes
   const [zips, setZips] = useState<string[]>([]);
@@ -106,15 +99,6 @@ export default function AgentPage() {
     setMyBids(results);
   }, []);
 
-  const fetchMessages = useCallback(async () => {
-    const r = await fetch("/api/messages");
-    const d = await r.json();
-    setMessages(d.messages ?? []);
-    setUnread(d.unread ?? 0);
-    // Find admin id from messages
-    const adminMsg = d.messages?.find((m: Msg) => m.fromName && m.fromId !== profile?.id);
-    if (adminMsg) setAdminId(adminMsg.fromId);
-  }, [profile?.id]);
 
   const fetchZips = useCallback(async () => {
     const r = await fetch("/api/zip-codes");
@@ -137,7 +121,6 @@ export default function AgentPage() {
     return ()=>{ es.close(); };
   }, [fetchProfile, fetchMyBids]);
 
-  useEffect(()=>{ if(tab==="messages") fetchMessages(); }, [tab, fetchMessages]);
   useEffect(()=>{ if(tab==="coverage") fetchZips(); }, [tab, fetchZips]);
 
   async function toggleAvailability() {
@@ -188,13 +171,6 @@ export default function AgentPage() {
     reader.readAsDataURL(file);
   }
 
-  async function sendMsg() {
-    if (!msgBody.trim()||!adminId) return;
-    setSendingMsg(true);
-    await fetch("/api/messages", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({toId:adminId,body:msgBody.trim()}) });
-    setMsgBody(""); setSendingMsg(false); fetchMessages();
-  }
-
   async function saveZips() {
     setSavingZips(true);
     await fetch("/api/zip-codes", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({zips}) });
@@ -220,7 +196,6 @@ export default function AgentPage() {
           <span className="text-xs bg-green-50 text-green-700 border border-green-100 rounded-full px-2 py-0.5 font-medium">Agent Portal</span>
         </div>
         <div className="flex items-center gap-4">
-          {unread>0 && <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">{unread} msg</span>}
           <div className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border ${liveConnected?"bg-green-50 text-green-600 border-green-200":"bg-slate-50 text-slate-400 border-slate-200"}`}>
             {liveConnected?<Wifi className="w-3 h-3"/>:<WifiOff className="w-3 h-3"/>}{liveConnected?"Live":"Connecting…"}
           </div>
@@ -272,14 +247,12 @@ export default function AgentPage() {
         {/* Tabs */}
         <div className="flex gap-1 bg-slate-100 p-1 rounded-xl mb-5 flex-wrap">
           {([
-            ["mine","My Jobs"],["offers","Available"],["messages","Messages"],
-            ["coverage","ZIP Codes"],["sample","Sample"],["profile","Profile"]
+            ["mine","My Jobs"],["offers","Available"],            ["coverage","ZIP Codes"],["sample","Sample"],["profile","Profile"]
           ] as const).map(([t,label])=>(
             <button key={t} onClick={()=>setTab(t)}
               className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${tab===t?"bg-white text-slate-900 shadow-sm":"text-slate-500 hover:text-slate-700"}`}>
               {label}
               {t==="offers"&&availableOrders.length>0&&<span className="ml-1 bg-amber-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">{availableOrders.length}</span>}
-              {t==="messages"&&unread>0&&<span className="ml-1 bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">{unread}</span>}
             </button>
           ))}
         </div>
@@ -421,39 +394,6 @@ export default function AgentPage() {
                 </div>
               );
             })}
-          </div>
-
-        ) : tab==="messages" ? (
-          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-            <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
-              <MessageSquare className="w-5 h-5 text-blue-600"/>
-              <h2 className="font-semibold text-slate-900">Message Center</h2>
-              <span className="text-xs text-slate-400 ml-1">Admin only</span>
-            </div>
-            <div className="h-80 overflow-y-auto p-4 space-y-3 flex flex-col-reverse">
-              <div>
-                {messages.length===0 ? (
-                  <p className="text-center text-slate-400 text-sm py-8">No messages yet. Send a message to admin below.</p>
-                ) : messages.slice().reverse().map(m=>(
-                  <div key={m.id} className={`flex mb-3 ${m.fromId===profile?.id?"justify-end":"justify-start"}`}>
-                    <div className={`max-w-xs px-3 py-2 rounded-2xl text-sm ${m.fromId===profile?.id?"bg-blue-600 text-white":"bg-slate-100 text-slate-800"}`}>
-                      <p>{m.body}</p>
-                      <p className={`text-xs mt-1 ${m.fromId===profile?.id?"text-blue-200":"text-slate-400"}`}>{new Date(m.createdAt).toLocaleTimeString()}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="border-t border-slate-100 p-4 flex gap-2">
-              <input value={msgBody} onChange={e=>setMsgBody(e.target.value)}
-                onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMsg();}}}
-                placeholder="Type a message to admin…"
-                className="flex-1 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"/>
-              <button onClick={sendMsg} disabled={sendingMsg||!msgBody.trim()}
-                className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-xl">
-                <Send className="w-4 h-4"/>{sendingMsg?"…":"Send"}
-              </button>
-            </div>
           </div>
 
         ) : tab==="coverage" ? (
