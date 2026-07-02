@@ -18,7 +18,7 @@ export default function ContactPage() {
       <section className="py-16 px-4 bg-[#faf8f3]">
         <div className="max-w-5xl mx-auto grid sm:grid-cols-3 gap-6 mb-12">
           {[
-            { icon:<Mail className="w-6 h-6"/>, title:"Email Us", lines:["support@fieldflow.app","We reply within 1 business day"], note:"For order issues, include your order ID" },
+            { icon:<Mail className="w-6 h-6"/>, title:"Email Us", lines:["support@snapect.com","We reply within 1 business day"], note:"For order issues, include your order ID" },
             { icon:<Phone className="w-6 h-6"/>, title:"Phone", lines:["(941) 723-3200","Mon–Fri 8 AM – 6 PM CST"], note:"Please do not call to check application status" },
             { icon:<Clock className="w-6 h-6"/>, title:"Support Hours", lines:["Monday – Friday","8:00 AM – 6:00 PM CST"], note:"Closed weekends and federal holidays" },
           ].map(c=>(
@@ -38,7 +38,7 @@ export default function ContactPage() {
             {[
               { q:"How quickly will my order be completed?", a:"87% of standard orders are completed within 24 hours. Orders submitted before 10 AM local time are dispatched same day. Rush options (24hr, 6hr) are available for an additional flat fee." },
               { q:"I registered as an agent — when will I be approved?", a:"Our team reviews sample sets within 1–2 business days. Do not call or email to check status — we will contact you by email. Make sure to submit your 7-photo sample within 48 hours of registering." },
-              { q:"What if no agent is available in my area?", a:"Your order will be queued and assigned as soon as an agent becomes available. You can also check coverage before ordering at our Coverage page. We're always expanding into new ZIP codes." },
+              { q:"What if no agent is available in my area?", a:"We have agents covering all major areas. Place your order and our team will ensure assignment within the stated timeframe." },
               { q:"How long are my photos stored?", a:"Photos are stored securely for 30 days after order completion. After that they are permanently deleted. Download your photos within this window — we cannot recover deleted photos." },
               { q:"Can I cancel or modify an order?", a:"Orders can be cancelled before an agent accepts them. Once accepted, cancellations may incur a fee. Orders cannot be modified after submission — please double-check your address and service selection before paying." },
               { q:"How do agents get paid?", a:"Agents are paid every Friday via PayPal for all orders completed and approved that week. We cover the PayPal processing fees. Minimum balance of $40 required for payout — otherwise balance rolls to next week." },
@@ -58,7 +58,7 @@ export default function ContactPage() {
             <Users className="w-8 h-8 text-[#c8991a] mb-3"/>
             <h3 className="font-bold text-white mb-2">Clients</h3>
             <p className="text-slate-300 text-sm mb-4">For order help, billing questions, or account issues:</p>
-            <a href="mailto:support@fieldflow.app" className="inline-flex items-center gap-2 bg-[#c8991a] text-[#0f1f3d] font-bold px-4 py-2.5 rounded-xl text-sm hover:bg-[#f0b429] transition-colors">
+            <a href="mailto:support@snapect.com" className="inline-flex items-center gap-2 bg-[#c8991a] text-[#0f1f3d] font-bold px-4 py-2.5 rounded-xl text-sm hover:bg-[#f0b429] transition-colors">
               <Mail className="w-4 h-4"/>Email Client Support
             </a>
           </div>
@@ -66,7 +66,7 @@ export default function ContactPage() {
             <MessageSquare className="w-8 h-8 text-[#c8991a] mb-3"/>
             <h3 className="font-bold text-white mb-2">Field Agents</h3>
             <p className="text-slate-300 text-sm mb-4">For application status, payment questions, or technical issues:</p>
-            <a href="mailto:agents@fieldflow.app" className="inline-flex items-center gap-2 bg-[#c8991a] text-[#0f1f3d] font-bold px-4 py-2.5 rounded-xl text-sm hover:bg-[#f0b429] transition-colors">
+            <a href="mailto:agents@snapect.com" className="inline-flex items-center gap-2 bg-[#c8991a] text-[#0f1f3d] font-bold px-4 py-2.5 rounded-xl text-sm hover:bg-[#f0b429] transition-colors">
               <Mail className="w-4 h-4"/>Email Agent Support
             </a>
           </div>

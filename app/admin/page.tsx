@@ -195,10 +195,9 @@ export default function AdminPage() {
     setAddingUser(false); fetchAll();
   }
 
-  async function reviewSample(sampleId: string, decision: "approved"|"rejected") {
-    await fetch(`/api/samples/${sampleId}`, { method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ decision }) });
+  async function reviewSample(sampleId: string, decision: "approved"|"rejected", agentId: string) {
+    await fetch(`/api/samples/${sampleId}`, { method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ decision, agentId }) });
     fetchSamples();
-    // Refresh agents list for approval status
     fetchAll();
   }
 
@@ -251,7 +250,7 @@ export default function AdminPage() {
         <div className="max-w-7xl mx-auto h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-purple-700 rounded-lg flex items-center justify-center"><Camera className="w-4 h-4 text-white"/></div>
-            <span className="font-bold text-slate-900">FieldFlow</span>
+            <span className="font-bold text-slate-900">Snapect</span>
             <span className="text-xs bg-purple-100 text-purple-700 font-medium px-2 py-0.5 rounded-full">Admin Studio</span>
           </div>
           <div className="flex items-center gap-4">
@@ -592,11 +591,11 @@ export default function AdminPage() {
                   ))}
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={()=>reviewSample(s.id,"approved")}
+                  <button onClick={()=>reviewSample(s.id,"approved",s.agentId)}
                     className="flex items-center gap-1.5 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold px-4 py-2 rounded-xl">
                     <CheckCircle className="w-4 h-4"/>Approve — Activate Agent
                   </button>
-                  <button onClick={()=>reviewSample(s.id,"rejected")}
+                  <button onClick={()=>reviewSample(s.id,"rejected",s.agentId)}
                     className="flex items-center gap-1.5 bg-red-50 hover:bg-red-100 text-red-600 text-sm font-semibold px-4 py-2 rounded-xl border border-red-200">
                     <XCircle className="w-4 h-4"/>Reject — Request Resubmission
                   </button>

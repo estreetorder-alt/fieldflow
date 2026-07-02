@@ -1,37 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const ROUTE_ROLES: Record<string, string[]> = {
-  "/admin": ["admin"],
-  "/client": ["client", "admin"],
-  "/agent": ["agent", "admin"],
+const PROTECTED: Record<string, string[]> = {
+  admin:  ["/admin"],
+  agent:  ["/agent"],
+  client: ["/client"],
 };
+
+const PUBLIC = ["/", "/login", "/register", "/services", "/coverage", "/work", "/contact", "/privacy", "/terms", "/api/auth", "/api/payment-links", "/api/validate-address", "/api/coverage-check", "/sitemap.xml", "/robots.txt", "/snapect-logo.png", "/_next", "/favicon"];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  for (const [route, allowedRoles] of Object.entries(ROUTE_ROLES)) {
-    if (pathname === route || pathname.startsWith(route + "/")) {
-      const userId = request.cookies.get("user_id")?.value;
-      const userRole = request.cookies.get("user_role")?.value;
+  // Allow public paths
+  if (PUBLIC.some(p => pathname.startsWith(p))) return NextResponse.next();
+  if (pathname.startsWith("/_next") || pathname.startsWith("/api/stripe/webhook")) return NextResponse.next();
 
-      if (!userId || !userRole) {
-        const loginUrl = new URL("/login", request.url);
-        loginUrl.searchParams.set("redirect", pathname);
-        return NextResponse.redirect(loginUrl);
+  const userId = request.cookies.get("user_id")?.value;
+  const userRole = request.cookies.get("user_role")?.value;
+
+  if (!userId || !userRole) {
+    return NextResponse.redirect(new URL(`/login?redirect=${encodeURIComponent(pathname)}`, request.url));
+  }
+
+  // Check role-based access
+  for (const [role, paths] of Object.entries(PROTECTED)) {
+    for (const path of paths) {
+      if (pathname.startsWith(path) && userRole !== role && userRole !== "admin") {
+        return NextResponse.redirect(new URL("/login", request.url));
       }
-
-      if (!allowedRoles.includes(userRole)) {
-        const dashboardMap: Record<string, string> = {
-          admin: "/admin",
-          agent: "/agent",
-          client: "/client",
-        };
-        return NextResponse.redirect(
-          new URL(dashboardMap[userRole] || "/", request.url)
-        );
-      }
-
-      break;
     }
   }
 
@@ -39,5 +35,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/client/:path*", "/agent/:path*"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|snapect-logo.png|robots.txt).*)"],
 };

@@ -15,5 +15,14 @@ export async function POST(request: NextRequest) {
   const { photos } = await request.json();
   if (!photos?.length) return NextResponse.json({ error: "At least one photo required" }, { status: 400 });
   const sample = await submitSample(userId, photos);
+
+  // Notify admin
+  const { sendAdminNotification } = await import("@/lib/email");
+  await sendAdminNotification({
+    title: "📸 New Sample Submission",
+    message: `Agent ID: ${userId}\nPhotos: ${photos.length}\nAction required: Review in admin panel.`,
+    type: "sample_submitted",
+  });
+
   return NextResponse.json({ sample }, { status: 201 });
 }

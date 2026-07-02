@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getOrderById, updateOrder, addStatusHistory, getUserById, updatePhotoSelection } from "@/lib/db";
-import { sendOrderCompletionEmail } from "@/lib/email";
-import { notifyPaymentReceived } from "@/lib/notify";
+import { sendOrderCompletionEmail, sendOrderActivatedEmail, sendOrderStatusEmail, sendPaymentReceivedAdminEmail } from "@/lib/email";
 import { supabase } from "@/lib/supabase";
 
 type Params = { params: Promise<{ id: string }> };
@@ -26,7 +25,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 
   const body = await request.json();
 
-  // Agent direct-accept — show as agent action only
+  // Agent direct-accept — shown as agent action only
   if (body.accept === true && userRole === "agent") {
     if (order.status !== "pending" || order.assignedAgentId)
       return NextResponse.json({ error: "Order not available" }, { status: 409 });
@@ -36,21 +35,31 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     return NextResponse.json({ ok: true });
   }
 
-  // Admin confirms payment — marks order as active/pending for dispatch
+  // Admin confirms payment
   if (body.confirmPayment === true && userRole === "admin") {
     const client = await getUserById(order.clientId);
     await supabase.from("orders").update({
       payment_status: "confirmed",
       invoice_paid: true,
       paid_at: new Date().toISOString(),
-      status: "pending", // now active and dispatchable
+      status: "pending",
     }).eq("id", id);
     await addStatusHistory(id, "pending", "Payment confirmed — order is now active");
-    await notifyPaymentReceived({
+
+    // Email client that order is activated
+    if (client?.email) {
+      await sendOrderActivatedEmail({
+        clientEmail: client.email, clientName: client.name,
+        address: order.address, orderId: id,
+      });
+    }
+    // Notify admin via email+ntfy
+    await sendPaymentReceivedAdminEmail({
       clientName: client?.name ?? "Client",
+      clientEmail: client?.email ?? "",
       amount: order.totalPrice,
-      address: order.address,
       orderId: id,
+      address: order.address,
     });
     return NextResponse.json({ ok: true });
   }
@@ -58,17 +67,19 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   // Status update
   if (body.status) {
     await updateOrder(id, { status: body.status });
-    await addStatusHistory(id, body.status, body.note ?? `Order ${body.status.replace("_"," ")}`);
+    await addStatusHistory(id, body.status, body.note ?? `Order ${body.status.replace("_", " ")}`);
+
+    const client = await getUserById(order.clientId);
+
     if (body.status === "completed") {
       const expires = new Date();
       expires.setDate(expires.getDate() + 30);
       await updateOrder(id, { photoExpiresAt: expires.toISOString() });
-      const client = await getUserById(order.clientId);
       if (client?.email) {
         await sendOrderCompletionEmail({
           clientEmail: client.email, clientName: client.name,
           address: order.address, orderId: id, photoCount: order.photos.length,
-          baseUrl: process.env.NEXT_PUBLIC_BASE_URL ?? "https://fieldflow.app",
+          baseUrl: process.env.NEXT_PUBLIC_BASE_URL ?? "https://snapect.com",
         });
       }
       if (order.assignedAgentId) {
@@ -84,10 +95,16 @@ export async function PATCH(request: NextRequest, { params }: Params) {
         const { updateAgentGrade } = await import("@/lib/db");
         await updateAgentGrade(order.assignedAgentId);
       }
+    } else if (client?.email && ["in_progress", "cancelled"].includes(body.status)) {
+      await sendOrderStatusEmail({
+        clientEmail: client.email, clientName: client.name,
+        address: order.address, orderId: id,
+        status: body.status, note: body.note,
+      });
     }
   }
 
-  // Admin assign agent — show as system action
+  // Admin assign agent — shown as system action without admin mention
   if (body.assignedAgentId !== undefined) {
     await updateOrder(id, { assignedAgentId: body.assignedAgentId || null, status: body.status ?? order.status });
     if (body.assignedAgentId) {
@@ -96,7 +113,6 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     }
   }
 
-  // Photo selection
   if (body.selectedPhotos) { await updatePhotoSelection(id, body.selectedPhotos); }
   if (body.invoicePaid !== undefined) { await updateOrder(id, { invoicePaid: body.invoicePaid }); }
 

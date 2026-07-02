@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Camera } from "lucide-react";
 
 export default function PublicFooter() {
   return (
@@ -7,17 +6,14 @@ export default function PublicFooter() {
       <div className="max-w-6xl mx-auto">
         <div className="grid grid-cols-2 md:grid-cols-5 gap-8 mb-10">
           <div className="col-span-2">
-            <div className="flex items-center gap-2.5 mb-4">
-              <div className="w-8 h-8 bg-[#c8991a] rounded-lg flex items-center justify-center">
-                <Camera className="w-4 h-4 text-white" />
-              </div>
-              <span className="text-white font-bold text-lg">FieldFlow</span>
+            <div className="mb-4">
+              <img src="/snapect-logo.png" alt="Snapect" className="h-10 w-auto object-contain brightness-0 invert"/>
             </div>
             <p className="text-sm leading-relaxed text-slate-400 max-w-xs">
               America's trusted field inspection and photo documentation platform. 45+ services, 35 states, thousands of verified agents.
             </p>
             <div className="mt-4 space-y-1 text-xs text-slate-500">
-              <p>support@fieldflow.app</p>
+              <p>support@snapect.com</p>
               <p>Mon–Fri · 8 AM – 6 PM CST</p>
             </div>
           </div>
@@ -52,7 +48,7 @@ export default function PublicFooter() {
           </div>
         </div>
         <div className="border-t border-[#1a3260] pt-6 flex flex-col sm:flex-row justify-between items-center gap-3 text-xs text-slate-600">
-          <p>&copy; {new Date().getFullYear()} FieldFlow. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} Snapect. All rights reserved.</p>
           <p>Trusted by 500+ property managers &amp; REO companies · 87% of standard orders completed within 24hrs</p>
         </div>
       </div>

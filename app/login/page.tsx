@@ -1,7 +1,7 @@
 "use client";
 import { useState, Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Camera, Eye, EyeOff, ArrowLeft, Lock, Mail, RefreshCw } from "lucide-react";
+import { Eye, EyeOff, ArrowLeft, Lock, Mail, RefreshCw } from "lucide-react";
 import Link from "next/link";
 
 function generateCaptcha() {
@@ -64,11 +64,8 @@ function LoginForm() {
       <div className="flex-1 flex items-center justify-center px-4 py-12">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
-            <div className="inline-flex items-center gap-2.5 mb-5">
-              <div className="w-10 h-10 bg-[#c8991a] rounded-xl flex items-center justify-center">
-                <Camera className="w-5 h-5 text-white"/>
-              </div>
-              <span className="font-bold text-2xl text-white">FieldFlow</span>
+            <div className="mb-5 flex justify-center">
+              <img src="/snapect-logo.png" alt="Snapect" className="h-14 w-auto object-contain brightness-0 invert"/>
             </div>
             <h1 className="text-2xl font-bold text-white">Sign in to your account</h1>
             <p className="text-slate-400 mt-1 text-sm">Enter your credentials to access your dashboard</p>
@@ -151,7 +148,7 @@ function LoginForm() {
         {" · "}
         <Link href="/terms" className="hover:text-slate-400">Terms of Service</Link>
         {" · "}
-        &copy; {new Date().getFullYear()} FieldFlow
+        &copy; {new Date().getFullYear()} Snapect
       </footer>
     </div>
   );

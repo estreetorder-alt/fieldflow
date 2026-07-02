@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
       price_data: {
         currency: "usd",
         product_data: {
-          name: description ?? "FieldFlow Inspection Order",
+          name: description ?? "Snapect Inspection Order",
           description: orderData?.address ?? "",
         },
         unit_amount: Math.round(totalPrice * 100), // cents

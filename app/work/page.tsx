@@ -8,7 +8,7 @@ const PERKS = [
   { icon:<DollarSign className="w-6 h-6"/>, title:"$40–$300+ Per Job", desc:"Earn based on service complexity. Vehicle inspections from $45, full property assessments up to $300+. Paid every Friday via PayPal." },
   { icon:<Clock className="w-6 h-6"/>, title:"Flexible Schedule", desc:"You set your availability. Accept jobs that fit your calendar. No minimums, no quotas — work when you want." },
   { icon:<MapPin className="w-6 h-6"/>, title:"Only Local Jobs", desc:"You set your ZIP codes. Only orders in your coverage area appear in your feed. No long drives or multi-state routing." },
-  { icon:<Smartphone className="w-6 h-6"/>, title:"Just Your Smartphone", desc:"No special equipment needed. Accept, document, and complete jobs entirely through the FieldFlow agent portal." },
+  { icon:<Smartphone className="w-6 h-6"/>, title:"Just Your Smartphone", desc:"No special equipment needed. Accept, document, and complete jobs entirely through the Snapect agent portal." },
   { icon:<Award className="w-6 h-6"/>, title:"Grade-Based Priority", desc:"Higher-graded agents get first pick of orders. Build your grade by completing orders on time with quality photos." },
   { icon:<Users className="w-6 h-6"/>, title:"Our Pledge to You", desc:"We treat you as a professional. Consistent work, clear communication, and prompt weekly payments — every time." },
 ];
@@ -95,7 +95,7 @@ export default function WorkPage() {
       <section className="py-20 px-4 bg-[#faf8f3]">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-14">
-            <p className="text-[#c8991a] font-bold text-sm uppercase tracking-wider mb-2">Why Agents Choose FieldFlow</p>
+            <p className="text-[#c8991a] font-bold text-sm uppercase tracking-wider mb-2">Why Agents Choose Snapect</p>
             <h2 className="text-3xl font-bold text-[#0f1f3d] mb-3">Flexible Work. Real Income.</h2>
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">

@@ -1,4 +1,4 @@
-// ── FieldFlow Service Catalog (45+ services matching Velocity REOs) ──────────
+// ── Snapect Service Catalog (45+ services matching Velocity REOs) ──────────
 
 export interface ServiceCategory {
   id: string;

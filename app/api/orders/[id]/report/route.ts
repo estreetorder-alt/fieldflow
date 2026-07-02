@@ -59,7 +59,7 @@ export async function GET(
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>FieldFlow Inspection Report — ${order.id}</title>
+<title>Snapect Inspection Report — ${order.id}</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #1e293b; background: #fff; padding: 40px; max-width: 860px; margin: 0 auto; }
@@ -86,7 +86,7 @@ export async function GET(
 <body>
   <div class="brand">
     <div class="brand-icon">F</div>
-    <span class="brand-name">FieldFlow</span>
+    <span class="brand-name">Snapect</span>
   </div>
 
   <div class="report-title">
@@ -161,7 +161,7 @@ export async function GET(
   </div>
 
   <div class="footer">
-    <span>FieldFlow &copy; 2025 · fieldflow.com</span>
+    <span>Snapect &copy; 2025 · fieldflow.com</span>
     <span>Order ${order.id} · ${new Date(order.createdAt).toLocaleDateString()}</span>
   </div>
 </body>

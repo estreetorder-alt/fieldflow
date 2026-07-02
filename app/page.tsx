@@ -12,7 +12,7 @@ const TESTIMONIALS = [
   { name:"Arthur M.", city:"Jacksonville, FL", text:"We placed an order at 12:20 PM and received the photographs at 1:25 PM — that's 65 minutes! It saved me an 8-hour round trip drive." },
   { name:"Will T.", city:"Marietta, GA", text:"Significantly cheaper than competitors, covers more areas, and so much faster. This is the only platform I use now." },
   { name:"Kelly R.", city:"California", text:"I went from putting 200+ miles on my car each week doing BPOs to next to nothing. Cannot thank this company enough." },
-  { name:"Bruce K.", city:"Keller Williams", text:"I am now in the BPO business full time with 3 employees. I could not have reached this level without FieldFlow." },
+  { name:"Bruce K.", city:"Keller Williams", text:"I am now in the BPO business full time with 3 employees. I could not have reached this level without Snapect." },
 ];
 
 const SERVICES = [
@@ -185,7 +185,7 @@ export default function HomePage() {
       <section className="py-20 px-4 bg-[#faf8f3]" aria-labelledby="features-heading">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-14">
-            <p className="text-[#c8991a] font-bold text-sm uppercase tracking-widest mb-2">Why Choose FieldFlow</p>
+            <p className="text-[#c8991a] font-bold text-sm uppercase tracking-widest mb-2">Why Choose Snapect</p>
             <h2 id="features-heading" className="text-3xl sm:text-4xl font-extrabold text-[#0f1f3d]">Built for Property Professionals</h2>
           </div>
           <div className="grid md:grid-cols-3 gap-6">

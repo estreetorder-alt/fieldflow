@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
             compensationAmount: compensation,
             deadline: deadline.toLocaleString(),
             orderId: order.id,
-            baseUrl: process.env.NEXT_PUBLIC_BASE_URL ?? "https://fieldflow-livid.vercel.app",
+            baseUrl: process.env.NEXT_PUBLIC_BASE_URL ?? "https://snapect.com",
           });
         }
       }

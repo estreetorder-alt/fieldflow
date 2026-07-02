@@ -3,6 +3,7 @@ import { getAllOrders, getOrdersByClientId, getOrdersByAgentId, createOrder, add
 import { supabase } from "@/lib/supabase";
 import { SERVICE_MAP, calcServicePrice, calcCompensation } from "@/lib/services";
 import { notifyOrderPlaced } from "@/lib/notify";
+import { sendOrderConfirmedEmail } from "@/lib/email";
 
 export async function GET(request: NextRequest) {
   const userId = request.cookies.get("user_id")?.value;
@@ -71,6 +72,13 @@ export async function POST(request: NextRequest) {
       clientName: client?.name ?? "Client",
       address: row.address, service: svc?.name ?? serviceId, orderId: order.id,
     });
+    if (client?.email) {
+      await sendOrderConfirmedEmail({
+        clientEmail: client.email, clientName: client.name,
+        address: row.address, service: svc?.name ?? serviceId,
+        orderId: order.id, totalPrice,
+      });
+    }
 
     await addEmailLog({ type: "new_order", to: "admin@fieldflow.com",
       subject: `New Order (Under Review) — ${row.address}`,

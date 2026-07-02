@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-const BASE = process.env.NEXT_PUBLIC_BASE_URL || "https://fieldflow.app";
+const BASE = process.env.NEXT_PUBLIC_BASE_URL || "https://snapect.com";
 const PAGES = [
   { url:"/", priority:"1.0", changefreq:"weekly" },
   { url:"/services", priority:"0.9", changefreq:"weekly" },

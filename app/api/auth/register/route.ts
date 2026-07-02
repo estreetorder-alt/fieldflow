@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUserByEmail, createUser } from "@/lib/db";
-import { addEmailLog } from "@/lib/db";
+import { sendWelcomeEmail } from "@/lib/email";
 
 export async function POST(request: NextRequest) {
   const userId = request.cookies.get("user_id")?.value;
   const userRole = request.cookies.get("user_role")?.value;
   const body = await request.json();
-  const { email, password, name, phone, role, company, adminCreate } = body;
+  const { email, password, name, phone, role, company, adminCreate, bio, coverageZone, vehicle, zip } = body;
 
   if (!email || !password || !name)
     return NextResponse.json({ error: "email, password, and name are required" }, { status: 400 });
@@ -25,30 +25,30 @@ export async function POST(request: NextRequest) {
     id: `user-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
     email: email.toLowerCase(),
     password,
-    role: adminCreate ? role : "client",
-    name, phone: phone ?? "", company: company ?? undefined,
-    ...(adminCreate && role === "agent" ? {
-      available: true, rating: 5.0, bio: "", coverageZone: "", vehicle: "",
+    role: adminCreate ? role : (body.role ?? "client"),
+    name, phone: phone ?? "",
+    company: company ?? undefined,
+    ...(adminCreate && role === "agent" || body.role === "agent" ? {
+      available: false, // pending approval
+      rating: 5.0, bio: bio ?? "",
+      coverageZone: coverageZone ?? zip ?? "",
+      vehicle: vehicle ?? "",
       totalEarnings: 0, pendingPayout: 0, completedJobs: 0,
+      approved: false, // must submit sample
     } : {}),
   });
 
-  await addEmailLog({
-    type: "welcome", to: email,
-    subject: `Welcome to FieldFlow, ${name}!`,
-    body: adminCreate
-      ? `Account created by admin. Email: ${email} / Password: ${password}`
-      : "Thanks for signing up.",
-  });
+  // Send welcome email
+  await sendWelcomeEmail({ email: newUser.email, name: newUser.name, role: newUser.role });
 
-  if (adminCreate)
+  if (adminCreate) {
     return NextResponse.json({ user: { id: newUser.id, name: newUser.name, email: newUser.email, role: newUser.role } }, { status: 201 });
+  }
 
-  const response = NextResponse.json({
+  // New registrations are NOT auto-logged-in — they must pay first
+  // Return success so client can redirect to payment
+  return NextResponse.json({
     user: { id: newUser.id, name: newUser.name, role: newUser.role, email: newUser.email },
+    requiresPayment: true,
   }, { status: 201 });
-  response.cookies.set("user_id",   newUser.id,   { httpOnly: true,  path: "/", sameSite: "lax" });
-  response.cookies.set("user_role", newUser.role,  { httpOnly: true,  path: "/", sameSite: "lax" });
-  response.cookies.set("user_name", newUser.name,  { httpOnly: false, path: "/", sameSite: "lax" });
-  return response;
 }

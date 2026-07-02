@@ -270,7 +270,7 @@ function ClientPageInner() {
       <header className="bg-white border-b border-slate-100 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
         <div className="flex items-center gap-3">
           <span className="w-9 h-9 bg-blue-600 text-white rounded-xl flex items-center justify-center font-bold">📷</span>
-          <span className="font-bold text-slate-900">FieldFlow</span>
+          <span className="font-bold text-slate-900">Snapect</span>
           <span className="text-xs bg-blue-50 text-blue-600 border border-blue-100 rounded-full px-2 py-0.5 font-medium">Client Portal</span>
         </div>
         <div className="flex items-center gap-4">

@@ -147,7 +147,7 @@ export default function AgentRegisterPage() {
                     </div>
                     {zipCoverage&&(
                       <p className={`text-xs mt-1 ${zipCoverage.covered?"text-amber-600":"text-green-600"}`}>
-                        {zipCoverage.covered?`${zipCoverage.agentCount} agent(s) already active here — you'll join the rotation`:"No agents yet — you could be the first in your area!"}
+                        {zipCoverage.covered?`${zipCoverage.agentCount} agent(s) already active here — you'll join the rotation`:"Coverage available in your area — great location!"}
                       </p>
                     )}
                   </div>

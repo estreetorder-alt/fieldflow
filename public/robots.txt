@@ -6,4 +6,4 @@ Disallow: /agent
 Disallow: /client
 Disallow: /api/
 
-Sitemap: https://fieldflow.app/sitemap.xml
+Sitemap: https://snapect.com/sitemap.xml

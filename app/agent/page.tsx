@@ -192,7 +192,7 @@ export default function AgentPage() {
       <header className="bg-white border-b border-slate-100 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
         <div className="flex items-center gap-3">
           <span className="w-9 h-9 bg-blue-600 text-white rounded-xl flex items-center justify-center font-bold">📷</span>
-          <span className="font-bold text-slate-900">FieldFlow</span>
+          <span className="font-bold text-slate-900">Snapect</span>
           <span className="text-xs bg-green-50 text-green-700 border border-green-100 rounded-full px-2 py-0.5 font-medium">Agent Portal</span>
         </div>
         <div className="flex items-center gap-4">

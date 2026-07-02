@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getOrderById, getBidsByOrderId, createBid, updateBidStatus, rejectOtherBids, updateOrder, addStatusHistory, getUserById, addEmailLog } from "@/lib/db";
-import { notifyBidPlaced } from "@/lib/notify";
+import { getOrderById, getBidsByOrderId, createBid, updateBidStatus, rejectOtherBids, updateOrder, addStatusHistory, getUserById } from "@/lib/db";
+import { sendBidPlacedEmail, sendBidAcceptedEmail, sendBidRejectedEmail } from "@/lib/email";
+import { sendNtfyNotification } from "@/lib/notify";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -28,7 +29,7 @@ export async function POST(request: NextRequest, { params }: Params) {
   const body = await request.json();
   const { amount, message, actingAsAgentId } = body;
 
-  // Admin bids on behalf of an agent — but we show it as the agent's action
+  // Determine bidder — admin acts as agent silently
   let bidderAgentId: string;
   if (userRole === "admin") {
     if (!actingAsAgentId) return NextResponse.json({ error: "actingAsAgentId required" }, { status: 400 });
@@ -38,13 +39,12 @@ export async function POST(request: NextRequest, { params }: Params) {
   } else if (userRole === "agent") {
     bidderAgentId = userId;
   } else {
-    return NextResponse.json({ error: "Only agents or admins can place bids" }, { status: 403 });
+    return NextResponse.json({ error: "Only agents can place bids" }, { status: 403 });
   }
 
   if (!amount || Number(amount) <= 0)
     return NextResponse.json({ error: "Valid bid amount required" }, { status: 400 });
 
-  // placedByAdmin kept internally for audit but NEVER shown to users
   const bid = await createBid({
     orderId: id, agentId: bidderAgentId,
     amount: Number(amount), message: message ?? "",
@@ -52,11 +52,25 @@ export async function POST(request: NextRequest, { params }: Params) {
   });
 
   const agent = await getUserById(bidderAgentId);
-  // Status history shows agent name only — no admin mention
+  // Status shows agent name only — no admin mention
   await addStatusHistory(id, order.status, `${agent?.name ?? "Agent"} placed a bid of $${amount}`);
-  await addEmailLog({ type: "bid_placed", to: "admin@fieldflow.com",
-    subject: `Bid placed on order ${id}`, body: `${agent?.name} bid $${amount}. ${message ?? ""}` });
-  await notifyBidPlaced({ agentName: agent?.name ?? "Agent", amount: Number(amount), address: order.address });
+
+  // Email client about new bid
+  const client = await getUserById(order.clientId);
+  if (client?.email) {
+    await sendBidPlacedEmail({
+      clientEmail: client.email, clientName: client.name,
+      address: order.address, agentName: agent?.name ?? "Agent",
+      bidAmount: Number(amount), orderId: id,
+    });
+  }
+
+  // Ntfy admin
+  await sendNtfyNotification({
+    title: `🎯 New Bid — $${amount}`,
+    message: `Agent: ${agent?.name}\nOrder: ${order.address}\nAmount: $${amount}`,
+    priority: "default", tags: ["dart"],
+  });
 
   return NextResponse.json({ bid }, { status: 201 });
 }
@@ -91,13 +105,30 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       offerAcceptedAt: new Date().toISOString(),
     });
     const agent = await getUserById(bid.agentId);
-    // No admin mention — just agent name
     await addStatusHistory(id, "in_progress", `Bid accepted — ${agent?.name ?? "Agent"} assigned at $${bid.amount}`);
-    await addEmailLog({ type: "bid_accepted", to: agent?.email ?? "",
-      subject: `Bid accepted — ${order.address}`, body: `Bid of $${bid.amount} accepted.` });
+
+    // Email agent about acceptance
+    if (agent?.email) {
+      await sendBidAcceptedEmail({
+        agentEmail: agent.email, agentName: agent.name,
+        address: order.address, bidAmount: bid.amount, orderId: id,
+      });
+    }
+    // Reject other bidders and email them
+    const rejectedBids = bids.filter(b => b.id !== bidId && b.status === "pending");
+    for (const rb of rejectedBids) {
+      const rejAgent = await getUserById(rb.agentId);
+      if (rejAgent?.email) {
+        await sendBidRejectedEmail({ agentEmail: rejAgent.email, agentName: rejAgent.name, address: order.address });
+      }
+    }
   } else {
     await updateBidStatus(bidId, "rejected");
     await addStatusHistory(id, order.status, `Bid rejected`);
+    const agent = await getUserById(bid.agentId);
+    if (agent?.email) {
+      await sendBidRejectedEmail({ agentEmail: agent.email, agentName: agent.name, address: order.address });
+    }
   }
 
   return NextResponse.json({ ok: true });
