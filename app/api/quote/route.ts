@@ -1,21 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { calcServicePrice, calcCompensation, SERVICE_MAP, TIER_LABELS } from "@/lib/services";
+import { calculatePrice, calculateCompensation } from "@/lib/pricing";
+import type { TurnaroundTier } from "@/lib/store";
 
 export async function POST(request: NextRequest) {
-  const { serviceId, turnaroundTier = "standard", customPrice } = await request.json();
-  if (!serviceId) return NextResponse.json({ error: "Missing serviceId" }, { status: 400 });
-
-  const svc = SERVICE_MAP[serviceId];
-  if (!svc) return NextResponse.json({ error: "Service not found" }, { status: 404 });
-
-  const price = svc.isCustom ? (customPrice ?? 0) : calcServicePrice(serviceId, turnaroundTier);
-  const compensation = calcCompensation(serviceId, turnaroundTier, customPrice);
-
-  return NextResponse.json({
-    serviceId, serviceName: svc.name,
-    turnaroundTier, turnaroundLabel: TIER_LABELS[turnaroundTier],
-    totalPrice: price, compensationAmount: compensation,
-    shotList: svc.shotList ?? [],
-    isCustom: svc.isCustom ?? false,
-  });
+  const { serviceType, turnaroundTier = "standard" } = await request.json();
+  if (!serviceType) return NextResponse.json({ error: "Missing serviceType" }, { status: 400 });
+  const tier = turnaroundTier as TurnaroundTier;
+  const price = calculatePrice(serviceType, tier);
+  const compensation = calculateCompensation(price, tier);
+  return NextResponse.json({ price, compensation });
 }
