@@ -14,6 +14,7 @@ export default function ClientRegisterPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [step, setStep] = useState<"form"|"payment">("form");
+  const [agreed, setAgreed] = useState(false);
   const [paymentLinks, setPaymentLinks] = useState<{id:string;label:string;url:string;amount?:number;description:string}[]>([]);
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) => setForm(f=>({...f,[k]:e.target.value}));
   const inp = "w-full pl-9 pr-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#c8991a] focus:border-transparent";
@@ -168,11 +169,15 @@ export default function ClientRegisterPage() {
                     <p className="text-xs text-slate-400 mt-0.5">Paid after account creation</p></div>
                   <span className="text-2xl font-black text-[#f0b429]">$30</span>
                 </div>
-                <button type="submit" disabled={loading}
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input type="checkbox" checked={agreed} onChange={e=>setAgreed(e.target.checked)} className="mt-0.5 w-4 h-4 accent-[#c8991a]"/>
+                  <span className="text-xs text-slate-600">I agree to the <Link href="/terms" target="_blank" className="text-[#c8991a] hover:underline font-semibold">Terms of Service</Link> and <Link href="/privacy" target="_blank" className="text-[#c8991a] hover:underline font-semibold">Privacy Policy</Link>, and I understand a $30 non-refundable activation fee is required.</span>
+                </label>
+                <button type="submit" disabled={loading || !agreed}
                   className="w-full flex items-center justify-center gap-2 bg-[#c8991a] hover:bg-[#f0b429] disabled:opacity-50 text-[#0f1f3d] font-bold py-3 rounded-xl transition-colors">
                   {loading?"Creating account…":<><span>Create Account & Pay $30</span><ArrowRight className="w-4 h-4"/></>}
                 </button>
-                <p className="text-xs text-center text-slate-400">By registering you agree to our <Link href="/terms" className="text-[#c8991a] hover:underline">Terms</Link> and <Link href="/privacy" className="text-[#c8991a] hover:underline">Privacy Policy</Link>.</p>
+
               </form>
             </div>
             <p className="text-center mt-5 text-sm text-slate-500">Already have an account? <Link href="/login" className="text-[#c8991a] font-semibold hover:underline">Sign in</Link></p>

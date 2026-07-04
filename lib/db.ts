@@ -11,6 +11,7 @@ export interface User {
   totalEarnings?: number; pendingPayout?: number; completedJobs?: number;
   grade?: number; completionRate?: number; responseRate?: number; approved?: boolean;
   parentClientId?: string;
+  accountActive?: boolean; suspended?: boolean;
 }
 
 export interface Bid {
@@ -74,6 +75,8 @@ function mapUser(row: Record<string, unknown>): User {
     responseRate: row.response_rate as number | undefined,
     approved: row.approved as boolean | undefined,
     parentClientId: row.parent_client_id as string | undefined,
+    accountActive: row.account_active as boolean | undefined,
+    suspended: row.suspended as boolean | undefined,
   };
 }
 
@@ -663,4 +666,98 @@ export async function upsertPaymentLink(link: Partial<PaymentLink> & { label: st
 
 export async function deletePaymentLink(id: string): Promise<void> {
   await supabase.from("payment_links").delete().eq("id", id);
+}
+
+// ── Account Activation ───────────────────────────────────────
+
+export async function activateUserAccount(userId: string): Promise<void> {
+  await supabase.from("users").update({
+    account_active: true,
+    activation_paid_at: new Date().toISOString(),
+  }).eq("id", userId);
+}
+
+export async function suspendUserAccount(userId: string): Promise<void> {
+  await supabase.from("users").update({ suspended: true }).eq("id", userId);
+}
+
+export async function unsuspendUserAccount(userId: string): Promise<void> {
+  await supabase.from("users").update({ suspended: false }).eq("id", userId);
+}
+
+// ── Password Reset ────────────────────────────────────────────
+
+export async function createPasswordResetToken(userId: string): Promise<string> {
+  const token = `${Date.now()}-${Math.random().toString(36).slice(2,10)}-${Math.random().toString(36).slice(2,10)}`;
+  const expires = new Date(Date.now() + 3600000); // 1 hour
+  await supabase.from("password_reset_tokens").insert({
+    user_id: userId, token, expires_at: expires.toISOString(),
+  });
+  return token;
+}
+
+export async function validateResetToken(token: string): Promise<string | null> {
+  const { data } = await supabase.from("password_reset_tokens")
+    .select("*").eq("token", token).eq("used", false).single();
+  if (!data) return null;
+  const row = data as Record<string,unknown>;
+  if (new Date(row.expires_at as string) < new Date()) return null;
+  return row.user_id as string;
+}
+
+export async function useResetToken(token: string, newPassword: string): Promise<boolean> {
+  const userId = await validateResetToken(token);
+  if (!userId) return false;
+  await supabase.from("users").update({ password: newPassword }).eq("id", userId);
+  await supabase.from("password_reset_tokens").update({ used: true }).eq("token", token);
+  return true;
+}
+
+// ── Order decline ─────────────────────────────────────────────
+
+export async function declineOrder(orderId: string, agentId: string): Promise<void> {
+  const { data } = await supabase.from("orders").select("declined_by").eq("id", orderId).single();
+  const row = data as Record<string,unknown>;
+  const existing = (row?.declined_by as string[] ?? []);
+  if (!existing.includes(agentId)) {
+    await supabase.from("orders").update({ declined_by: [...existing, agentId] }).eq("id", orderId);
+  }
+}
+
+// ── Supabase Storage for Photos ───────────────────────────────
+// Replaces base64-in-DB approach for production photo storage
+
+export async function uploadPhotoToStorage(
+  orderId: string,
+  filename: string,
+  base64Data: string,
+): Promise<string> {
+  // Extract mime type and data
+  const match = base64Data.match(/^data:([^;]+);base64,(.+)$/);
+  if (!match) throw new Error("Invalid base64 data");
+
+  const mimeType = match[1];
+  const data = match[2];
+  const buffer = Buffer.from(data, "base64");
+
+  const path = `orders/${orderId}/${Date.now()}-${filename.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
+
+  const { data: uploadData, error } = await supabase.storage
+    .from("photos")
+    .upload(path, buffer, {
+      contentType: mimeType,
+      upsert: false,
+    });
+
+  if (error) {
+    // Fallback: store as base64 if storage bucket not configured
+    console.warn("Storage upload failed, falling back to base64:", error.message);
+    return base64Data;
+  }
+
+  const { data: { publicUrl } } = supabase.storage
+    .from("photos")
+    .getPublicUrl(uploadData.path);
+
+  return publicUrl;
 }

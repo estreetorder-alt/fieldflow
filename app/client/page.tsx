@@ -28,6 +28,13 @@ const STATUS_ICONS: Record<string,React.ReactNode> = { under_review:<Clock class
 const TIER_LABELS: Record<string,string> = { standard:"Next Business Day", rush_24hr:"24-Hour Rush (+25%)", rush_6hr:"6-Hour Rush (+75%)" };
 const TIER_MULS: Record<string,number> = { standard:1, rush_24hr:1.25, rush_6hr:1.75 };
 
+function getPhotoExpiryDays(photoExpiresAt: string | null): number | null {
+  if (!photoExpiresAt) return null;
+  const diff = new Date(photoExpiresAt).getTime() - Date.now();
+  if (diff <= 0) return 0;
+  return Math.ceil(diff / 86400000);
+}
+
 function calcPrice(svc: ServiceItem | undefined, tier: string, customPrice?: number): number {
   if (!svc) return 0;
   if (svc.isCustom) return customPrice ?? 0;
@@ -60,6 +67,7 @@ function ClientPageInner() {
   const [customShotList, setCustomShotList] = useState("");
   const [customPrice, setCustomPrice] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [repeatOrder, setRepeatOrder] = useState<Order | null>(null);
   const [formError, setFormError] = useState("");
 
   // Address validation
@@ -384,6 +392,13 @@ function ClientPageInner() {
                               <span suppressHydrationWarning>{new Date(order.createdAt).toLocaleDateString()}</span>
                               {order.agent&&<span>Agent: <span className="text-slate-700 font-medium">{order.agent.name}</span></span>}
                               {order.photos.length>0&&<span className="text-blue-600">{order.photos.length} photo(s)</span>}
+                          {order.status==="completed" && order.photoExpiresAt && (() => {
+                            const days = getPhotoExpiryDays(order.photoExpiresAt);
+                            if (days === null) return null;
+                            if (days === 0) return <span className="text-red-600 font-semibold text-xs">Photos expired</span>;
+                            if (days <= 7) return <span className="text-red-500 font-semibold text-xs">⚠️ Photos expire in {days}d</span>;
+                            return <span className="text-amber-600 text-xs">Photos expire in {days}d</span>;
+                          })()}
                             </div>
                           </div>
                           <div className="flex items-center gap-3 flex-shrink-0">

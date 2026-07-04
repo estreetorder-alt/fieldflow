@@ -10,6 +10,9 @@ const STEPS = ["Profile","Coverage","Password","Review"];
 
 export default function AgentRegisterPage() {
   const router = useRouter();
+  const [paymentStep, setPaymentStep] = useState(false);
+  const [paymentLinks, setPaymentLinks] = useState<{id:string;label:string;url:string;amount?:number;description:string}[]>([]);
+  const [agreed, setAgreed] = useState(false);
   const [step, setStep] = useState(0);
   const [form, setForm] = useState({ name:"", email:"", phone:"", bio:"", coverageZone:"", zip:"", vehicle:"", password:"", confirm:"" });
   const [showPw, setShowPw] = useState(false);
@@ -40,7 +43,60 @@ export default function AgentRegisterPage() {
     });
     const data = await res.json();
     if (!res.ok) { setError(data.error??"Registration failed"); setLoading(false); return; }
-    router.push("/agent");
+    // Fetch payment links and show payment step
+    const pl = await fetch("/api/payment-links");
+    const pld = await pl.json();
+    setPaymentLinks(pld.links?.filter((l: {active:boolean}) => l.active) ?? []);
+    setPaymentStep(true);
+    setLoading(false);
+  }
+
+  if (paymentStep) {
+    return (
+      <div className="min-h-screen bg-white">
+        <PublicNav />
+        <div className="min-h-[80vh] flex items-center justify-center px-4 py-16">
+          <div className="w-full max-w-lg">
+            <div className="bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden">
+              <div className="bg-[#0f1f3d] p-8 text-center">
+                <div className="w-16 h-16 bg-[#c8991a] rounded-full flex items-center justify-center mx-auto mb-4">
+                  <CheckCircle className="w-8 h-8 text-white"/>
+                </div>
+                <h1 className="text-2xl font-bold text-white mb-2">Agent Account Created!</h1>
+                <p className="text-slate-300 text-sm">Pay the $15 non-refundable application fee to submit your account for review.</p>
+              </div>
+              <div className="p-8">
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-5">
+                  <p className="font-bold text-amber-900 text-sm mb-1">⚠️ Next Steps</p>
+                  <p className="text-amber-800 text-xs leading-relaxed">1. Pay the $15 application fee below<br/>2. Log in to your agent dashboard<br/>3. Upload your 7-photo sample set within 48 hours<br/>4. Wait for admin approval (1–2 business days)</p>
+                </div>
+                {paymentLinks.length === 0 ? (
+                  <p className="text-sm text-slate-500 text-center">Contact <a href="mailto:support@snapect.com" className="text-[#c8991a] underline">support@snapect.com</a> to complete your application.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {paymentLinks.map(link => (
+                      <a key={link.id} href={link.url} target="_blank" rel="noopener noreferrer"
+                        className="flex items-center justify-between gap-3 p-4 border-2 border-[#c8991a] rounded-xl hover:bg-[#c8991a]/5 transition-colors group">
+                        <div>
+                          <p className="font-bold text-[#0f1f3d]">{link.label}</p>
+                          {link.description && <p className="text-xs text-slate-500">{link.description}</p>}
+                        </div>
+                        <span className="text-xs bg-[#c8991a] text-white font-bold px-3 py-1.5 rounded-lg">Pay $15 →</span>
+                      </a>
+                    ))}
+                  </div>
+                )}
+                <p className="text-xs text-slate-400 text-center mt-4">After payment, log in to upload your sample photos.</p>
+                <div className="mt-4 pt-4 border-t border-slate-100 text-center">
+                  <Link href="/login" className="text-sm text-[#c8991a] font-semibold hover:underline">Already paid? Log in here</Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <PublicFooter />
+      </div>
+    );
   }
 
   return (
@@ -226,9 +282,13 @@ export default function AgentRegisterPage() {
                     <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5"/>
                     <p className="text-xs text-amber-800">After account creation, you must upload your 7-photo sample set within <strong>48 hours</strong> or your application will be rejected.</p>
                   </div>
+                  <label className="flex items-start gap-2 cursor-pointer mb-2">
+                    <input type="checkbox" checked={agreed} onChange={e=>setAgreed(e.target.checked)} className="mt-0.5 w-4 h-4 accent-[#c8991a]"/>
+                    <span className="text-xs text-slate-600">I agree to the <Link href="/terms" target="_blank" className="text-[#c8991a] font-semibold hover:underline">Terms of Service</Link> and understand the $15 non-refundable application fee.</span>
+                  </label>
                   <div className="flex gap-3">
                     <button onClick={()=>setStep(2)} className="flex-1 border border-slate-300 text-slate-600 font-semibold py-3 rounded-xl hover:bg-slate-50">Back</button>
-                    <button onClick={submit} disabled={loading}
+                    <button onClick={submit} disabled={loading || !agreed}
                       className="flex-1 bg-[#c8991a] hover:bg-[#f0b429] disabled:opacity-50 text-[#0f1f3d] font-bold py-3 rounded-xl flex items-center justify-center gap-2">
                       {loading?"Submitting…":<><span>Create Agent Account</span><ArrowRight className="w-4 h-4"/></>}
                     </button>

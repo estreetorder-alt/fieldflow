@@ -163,3 +163,26 @@ create policy "service role full access" on payment_links for all using (true) w
 alter table orders add column if not exists payment_link_id text references payment_links(id) on delete set null;
 alter table orders add column if not exists payment_status text not null default 'pending'; -- pending|under_review|confirmed
 alter table orders add column if not exists paid_at timestamptz default null;
+
+-- Account activation system
+alter table users add column if not exists account_active boolean not null default false;
+alter table users add column if not exists activation_paid_at timestamptz default null;
+alter table users add column if not exists suspended boolean not null default false;
+
+-- Password reset tokens
+create table if not exists password_reset_tokens (
+  id          text primary key default (uuid_generate_v4()::text),
+  user_id     text not null references users(id) on delete cascade,
+  token       text not null unique,
+  expires_at  timestamptz not null,
+  used        boolean not null default false,
+  created_at  timestamptz not null default now()
+);
+alter table password_reset_tokens enable row level security;
+create policy "service role full access" on password_reset_tokens for all using (true) with check (true);
+
+-- Admin is always active
+update users set account_active = true where role = 'admin';
+
+-- Order decline tracking
+alter table orders add column if not exists declined_by jsonb default '[]';

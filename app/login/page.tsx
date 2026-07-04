@@ -24,6 +24,8 @@ function LoginForm() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [captcha, setCaptcha] = useState(generateCaptcha());
+  const [pendingActivation, setPendingActivation] = useState(false);
+  const [paymentLinks, setPaymentLinks] = useState<{id:string;label:string;url:string;amount?:number;description:string}[]>([]);
   const [captchaInput, setCaptchaInput] = useState("");
   const [captchaError, setCaptchaError] = useState(false);
 
@@ -47,7 +49,18 @@ function LoginForm() {
         body: JSON.stringify({ email, password }),
       });
       const data = await res.json();
-      if (!res.ok) { setError(data.error || "Invalid email or password"); refreshCaptcha(); return; }
+      if (!res.ok) {
+        if (data.error === "pending_activation") {
+          // Fetch payment links and show payment UI
+          const pl = await fetch("/api/payment-links");
+          const pld = await pl.json();
+          setPaymentLinks(pld.links?.filter((l: {active:boolean}) => l.active) ?? []);
+          setPendingActivation(true);
+        } else {
+          setError(data.error || "Invalid email or password");
+        }
+        refreshCaptcha(); return;
+      }
       const dashboards: Record<string, string> = { admin: "/admin", agent: "/agent", client: "/client" };
       router.push(redirect || dashboards[data.user.role] || "/");
     } catch { setError("Network error. Please try again."); }
@@ -92,7 +105,10 @@ function LoginForm() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Password</label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-sm font-medium text-slate-700">Password</label>
+                <Link href="/reset-password" className="text-xs text-[#c8991a] hover:underline font-medium">Forgot password?</Link>
+              </div>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"/>
                 <input type={showPassword ? "text" : "password"} value={password} onChange={e=>setPassword(e.target.value)} required
@@ -132,6 +148,27 @@ function LoginForm() {
               {loading ? "Signing in…" : "Sign In"}
             </button>
           </form>
+
+          {pendingActivation && (
+            <div className="mt-4 bg-amber-50 border border-amber-300 rounded-xl p-5">
+              <p className="font-bold text-amber-900 text-sm mb-2">⏳ Account Pending Activation</p>
+              <p className="text-amber-800 text-xs mb-4 leading-relaxed">Your account has been created but is not yet active. Complete your payment to access your dashboard.</p>
+              {paymentLinks.length > 0 ? (
+                <div className="space-y-2">
+                  {paymentLinks.map((link: {id:string;label:string;url:string;amount?:number;description:string}) => (
+                    <a key={link.id} href={link.url} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center justify-between gap-2 p-3 border-2 border-[#c8991a] rounded-xl hover:bg-[#c8991a]/5 transition-colors text-sm">
+                      <span className="font-bold text-[#0f1f3d]">{link.label}</span>
+                      <span className="text-xs bg-[#c8991a] text-white font-bold px-2.5 py-1 rounded-lg">Pay Now →</span>
+                    </a>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-amber-700">Contact <a href="mailto:support@snapect.com" className="underline font-bold">support@snapect.com</a> to complete activation.</p>
+              )}
+              <button onClick={() => setPendingActivation(false)} className="mt-3 text-xs text-slate-500 hover:text-slate-700 underline">Back to login</button>
+            </div>
+          )}
 
           <div className="mt-5 text-center space-y-2">
             <p className="text-sm text-slate-400">

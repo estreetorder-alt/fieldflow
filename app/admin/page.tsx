@@ -11,7 +11,7 @@ import {
 interface Order { id: string; address: string; status: string; clientId: string; assignedAgentId: string | null; totalPrice: number; compensationAmount: number; serviceType: string; turnaroundTier: string; notes: string; createdAt: string; client?: { name: string; email: string } | null; agent?: { name: string; rating?: number } | null; bids?: Bid[]; acceptedBidId?: string | null; }
 interface Bid { id: string; agentId: string; agentName: string; agentRating: number | null; amount: number; message: string; placedAt: string; status: string; placedByAdmin?: boolean; }
 interface Agent { id: string; name: string; email: string; phone: string; coverageZone: string; vehicle: string; available: boolean; rating: number; totalEarnings: number; pendingPayout: number; completedJobs: number; grade?: number; approved?: boolean; }
-interface AUser { id: string; name: string; email: string; role: string; phone: string; company?: string; createdAt?: string; }
+interface AUser { id: string; name: string; email: string; role: string; phone: string; company?: string; createdAt?: string; accountActive?: boolean; suspended?: boolean; }
 interface PricingConfig { id: string; serviceType: string; name: string; basePrice: number; compensation: number; urgencyMultiplier: number; active: boolean; category: string; description: string; photoCount?: number; isCustom?: boolean; requiresInterior?: boolean; }
 interface CatalogCategory { id: string; label: string; services: PricingConfig[]; }
 interface EmailEntry { timestamp: string; type: string; to: string; subject: string; body: string; }
@@ -38,6 +38,10 @@ export default function AdminPage() {
   const [editingPrice, setEditingPrice] = useState<Record<string,Partial<PricingConfig>>>({});
   const [ratingEdit, setRatingEdit] = useState<Record<string,number>>({});
   const [loading, setLoading] = useState(true);
+  const [orderSearch, setOrderSearch] = useState("");
+  const [orderStatusFilter, setOrderStatusFilter] = useState("all");
+  const [ntfyConfigured, setNtfyConfigured] = useState(true);
+  const [emailConfigured, setEmailConfigured] = useState(true);
   const [saving, setSaving] = useState<string|null>(null);
   const [userName, setUserName] = useState("Admin");
   const [adminId, setAdminId] = useState("");
@@ -67,6 +71,7 @@ export default function AdminPage() {
   // Payment Links
   const [paymentLinks, setPaymentLinks] = useState<{id:string;label:string;url:string;amount?:number;description:string;active:boolean}[]>([]);
   const [newLink, setNewLink] = useState({label:"",url:"",amount:"",description:""});
+  const [editingLink, setEditingLink] = useState<{id:string;label:string;url:string;amount:string;description:string}|null>(null);
   const [addingLink, setAddingLink] = useState(false);
   const [linkError, setLinkError] = useState("");
 
@@ -201,6 +206,26 @@ export default function AdminPage() {
     fetchAll();
   }
 
+  async function activateUser(userId: string, action: "activate"|"suspend"|"unsuspend") {
+    setSaving(`user-${userId}`);
+    await fetch(`/api/users/${userId}`, {
+      method: "PATCH", headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({ action }),
+    });
+    setSaving(null);
+    fetchAll();
+  }
+
+  async function saveEditLink() {
+    if (!editingLink) return;
+    setSaving("edit-link");
+    await fetch(`/api/payment-links/${editingLink.id}`, {
+      method: "PATCH", headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({ label: editingLink.label, url: editingLink.url, amount: editingLink.amount ? Number(editingLink.amount) : undefined, description: editingLink.description }),
+    });
+    setSaving(null); setEditingLink(null); fetchPaymentLinks();
+  }
+
   async function addPaymentLink() {
     if (!newLink.label || !newLink.url) { setLinkError("Label and URL required"); return; }
     setAddingLink(true); setLinkError("");
@@ -281,6 +306,14 @@ export default function AdminPage() {
           ))}
         </div>
 
+        {/* System config warnings */}
+        {(!process.env.NEXT_PUBLIC_SUPABASE_URL) && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700 flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 flex-shrink-0"/>
+            <span><strong>Supabase not configured</strong> — Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_KEY in environment variables.</span>
+          </div>
+        )}
+
         {/* Tabs */}
         <div className="flex gap-1 bg-slate-100 p-1 rounded-xl mb-6 flex-wrap">
           {TABS.map(([t,label,icon])=>(
@@ -296,8 +329,22 @@ export default function AdminPage() {
 
         : tab==="orders" ? (
           <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between gap-4 flex-wrap">
               <h2 className="font-semibold text-slate-900">All Orders ({orders.length})</h2>
+              <div className="flex items-center gap-2 flex-wrap">
+                <input value={orderSearch} onChange={e=>setOrderSearch(e.target.value)}
+                  placeholder="Search address or client…"
+                  className="border border-slate-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#c8991a] w-52"/>
+                <select value={orderStatusFilter} onChange={e=>setOrderStatusFilter(e.target.value)}
+                  className="border border-slate-200 rounded-lg px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#c8991a]">
+                  <option value="all">All Status</option>
+                  <option value="pending">Pending</option>
+                  <option value="under_review">Under Review</option>
+                  <option value="in_progress">In Progress</option>
+                  <option value="completed">Completed</option>
+                  <option value="cancelled">Cancelled</option>
+                </select>
+              </div>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -313,7 +360,11 @@ export default function AdminPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {orders.map(order=>{
+                  {orders.filter(o => {
+                  const matchSearch = !orderSearch || o.address.toLowerCase().includes(orderSearch.toLowerCase()) || (o.client?.name ?? "").toLowerCase().includes(orderSearch.toLowerCase());
+                  const matchStatus = orderStatusFilter === "all" || o.status === orderStatusFilter;
+                  return matchSearch && matchStatus;
+                }).map(order=>{
                     const orderBids = bidsData[order.id]??[];
                     const showingBids = bidsFor===order.id;
                     return (
@@ -547,14 +598,43 @@ export default function AdminPage() {
               <div className="divide-y divide-slate-100">
                 {allUsers.map(u=>(
                   <div key={u.id} className="px-6 py-4 flex items-center justify-between gap-4">
-                    <div>
-                      <div className="flex items-center gap-2">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-medium text-slate-800">{u.name}</span>
                         <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${u.role==="admin"?"bg-purple-100 text-purple-700":u.role==="agent"?"bg-green-100 text-green-700":"bg-blue-100 text-blue-700"}`}>{u.role}</span>
+                        {u.role!=="admin" && (
+                          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${u.suspended?"bg-red-100 text-red-700":u.accountActive?"bg-green-100 text-green-700":"bg-amber-100 text-amber-700"}`}>
+                            {u.suspended?"Suspended":u.accountActive?"Active":"Pending"}
+                          </span>
+                        )}
                       </div>
                       <div className="text-xs text-slate-500 mt-0.5">{u.email}{u.phone&&` · ${u.phone}`}{u.company&&` · ${u.company}`}</div>
                     </div>
-                    <div className="text-xs text-slate-400" suppressHydrationWarning>{u.createdAt?new Date(u.createdAt).toLocaleDateString():""}</div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-slate-400" suppressHydrationWarning>{u.createdAt?new Date(u.createdAt).toLocaleDateString():""}</span>
+                      {u.role !== "admin" && (
+                        <>
+                          {!u.accountActive && !u.suspended && (
+                            <button onClick={()=>activateUser(u.id,"activate")} disabled={saving===`user-${u.id}`}
+                              className="text-xs bg-green-600 hover:bg-green-700 text-white font-semibold px-3 py-1.5 rounded-lg disabled:opacity-50 whitespace-nowrap">
+                              {saving===`user-${u.id}`?"…":"✓ Activate"}
+                            </button>
+                          )}
+                          {u.accountActive && !u.suspended && (
+                            <button onClick={()=>activateUser(u.id,"suspend")} disabled={saving===`user-${u.id}`}
+                              className="text-xs bg-red-50 hover:bg-red-100 text-red-600 font-semibold px-3 py-1.5 rounded-lg border border-red-200 disabled:opacity-50">
+                              {saving===`user-${u.id}`?"…":"Suspend"}
+                            </button>
+                          )}
+                          {u.suspended && (
+                            <button onClick={()=>activateUser(u.id,"unsuspend")} disabled={saving===`user-${u.id}`}
+                              className="text-xs bg-blue-50 hover:bg-blue-100 text-blue-600 font-semibold px-3 py-1.5 rounded-lg border border-blue-200 disabled:opacity-50">
+                              {saving===`user-${u.id}`?"…":"Unsuspend"}
+                            </button>
+                          )}
+                        </>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>

@@ -46,6 +46,7 @@ export default function AgentPage() {
   const [tab, setTab] = useState<"mine"|"offers"|"coverage"|"sample"|"profile">("mine");
   const [liveConnected, setLiveConnected] = useState(false);
   const [acting, setActing] = useState<string|null>(null);
+  const [declining, setDeclining] = useState<string|null>(null);
   const esRef = useRef<EventSource|null>(null);
 
   // Bids
@@ -129,6 +130,12 @@ export default function AgentPage() {
     await fetch(`/api/agents/${profile.id}`, { method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify({available:!profile.available}) });
     setProfile(p=>p?{...p,available:!p.available}:p);
     setTogglingAvail(false);
+  }
+
+  async function declineOrder(orderId: string) {
+    setDeclining(orderId);
+    await fetch(`/api/orders/${orderId}/decline`, { method:"POST" });
+    setDeclining(null);
   }
 
   async function directAccept(orderId: string) {
@@ -388,6 +395,10 @@ export default function AgentPage() {
                       <button onClick={()=>directAccept(order.id)} disabled={acting===order.id}
                         className="flex items-center gap-1.5 text-xs bg-green-600 hover:bg-green-700 text-white font-semibold px-3 py-2 rounded-lg disabled:opacity-50">
                         <CheckCircle className="w-3.5 h-3.5"/>{acting===order.id?"…":`Accept at $${order.compensationAmount}`}
+                      </button>
+                      <button onClick={()=>declineOrder(order.id)} disabled={declining===order.id}
+                        className="flex items-center gap-1.5 text-xs bg-red-50 hover:bg-red-100 text-red-600 font-semibold px-3 py-2 rounded-lg border border-red-200 disabled:opacity-50">
+                        {declining===order.id?"…":"Decline"}
                       </button>
                     </div>
                   )}
