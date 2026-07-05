@@ -857,6 +857,140 @@ export default function AdminPage() {
             ))}
           </div>
 
+        ) : tab==="payment-links" ? (
+          <div className="space-y-6">
+            {/* Edit payment link modal */}
+            {editingLink && (
+              <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+                  <h3 className="font-bold text-slate-900 mb-4">Edit Payment Link</h3>
+                  <div className="space-y-3">
+                    <div><label className="text-xs font-medium text-slate-600 block mb-1">Label</label>
+                      <input value={editingLink.label} onChange={e=>setEditingLink(l=>l?{...l,label:e.target.value}:l)}
+                        className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#c8991a]"/></div>
+                    <div><label className="text-xs font-medium text-slate-600 block mb-1">URL</label>
+                      <input value={editingLink.url} onChange={e=>setEditingLink(l=>l?{...l,url:e.target.value}:l)}
+                        className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#c8991a]"/></div>
+                    <div><label className="text-xs font-medium text-slate-600 block mb-1">Amount ($)</label>
+                      <input type="number" value={editingLink.amount} onChange={e=>setEditingLink(l=>l?{...l,amount:e.target.value}:l)}
+                        className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#c8991a]"/></div>
+                    <div><label className="text-xs font-medium text-slate-600 block mb-1">Description</label>
+                      <input value={editingLink.description} onChange={e=>setEditingLink(l=>l?{...l,description:e.target.value}:l)}
+                        className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#c8991a]"/></div>
+                  </div>
+                  <div className="flex gap-2 mt-4">
+                    <button onClick={saveEditLink} disabled={saving==="edit-link"}
+                      className="flex-1 bg-[#c8991a] hover:bg-[#f0b429] disabled:opacity-50 text-[#0f1f3d] font-bold py-2.5 rounded-xl text-sm">
+                      {saving==="edit-link"?"Saving…":"Save Changes"}
+                    </button>
+                    <button onClick={()=>setEditingLink(null)} className="px-4 text-slate-500 text-sm border border-slate-200 rounded-xl hover:bg-slate-50">Cancel</button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* How-to banner */}
+            <div className="bg-[#0f1f3d] rounded-2xl p-6 text-white">
+              <h2 className="text-lg font-bold text-[#f0b429] mb-3 flex items-center gap-2">
+                <DollarSign className="w-5 h-5"/>How Payment Links Work
+              </h2>
+              <ol className="space-y-2 text-sm text-slate-300">
+                {[
+                  "Paste any payment URL — PayPal.me, Venmo, Zelle, CashApp, or a custom invoice URL like https://carebusinessconsultingsolutions.com/generate/invoice?...",
+                  "Every time a client or agent needs to pay — they see a 'Pay Now' button that opens your link in a new tab",
+                  "After they pay, you get a push notification (Ntfy) + email. Then click '✓ Confirm Pay' in Orders tab to activate the order",
+                  "For new user account activation — go to Add Users tab → click '✓ Activate' after confirming their signup fee payment",
+                  "Links are saved permanently until you delete them — no need to re-add each time",
+                ].map((step, i) => (
+                  <li key={i} className="flex items-start gap-3">
+                    <span className="w-6 h-6 bg-[#c8991a] text-[#0f1f3d] rounded-full flex items-center justify-center text-xs font-black flex-shrink-0 mt-0.5">{i+1}</span>
+                    <span>{step}</span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+
+            {/* Add new link form */}
+            <div className="bg-white border-2 border-emerald-300 rounded-2xl p-6">
+              <h2 className="font-bold text-slate-900 mb-1 flex items-center gap-2 text-lg">
+                <DollarSign className="w-5 h-5 text-emerald-600"/>Add Payment Link
+              </h2>
+              <p className="text-xs text-slate-500 mb-5">This link will appear as a "Pay Now" button for every client and agent payment.</p>
+              {linkError && <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl">{linkError}</div>}
+              <div className="grid sm:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">Label * <span className="font-normal text-slate-400">(shown to client)</span></label>
+                  <input value={newLink.label} onChange={e=>setNewLink(l=>({...l,label:e.target.value}))}
+                    placeholder="e.g. Pay via PayPal"
+                    className="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"/>
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">Amount ($) <span className="font-normal text-slate-400">(optional)</span></label>
+                  <input type="number" value={newLink.amount} onChange={e=>setNewLink(l=>({...l,amount:e.target.value}))}
+                    placeholder="e.g. 299"
+                    className="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"/>
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="text-xs font-bold text-slate-700 block mb-1">Payment URL * <span className="font-normal text-slate-400">(the full link clients will click)</span></label>
+                  <input value={newLink.url} onChange={e=>setNewLink(l=>({...l,url:e.target.value}))}
+                    placeholder="https://carebusinessconsultingsolutions.com/generate/invoice?care&realtoruplift&299"
+                    className="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 font-mono text-xs"/>
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="text-xs font-bold text-slate-700 block mb-1">Description <span className="font-normal text-slate-400">(optional — shown below the button)</span></label>
+                  <input value={newLink.description} onChange={e=>setNewLink(l=>({...l,description:e.target.value}))}
+                    placeholder="e.g. Click to pay securely via our invoice system"
+                    className="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"/>
+                </div>
+              </div>
+              <button onClick={addPaymentLink} disabled={addingLink}
+                className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold px-6 py-3 rounded-xl text-sm">
+                {addingLink ? "Adding…" : "＋ Add Payment Link"}
+              </button>
+            </div>
+
+            {/* Saved links */}
+            <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+              <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                <h2 className="font-semibold text-slate-900">Saved Payment Links ({paymentLinks.length})</h2>
+                <p className="text-xs text-slate-400">These appear as Pay Now buttons to all clients and agents</p>
+              </div>
+              {paymentLinks.length === 0 ? (
+                <div className="text-center py-16">
+                  <DollarSign className="w-10 h-10 mx-auto mb-3 text-slate-300"/>
+                  <p className="text-slate-500 font-semibold">No payment links yet</p>
+                  <p className="text-slate-400 text-sm mt-1">Add your first link above to start receiving payments</p>
+                </div>
+              ) : paymentLinks.map(link => (
+                <div key={link.id} className={`px-6 py-5 border-b border-slate-100 last:border-0 ${!link.active?"opacity-50":""}`}>
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <span className="font-bold text-slate-900">{link.label}</span>
+                        {link.amount && <span className="text-xs bg-emerald-100 text-emerald-700 font-bold px-2 py-0.5 rounded-full">${link.amount}</span>}
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${link.active?"bg-green-100 text-green-700":"bg-slate-100 text-slate-500"}`}>
+                          {link.active?"● Active":"○ Hidden"}
+                        </span>
+                      </div>
+                      {link.description && <p className="text-xs text-slate-500 mb-1">{link.description}</p>}
+                      <p className="text-xs text-blue-600 font-mono break-all">{link.url}</p>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <button onClick={()=>setEditingLink({id:link.id,label:link.label,url:link.url,amount:link.amount?String(link.amount):"",description:link.description})}
+                        className="text-xs font-medium px-3 py-1.5 rounded-lg border border-blue-200 text-blue-600 hover:bg-blue-50">Edit</button>
+                      <button onClick={()=>toggleLink(link.id,link.active)}
+                        className={`text-xs font-medium px-3 py-1.5 rounded-lg border ${link.active?"border-slate-300 text-slate-600 hover:bg-slate-50":"border-green-300 text-green-700 hover:bg-green-50"}`}>
+                        {link.active?"Hide":"Show"}
+                      </button>
+                      <button onClick={()=>deleteLink(link.id)}
+                        className="text-xs font-medium px-3 py-1.5 rounded-lg border border-red-200 text-red-600 hover:bg-red-50">Delete</button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
         ) : (
           <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
             <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
