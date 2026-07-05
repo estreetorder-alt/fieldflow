@@ -723,3 +723,41 @@ export async function declineOrder(orderId: string, agentId: string): Promise<vo
     await supabase.from("orders").update({ declined_by: [...existing, agentId] }).eq("id", orderId);
   }
 }
+
+// ── Supabase Storage for Photos ───────────────────────────────
+// Replaces base64-in-DB approach for production photo storage
+
+export async function uploadPhotoToStorage(
+  orderId: string,
+  filename: string,
+  base64Data: string,
+): Promise<string> {
+  // Extract mime type and data
+  const match = base64Data.match(/^data:([^;]+);base64,(.+)$/);
+  if (!match) throw new Error("Invalid base64 data");
+
+  const mimeType = match[1];
+  const data = match[2];
+  const buffer = Buffer.from(data, "base64");
+
+  const path = `orders/${orderId}/${Date.now()}-${filename.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
+
+  const { data: uploadData, error } = await supabase.storage
+    .from("photos")
+    .upload(path, buffer, {
+      contentType: mimeType,
+      upsert: false,
+    });
+
+  if (error) {
+    // Fallback: store as base64 if storage bucket not configured
+    console.warn("Storage upload failed, falling back to base64:", error.message);
+    return base64Data;
+  }
+
+  const { data: { publicUrl } } = supabase.storage
+    .from("photos")
+    .getPublicUrl(uploadData.path);
+
+  return publicUrl;
+}

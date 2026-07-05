@@ -329,6 +329,15 @@ export default function AdminPage() {
 
         : tab==="orders" ? (
           <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+            {paymentLinks.length === 0 && (
+              <div className="mx-6 mt-4 p-4 bg-amber-50 border border-amber-300 rounded-xl flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5"/>
+                <div>
+                  <p className="font-bold text-amber-900 text-sm">⚠️ No Payment Links Configured</p>
+                  <p className="text-amber-800 text-xs mt-1">Clients cannot pay for orders until you add a payment link. <button onClick={()=>setTab("payment-links")} className="font-bold underline">Set up Payment Links now →</button></p>
+                </div>
+              </div>
+            )}
             <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between gap-4 flex-wrap">
               <h2 className="font-semibold text-slate-900">All Orders ({orders.length})</h2>
               <div className="flex items-center gap-2 flex-wrap">
