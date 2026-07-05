@@ -261,7 +261,7 @@ export default function AdminPage() {
   const TABS = [
     ["orders","Orders",<ClipboardList key="o" className="w-4 h-4"/>],
     ["agents","Agents",<Users key="a" className="w-4 h-4"/>],
-    ["users","Add Users",<UserPlus key="u" className="w-4 h-4"/>],
+    ["users","Users",<UserPlus key="u" className="w-4 h-4"/>],
     ["samples","Samples",<ShieldCheck key="s" className="w-4 h-4"/>],
     ["payouts","Payouts",<CreditCard key="pay" className="w-4 h-4"/>],
     ["pricing","Pricing",<DollarSign key="p" className="w-4 h-4"/>],
@@ -293,10 +293,10 @@ export default function AdminPage() {
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-6">
           {[
             {label:"Total Orders",value:orders.length,color:"text-blue-600 bg-blue-50",icon:<ClipboardList className="w-4 h-4"/>},
-            {label:"Pending",value:orders.filter(o=>o.status==="pending").length,color:"text-amber-600 bg-amber-50",icon:<Clock className="w-4 h-4"/>},
+            {label:"Awaiting Payment",value:orders.filter(o=>(o as unknown as Record<string,unknown>).payment_status==="pending").length,color:"text-amber-600 bg-amber-50",icon:<DollarSign className="w-4 h-4"/>},
             {label:"In Progress",value:orders.filter(o=>o.status==="in_progress").length,color:"text-blue-600 bg-blue-50",icon:<RefreshCw className="w-4 h-4"/>},
             {label:"Completed",value:orders.filter(o=>o.status==="completed").length,color:"text-green-600 bg-green-50",icon:<CheckCircle className="w-4 h-4"/>},
-            {label:"Active Agents",value:agents.filter(a=>a.available).length,color:"text-purple-600 bg-purple-50",icon:<Users className="w-4 h-4"/>},
+            {label:"Pending Users",value:allUsers.filter(u=>u.role!=="admin"&&!u.accountActive&&!u.suspended).length,color:"text-amber-600 bg-amber-50",icon:<Users className="w-4 h-4"/>},
           ].map(card=>(
             <div key={card.label} className="bg-white border border-slate-200 rounded-xl p-4">
               <div className={`w-8 h-8 rounded-lg flex items-center justify-center mb-2 ${card.color}`}>{card.icon}</div>
@@ -553,6 +553,131 @@ export default function AdminPage() {
 
         ) : tab==="users" ? (
           <div className="space-y-6">
+
+            {/* ── PENDING APPROVALS — most important section ── */}
+            {allUsers.filter(u => u.role !== "admin" && !u.accountActive && !u.suspended).length > 0 && (
+              <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl overflow-hidden">
+                <div className="px-6 py-4 border-b border-amber-200 flex items-center gap-3">
+                  <AlertCircle className="w-5 h-5 text-amber-600"/>
+                  <div>
+                    <h2 className="font-bold text-amber-900">
+                      Pending Activation — {allUsers.filter(u => u.role !== "admin" && !u.accountActive && !u.suspended).length} user(s) waiting
+                    </h2>
+                    <p className="text-xs text-amber-700 mt-0.5">These users have registered and need to pay their signup fee. Once you confirm payment, click ✓ Activate.</p>
+                  </div>
+                </div>
+                <div className="divide-y divide-amber-100">
+                  {allUsers.filter(u => u.role !== "admin" && !u.accountActive && !u.suspended).map(u => (
+                    <div key={u.id} className="px-6 py-4 flex items-center justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold text-slate-900">{u.name}</span>
+                          <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${u.role === "agent" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}`}>
+                            {u.role} — {u.role === "agent" ? "$15 fee" : "$30 fee"}
+                          </span>
+                          <span className="text-xs bg-amber-200 text-amber-800 font-bold px-2 py-0.5 rounded-full">⏳ Awaiting Payment Confirmation</span>
+                        </div>
+                        <div className="text-xs text-slate-600 mt-1 flex items-center gap-3">
+                          <span>📧 {u.email}</span>
+                          {u.phone && <span>📞 {u.phone}</span>}
+                          {u.company && <span>🏢 {u.company}</span>}
+                          <span suppressHydrationWarning>Registered: {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : ""}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <a href={paymentLinks[0]?.url ?? "#"} target="_blank" rel="noopener noreferrer"
+                          className="text-xs bg-[#c8991a] hover:bg-[#f0b429] text-[#0f1f3d] font-bold px-3 py-1.5 rounded-lg whitespace-nowrap">
+                          View Payment →
+                        </a>
+                        <button onClick={() => activateUser(u.id, "activate")} disabled={saving === `user-${u.id}`}
+                          className="text-xs bg-green-600 hover:bg-green-700 text-white font-bold px-4 py-1.5 rounded-lg disabled:opacity-50 whitespace-nowrap">
+                          {saving === `user-${u.id}` ? "…" : "✓ Confirm Payment & Activate"}
+                        </button>
+                        <button onClick={() => activateUser(u.id, "suspend")} disabled={saving === `user-${u.id}`}
+                          className="text-xs border border-red-200 text-red-600 hover:bg-red-50 font-medium px-3 py-1.5 rounded-lg whitespace-nowrap">
+                          Reject
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ── PENDING ORDERS awaiting payment ── */}
+            {orders.filter(o => (o as unknown as Record<string,unknown>).payment_status === "pending").length > 0 && (
+              <div className="bg-blue-50 border-2 border-blue-200 rounded-2xl overflow-hidden">
+                <div className="px-6 py-4 border-b border-blue-200 flex items-center gap-3">
+                  <DollarSign className="w-5 h-5 text-blue-600"/>
+                  <div>
+                    <h2 className="font-bold text-blue-900">
+                      Orders Awaiting Payment — {orders.filter(o => (o as unknown as Record<string,unknown>).payment_status === "pending").length} order(s)
+                    </h2>
+                    <p className="text-xs text-blue-700 mt-0.5">Clients placed these orders and should have paid. Confirm payment to activate.</p>
+                  </div>
+                </div>
+                <div className="divide-y divide-blue-100">
+                  {orders.filter(o => (o as unknown as Record<string,unknown>).payment_status === "pending").map(order => (
+                    <div key={order.id} className="px-6 py-4 flex items-center justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          <span className="font-bold text-slate-900">{order.address}</span>
+                          <span className="text-xs bg-blue-100 text-blue-700 font-medium px-2 py-0.5 rounded-full">{order.serviceType}</span>
+                        </div>
+                        <div className="text-xs text-slate-600 flex items-center gap-3">
+                          <span>Client: {order.client?.name ?? order.clientId}</span>
+                          <span>Amount: <strong>${order.totalPrice}</strong></span>
+                          <span suppressHydrationWarning>{new Date(order.createdAt).toLocaleDateString()}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <a href={paymentLinks[0]?.url ?? "#"} target="_blank" rel="noopener noreferrer"
+                          className="text-xs bg-[#c8991a] hover:bg-[#f0b429] text-[#0f1f3d] font-bold px-3 py-1.5 rounded-lg">
+                          View Payment →
+                        </a>
+                        <button onClick={async () => {
+                          await fetch(`/api/orders/${order.id}`, { method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify({confirmPayment:true}) });
+                          fetchAll();
+                        }} className="text-xs bg-green-600 hover:bg-green-700 text-white font-bold px-4 py-1.5 rounded-lg whitespace-nowrap">
+                          ✓ Confirm Payment
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ── Payment Links quick reference ── */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-5">
+              <h3 className="font-semibold text-slate-900 mb-3 flex items-center gap-2">
+                <DollarSign className="w-4 h-4 text-emerald-600"/>Your Payment Links
+                <button onClick={() => setTab("payment-links")} className="ml-auto text-xs text-[#c8991a] font-bold hover:underline">Manage Links →</button>
+              </h3>
+              {paymentLinks.length === 0 ? (
+                <div className="flex items-center gap-3 p-3 bg-red-50 border border-red-200 rounded-xl">
+                  <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0"/>
+                  <p className="text-sm text-red-700">No payment links configured! <button onClick={() => setTab("payment-links")} className="font-bold underline">Add one now →</button></p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {paymentLinks.filter(l => l.active).map(link => (
+                    <div key={link.id} className="flex items-center justify-between gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-800">{link.label} {link.amount && <span className="text-emerald-600">${link.amount}</span>}</p>
+                        <p className="text-xs text-slate-400 font-mono truncate max-w-xs">{link.url}</p>
+                      </div>
+                      <a href={link.url} target="_blank" rel="noopener noreferrer"
+                        className="text-xs bg-[#c8991a] text-[#0f1f3d] font-bold px-3 py-1.5 rounded-lg hover:bg-[#f0b429] whitespace-nowrap">
+                        Open Link ↗
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* ── Add New User form ── */}
             <div className="bg-white border border-slate-200 rounded-2xl p-6">
               <h2 className="font-semibold text-slate-900 mb-4 flex items-center gap-2"><UserPlus className="w-5 h-5 text-purple-600"/>Add New User</h2>
               {addUserError&&<div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl">{addUserError}</div>}
