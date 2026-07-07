@@ -285,6 +285,9 @@ function ClientPageInner() {
           <div className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border ${liveConnected?"bg-green-50 text-green-600 border-green-200":"bg-slate-50 text-slate-400 border-slate-200"}`}>
             {liveConnected?<Wifi className="w-3 h-3"/>:<WifiOff className="w-3 h-3"/>}{liveConnected?"Live":"Connecting…"}
           </div>
+          <Link href="/client/wallet" className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 transition-colors text-sm font-bold px-3 py-1.5 rounded-lg">
+            <DollarSign className="w-3.5 h-3.5"/>Wallet
+          </Link>
           <span className="text-sm text-slate-600">Welcome, <span className="font-semibold text-slate-900">{userName}</span></span>
           <button onClick={logout} className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-red-600"><LogOut className="w-4 h-4"/>Logout</button>
         </div>

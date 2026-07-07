@@ -761,3 +761,133 @@ export async function uploadPhotoToStorage(
 
   return publicUrl;
 }
+
+// ── Wallet System ─────────────────────────────────────────────
+
+export interface WalletTransaction {
+  id: string; userId: string; type: string; amount: number;
+  balanceAfter: number; description: string; orderId?: string;
+  status: string; createdAt: string;
+}
+
+export async function getWalletBalance(userId: string): Promise<number> {
+  const { data } = await supabase.from("users").select("wallet_balance").eq("id", userId).single();
+  return Number((data as Record<string,unknown>)?.wallet_balance ?? 0);
+}
+
+export async function getWalletTransactions(userId: string): Promise<WalletTransaction[]> {
+  const { data } = await supabase.from("wallet_transactions")
+    .select("*").eq("user_id", userId).order("created_at", { ascending: false }).limit(50);
+  return (data ?? []).map(r => {
+    const row = r as Record<string,unknown>;
+    return {
+      id: row.id as string, userId: row.user_id as string, type: row.type as string,
+      amount: Number(row.amount), balanceAfter: Number(row.balance_after),
+      description: row.description as string, orderId: row.order_id as string | undefined,
+      status: row.status as string, createdAt: row.created_at as string,
+    };
+  });
+}
+
+export async function addWalletTopup(userId: string, amount: number, description: string): Promise<number> {
+  const current = await getWalletBalance(userId);
+  const newBalance = current + amount;
+  await supabase.from("users").update({ wallet_balance: newBalance }).eq("id", userId);
+  await supabase.from("wallet_transactions").insert({
+    user_id: userId, type: "topup", amount, balance_after: newBalance,
+    description, status: "confirmed",
+  });
+  return newBalance;
+}
+
+export async function holdWalletFunds(userId: string, orderId: string, amount: number): Promise<boolean> {
+  const current = await getWalletBalance(userId);
+  if (current < amount) return false; // insufficient funds
+  const newBalance = current - amount;
+  await supabase.from("users").update({ wallet_balance: newBalance }).eq("id", userId);
+  await supabase.from("wallet_transactions").insert({
+    user_id: userId, type: "hold", amount, balance_after: newBalance,
+    description: `Hold for order ${orderId}`, order_id: orderId, status: "confirmed",
+  });
+  await supabase.from("orders").update({ wallet_hold_amount: amount }).eq("id", orderId);
+  return true;
+}
+
+export async function releaseWalletHold(orderId: string, agentId: string): Promise<void> {
+  const { data } = await supabase.from("orders")
+    .select("wallet_hold_amount, client_id, wallet_released").eq("id", orderId).single();
+  const row = data as Record<string,unknown>;
+  if (!row || row.wallet_released) return;
+  const holdAmount = Number(row.wallet_hold_amount ?? 0);
+  if (holdAmount <= 0) return;
+  // Credit agent pending payout
+  const agent = await getUserById(agentId);
+  if (agent) {
+    await updateUser(agentId, {
+      pendingPayout: (agent.pendingPayout ?? 0) + holdAmount,
+      totalEarnings: (agent.totalEarnings ?? 0) + holdAmount,
+    });
+  }
+  await supabase.from("orders").update({ wallet_released: true }).eq("id", orderId);
+  await supabase.from("wallet_transactions").insert({
+    user_id: agentId, type: "release", amount: holdAmount, balance_after: 0,
+    description: `Payment released for order ${orderId}`, order_id: orderId, status: "confirmed",
+  });
+}
+
+export async function refundWalletHold(userId: string, orderId: string): Promise<void> {
+  const { data } = await supabase.from("orders")
+    .select("wallet_hold_amount, wallet_released").eq("id", orderId).single();
+  const row = data as Record<string,unknown>;
+  if (!row || row.wallet_released) return;
+  const holdAmount = Number(row.wallet_hold_amount ?? 0);
+  if (holdAmount <= 0) return;
+  const current = await getWalletBalance(userId);
+  const newBalance = current + holdAmount;
+  await supabase.from("users").update({ wallet_balance: newBalance }).eq("id", userId);
+  await supabase.from("wallet_transactions").insert({
+    user_id: userId, type: "refund", amount: holdAmount, balance_after: newBalance,
+    description: `Refund for cancelled order ${orderId}`, order_id: orderId, status: "confirmed",
+  });
+  await supabase.from("orders").update({ wallet_released: true, wallet_hold_amount: 0 }).eq("id", orderId);
+}
+
+export async function getAllWalletTopupsPending(): Promise<WalletTransaction[]> {
+  const { data } = await supabase.from("wallet_transactions")
+    .select("*, users!wallet_transactions_user_id_fkey(name,email)")
+    .eq("type", "topup").eq("status", "pending").order("created_at");
+  return (data ?? []).map(r => {
+    const row = r as Record<string,unknown>;
+    return {
+      id: row.id as string, userId: row.user_id as string, type: row.type as string,
+      amount: Number(row.amount), balanceAfter: Number(row.balance_after),
+      description: row.description as string, orderId: row.order_id as string | undefined,
+      status: row.status as string, createdAt: row.created_at as string,
+    };
+  });
+}
+
+export async function confirmTopup(transactionId: string): Promise<void> {
+  const { data } = await supabase.from("wallet_transactions").select("*").eq("id", transactionId).single();
+  const row = data as Record<string,unknown>;
+  if (!row || row.status === "confirmed") return;
+  const current = await getWalletBalance(row.user_id as string);
+  const newBalance = current + Number(row.amount);
+  await supabase.from("users").update({ wallet_balance: newBalance }).eq("id", row.user_id as string);
+  await supabase.from("wallet_transactions").update({ status: "confirmed", balance_after: newBalance }).eq("id", transactionId);
+}
+
+// ── Agent Applications ────────────────────────────────────────
+
+export async function saveAgentApplication(app: {
+  name: string; email: string; phone: string; zip: string;
+  city: string; state: string; experience: string; why: string;
+}): Promise<void> {
+  await supabase.from("agent_applications").insert(app);
+}
+
+export async function getAgentApplications(): Promise<Record<string,unknown>[]> {
+  const { data } = await supabase.from("agent_applications")
+    .select("*").order("created_at", { ascending: false });
+  return (data ?? []) as Record<string,unknown>[];
+}

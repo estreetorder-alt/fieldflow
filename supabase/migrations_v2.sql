@@ -186,3 +186,42 @@ update users set account_active = true where role = 'admin';
 
 -- Order decline tracking
 alter table orders add column if not exists declined_by jsonb default '[]';
+
+-- ── Wallet System ─────────────────────────────────────────────
+alter table users add column if not exists wallet_balance numeric(10,2) not null default 0;
+
+create table if not exists wallet_transactions (
+  id          text primary key default ('wtx-' || substr(uuid_generate_v4()::text,1,8)),
+  user_id     text not null references users(id) on delete cascade,
+  type        text not null, -- topup | deduction | refund | hold | release
+  amount      numeric(10,2) not null,
+  balance_after numeric(10,2) not null default 0,
+  description text not null default '',
+  order_id    text references orders(id) on delete set null,
+  status      text not null default 'pending', -- pending | confirmed | cancelled
+  created_at  timestamptz not null default now()
+);
+alter table wallet_transactions enable row level security;
+create policy "service role full access" on wallet_transactions for all using (true) with check (true);
+create index if not exists idx_wallet_user on wallet_transactions(user_id);
+
+-- Hold amount on orders (reserved from wallet, released to agent on completion)
+alter table orders add column if not exists wallet_hold_amount numeric(10,2) default 0;
+alter table orders add column if not exists wallet_released boolean not null default false;
+
+-- Agent application table (from work page)
+create table if not exists agent_applications (
+  id          text primary key default ('app-' || substr(uuid_generate_v4()::text,1,8)),
+  name        text not null,
+  email       text not null,
+  phone       text not null,
+  zip         text not null,
+  city        text not null,
+  state       text not null,
+  experience  text default '',
+  why         text default '',
+  status      text not null default 'pending', -- pending | approved | rejected
+  created_at  timestamptz not null default now()
+);
+alter table agent_applications enable row level security;
+create policy "service role full access" on agent_applications for all using (true) with check (true);

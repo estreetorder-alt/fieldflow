@@ -47,8 +47,16 @@ export default function WorkPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault(); setLoading(true);
-    await new Promise(r=>setTimeout(r,1000));
-    setSubmitted(true); setLoading(false);
+    try {
+      const r = await fetch("/api/applications", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      const d = await r.json();
+      if (!r.ok) { alert(d.error ?? "Submission failed. Please try again."); setLoading(false); return; }
+      setSubmitted(true);
+    } catch { alert("Network error. Please try again."); }
+    setLoading(false);
   }
 
   return (

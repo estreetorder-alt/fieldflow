@@ -95,7 +95,14 @@ export async function PATCH(request: NextRequest, { params }: Params) {
         const { updateAgentGrade } = await import("@/lib/db");
         await updateAgentGrade(order.assignedAgentId);
       }
-    } else if (client?.email && ["in_progress", "cancelled"].includes(body.status)) {
+    } else if (body.status === "cancelled") {
+      // Refund wallet hold on cancellation
+      const { refundWalletHold } = await import("@/lib/db");
+      await refundWalletHold(order.clientId, order.id);
+      if (client?.email) {
+        await sendOrderStatusEmail({ clientEmail: client.email, clientName: client.name, address: order.address, orderId: id, status: body.status, note: body.note });
+      }
+    } else if (client?.email && ["in_progress"].includes(body.status)) {
       await sendOrderStatusEmail({
         clientEmail: client.email, clientName: client.name,
         address: order.address, orderId: id,

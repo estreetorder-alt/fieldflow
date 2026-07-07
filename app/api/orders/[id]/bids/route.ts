@@ -97,6 +97,16 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   if (!bid) return NextResponse.json({ error: "Bid not found" }, { status: 404 });
 
   if (action === "accept") {
+    // Check wallet balance before accepting
+    const { holdWalletFunds } = await import("@/lib/db");
+    const held = await holdWalletFunds(order.clientId, id, bid.amount);
+    if (!held) {
+      return NextResponse.json({
+        error: "insufficient_funds",
+        message: `Insufficient wallet balance. You need $${bid.amount} to accept this bid. Please top up your wallet first.`,
+      }, { status: 402 });
+    }
+
     await updateBidStatus(bidId, "accepted");
     await rejectOtherBids(id, bidId);
     await updateOrder(id, {
@@ -105,7 +115,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       offerAcceptedAt: new Date().toISOString(),
     });
     const agent = await getUserById(bid.agentId);
-    await addStatusHistory(id, "in_progress", `Bid accepted — ${agent?.name ?? "Agent"} assigned at $${bid.amount}`);
+    await addStatusHistory(id, "in_progress", `Bid accepted — ${agent?.name ?? "Agent"} assigned at $${bid.amount}. $${bid.amount} held from client wallet.`);
 
     // Email agent about acceptance
     if (agent?.email) {

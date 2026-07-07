@@ -42,6 +42,9 @@ export async function POST(request: NextRequest) {
   await sendWelcomeEmail({ email: newUser.email, name: newUser.name, role: newUser.role });
 
   if (adminCreate) {
+    // Admin-created users are immediately active
+    const { activateUserAccount } = await import("@/lib/db");
+    await activateUserAccount(newUser.id);
     return NextResponse.json({ user: { id: newUser.id, name: newUser.name, email: newUser.email, role: newUser.role } }, { status: 201 });
   }
 

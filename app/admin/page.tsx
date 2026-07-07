@@ -25,7 +25,7 @@ const TIER_BADGES: Record<string,string> = { standard:"bg-slate-50 text-slate-50
 
 export default function AdminPage() {
   const router = useRouter();
-  const [tab, setTab] = useState<"orders"|"agents"|"users"|"samples"|"payouts"|"payment-links"|"pricing"|"emails">("orders");
+  const [tab, setTab] = useState<"orders"|"agents"|"users"|"wallet"|"samples"|"payouts"|"payment-links"|"pricing"|"emails">("orders");
   const [orders, setOrders] = useState<Order[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [allUsers, setAllUsers] = useState<AUser[]>([]);
@@ -35,6 +35,9 @@ export default function AdminPage() {
   const [emails, setEmails] = useState<EmailEntry[]>([]);
   const [samples, setSamples] = useState<Sample[]>([]);
   const [payouts, setPayouts] = useState<Payout[]>([]);
+  const [pendingTopups, setPendingTopups] = useState<{id:string;userId:string;amount:number;description:string;createdAt:string;userName?:string;userEmail?:string}[]>([]);
+  const [confirmingTopup, setConfirmingTopup] = useState<string|null>(null);
+  const [agentApplications, setAgentApplications] = useState<Record<string,unknown>[]>([]);
   const [editingPrice, setEditingPrice] = useState<Record<string,Partial<PricingConfig>>>({});
   const [ratingEdit, setRatingEdit] = useState<Record<string,number>>({});
   const [loading, setLoading] = useState(true);
@@ -108,6 +111,18 @@ export default function AdminPage() {
     setPaymentLinks(d.links ?? []);
   }, []);
 
+  const fetchWallet = useCallback(async () => {
+    const r = await fetch("/api/wallet");
+    const d = await r.json();
+    setPendingTopups(d.pending ?? []);
+  }, []);
+
+  const fetchApplications = useCallback(async () => {
+    const r = await fetch("/api/applications");
+    const d = await r.json();
+    setAgentApplications(d.applications ?? []);
+  }, []);
+
   const fetchPayouts = useCallback(async () => {
     const r = await fetch("/api/payouts");
     const d = await r.json();
@@ -129,6 +144,8 @@ export default function AdminPage() {
 
   useEffect(() => { if (tab === "payouts") fetchPayouts(); }, [tab, fetchPayouts]);
   useEffect(() => { if (tab === "payment-links") fetchPaymentLinks(); }, [tab, fetchPaymentLinks]);
+  useEffect(() => { if (tab === "wallet") fetchWallet(); }, [tab, fetchWallet]);
+  useEffect(() => { if (tab === "users") fetchApplications(); }, [tab, fetchApplications]);
 
   async function handleLogout() { await fetch("/api/auth/logout", { method:"POST" }); router.push("/"); }
 
@@ -216,6 +233,17 @@ export default function AdminPage() {
     fetchAll();
   }
 
+  async function confirmTopup(txId: string, action: "confirm"|"cancel") {
+    setConfirmingTopup(txId);
+    await fetch(`/api/wallet/${txId}`, {
+      method: "PATCH", headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({ action }),
+    });
+    setConfirmingTopup(null);
+    fetchWallet();
+    fetchAll(); // refresh wallet balances on users
+  }
+
   async function saveEditLink() {
     if (!editingLink) return;
     setSaving("edit-link");
@@ -262,6 +290,7 @@ export default function AdminPage() {
     ["orders","Orders",<ClipboardList key="o" className="w-4 h-4"/>],
     ["agents","Agents",<Users key="a" className="w-4 h-4"/>],
     ["users","Users",<UserPlus key="u" className="w-4 h-4"/>],
+    ["wallet","Wallet",<DollarSign key="w" className="w-4 h-4 text-emerald-600"/>],
     ["samples","Samples",<ShieldCheck key="s" className="w-4 h-4"/>],
     ["payouts","Payouts",<CreditCard key="pay" className="w-4 h-4"/>],
     ["pricing","Pricing",<DollarSign key="p" className="w-4 h-4"/>],
@@ -772,6 +801,90 @@ export default function AdminPage() {
                   </div>
                 ))}
               </div>
+            </div>
+          </div>
+
+        ) : tab==="wallet" ? (
+          <div className="space-y-6">
+            {/* Pending top-up confirmations */}
+            <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+              <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                <div>
+                  <h2 className="font-bold text-slate-900 flex items-center gap-2">
+                    <DollarSign className="w-5 h-5 text-emerald-600"/>Pending Wallet Top-ups
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-0.5">Clients requested these top-ups — confirm after verifying payment received</p>
+                </div>
+                {pendingTopups.length > 0 && (
+                  <span className="bg-emerald-100 text-emerald-700 font-bold text-sm px-3 py-1 rounded-full">{pendingTopups.length} pending</span>
+                )}
+              </div>
+              {pendingTopups.length === 0 ? (
+                <div className="text-center py-12 text-slate-400">
+                  <DollarSign className="w-8 h-8 mx-auto mb-2 text-slate-300"/>
+                  <p>No pending top-ups</p>
+                </div>
+              ) : pendingTopups.map(tx => (
+                <div key={tx.id} className="px-6 py-4 border-b border-slate-100 last:border-0 flex items-center justify-between gap-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-bold text-slate-900">{tx.userName ?? tx.userId}</span>
+                      <span className="text-xs text-slate-500">{tx.userEmail}</span>
+                    </div>
+                    <p className="text-xs text-slate-500">{tx.description}</p>
+                    <p className="text-xs text-slate-400" suppressHydrationWarning>{new Date(tx.createdAt).toLocaleString()}</p>
+                  </div>
+                  <div className="flex items-center gap-3 flex-shrink-0">
+                    <span className="text-2xl font-black text-emerald-600">${tx.amount}</span>
+                    <button onClick={() => confirmTopup(tx.id, "confirm")} disabled={confirmingTopup === tx.id}
+                      className="bg-green-600 hover:bg-green-700 text-white font-bold text-xs px-4 py-2 rounded-lg disabled:opacity-50 whitespace-nowrap">
+                      {confirmingTopup === tx.id ? "…" : "✓ Confirm & Credit Wallet"}
+                    </button>
+                    <button onClick={() => confirmTopup(tx.id, "cancel")} disabled={confirmingTopup === tx.id}
+                      className="border border-red-200 text-red-600 hover:bg-red-50 font-medium text-xs px-3 py-2 rounded-lg disabled:opacity-50">
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* All client wallet balances */}
+            <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+              <div className="px-6 py-4 border-b border-slate-100">
+                <h2 className="font-bold text-slate-900">Client Wallet Balances</h2>
+                <p className="text-xs text-slate-400 mt-0.5">All active clients and their current wallet balance</p>
+              </div>
+              <div className="divide-y divide-slate-100">
+                {allUsers.filter(u => u.role === "client" && u.accountActive).map(u => (
+                  <div key={u.id} className="px-6 py-4 flex items-center justify-between gap-4">
+                    <div>
+                      <p className="font-medium text-slate-800">{u.name}</p>
+                      <p className="text-xs text-slate-500">{u.email}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-lg font-bold text-emerald-600">$0.00</p>
+                      <p className="text-xs text-slate-400">wallet balance</p>
+                    </div>
+                  </div>
+                ))}
+                {allUsers.filter(u => u.role === "client" && u.accountActive).length === 0 && (
+                  <div className="text-center py-8 text-slate-400 text-sm">No active clients yet</div>
+                )}
+              </div>
+            </div>
+
+            {/* Top-up amounts reference */}
+            <div className="bg-[#0f1f3d] rounded-2xl p-6 text-white">
+              <h3 className="font-bold text-[#f0b429] mb-3">Fixed Top-up Amounts</h3>
+              <div className="grid grid-cols-4 sm:grid-cols-8 gap-2 mb-4">
+                {[15,25,30,50,75,100,125,150].map(amt => (
+                  <div key={amt} className="bg-[#1a3260] rounded-xl p-3 text-center">
+                    <p className="font-bold text-[#c8991a]">${amt}</p>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-slate-400">Clients choose from these amounts when topping up. Each top-up creates a pending transaction you confirm here after receiving payment.</p>
             </div>
           </div>
 
