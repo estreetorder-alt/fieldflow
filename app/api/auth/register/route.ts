@@ -48,7 +48,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ user: { id: newUser.id, name: newUser.name, email: newUser.email, role: newUser.role } }, { status: 201 });
   }
 
-  // New registrations are NOT auto-logged-in — they must pay first
+  if (newUser.role === "agent") {
+    // Agent signup is free — no application fee, no manual activation step.
+    const { activateUserAccount } = await import("@/lib/db");
+    await activateUserAccount(newUser.id);
+    return NextResponse.json({
+      user: { id: newUser.id, name: newUser.name, role: newUser.role, email: newUser.email },
+      requiresPayment: false,
+    }, { status: 201 });
+  }
+
+  // Clients are NOT auto-logged-in — they must pay the activation fee first
   // Return success so client can redirect to payment
   return NextResponse.json({
     user: { id: newUser.id, name: newUser.name, role: newUser.role, email: newUser.email },

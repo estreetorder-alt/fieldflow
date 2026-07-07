@@ -7,6 +7,7 @@ import {
   Mail, MapPin, Car, Download, Package, Gavel, UserPlus, Eye, EyeOff, X,
   ShieldCheck, CreditCard, AlertCircle, ZapIcon, ChevronDown, ChevronUp, Link as LinkIcon, Plus as PlusIcon, Trash as TrashIcon,
 } from "lucide-react";
+import { resolveAgentState } from "@/lib/zipState";
 
 interface Order { id: string; address: string; status: string; clientId: string; assignedAgentId: string | null; totalPrice: number; compensationAmount: number; serviceType: string; turnaroundTier: string; notes: string; createdAt: string; client?: { name: string; email: string } | null; agent?: { name: string; rating?: number } | null; bids?: Bid[]; acceptedBidId?: string | null; }
 interface Bid { id: string; agentId: string; agentName: string; agentRating: number | null; amount: number; message: string; placedAt: string; status: string; placedByAdmin?: boolean; }
@@ -28,6 +29,10 @@ export default function AdminPage() {
   const [tab, setTab] = useState<"orders"|"agents"|"users"|"wallet"|"samples"|"payouts"|"payment-links"|"pricing"|"emails">("orders");
   const [orders, setOrders] = useState<Order[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
+  // Agents grouped by resolved state, states sorted alphabetically, agents sorted by name within each state
+  const agentsByState = agents
+    .map(a => ({ ...a, __state: resolveAgentState(a.coverageZone) }))
+    .sort((a, b) => a.__state.localeCompare(b.__state) || a.name.localeCompare(b.name));
   const [allUsers, setAllUsers] = useState<AUser[]>([]);
   const [pricing, setPricing] = useState<PricingConfig[]>([]);
   const [pricingCatalog, setPricingCatalog] = useState<CatalogCategory[]>([]);
@@ -431,7 +436,7 @@ export default function AdminPage() {
                               <select value={order.assignedAgentId??""} onChange={e=>assignAgent(order.id,e.target.value||null,e.target.value?"in_progress":"pending")}
                                 className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-400">
                                 <option value="">Unassigned</option>
-                                {agents.map(a=><option key={a.id} value={a.id}>{a.name}{a.available?" ✓":""}</option>)}
+                                {agentsByState.map(a=><option key={a.id} value={a.id}>{a.name} — {a.__state}{a.available?" ✓":""}</option>)}
                               </select>
                             )}
                           </td>
@@ -520,11 +525,20 @@ export default function AdminPage() {
               <span className="text-xs text-slate-400">{agents.filter(a=>a.available).length}/{agents.length} available</span>
             </div>
             <div className="divide-y divide-slate-100">
-              {agents.map(agent=>{
+              {agentsByState.map((agent,i)=>{
                 const editedRating = ratingEdit[agent.id];
                 const displayRating = editedRating??agent.rating;
+                const showStateHeader = i===0 || agentsByState[i-1].__state !== agent.__state;
                 return (
-                  <div key={agent.id} className="p-5">
+                  <div key={agent.id}>
+                  {showStateHeader && (
+                    <div className="px-5 py-2 bg-slate-50 border-y border-slate-100 flex items-center gap-2 sticky top-0">
+                      <MapPin className="w-3.5 h-3.5 text-[#c8991a]"/>
+                      <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">{agent.__state}</span>
+                      <span className="text-xs text-slate-400">({agentsByState.filter(a=>a.__state===agent.__state).length})</span>
+                    </div>
+                  )}
+                  <div className="p-5">
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2 flex-wrap">
@@ -574,6 +588,7 @@ export default function AdminPage() {
                       )}
                     </div>
                   </div>
+                  </div>
                 );
               })}
               {agents.length===0&&<div className="text-center py-12 text-slate-400"><Users className="w-8 h-8 mx-auto mb-2 text-slate-300"/><p>No agents yet</p></div>}
@@ -592,7 +607,7 @@ export default function AdminPage() {
                     <h2 className="font-bold text-amber-900">
                       Pending Activation — {allUsers.filter(u => u.role !== "admin" && !u.accountActive && !u.suspended).length} user(s) waiting
                     </h2>
-                    <p className="text-xs text-amber-700 mt-0.5">These users have registered and need to pay their signup fee. Once you confirm payment, click ✓ Activate.</p>
+                    <p className="text-xs text-amber-700 mt-0.5">These clients have registered and need to pay their $30 activation fee. Once you confirm payment, click ✓ Activate. (Agent signup is free and auto-activates — agents won&apos;t appear here.)</p>
                   </div>
                 </div>
                 <div className="divide-y divide-amber-100">
@@ -602,7 +617,7 @@ export default function AdminPage() {
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-bold text-slate-900">{u.name}</span>
                           <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${u.role === "agent" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}`}>
-                            {u.role} — {u.role === "agent" ? "$15 fee" : "$30 fee"}
+                            {u.role} — {u.role === "agent" ? "free" : "$30 fee"}
                           </span>
                           <span className="text-xs bg-amber-200 text-amber-800 font-bold px-2 py-0.5 rounded-full">⏳ Awaiting Payment Confirmation</span>
                         </div>
@@ -1137,7 +1152,7 @@ export default function AdminPage() {
                   "Paste any payment URL — PayPal.me, Venmo, Zelle, CashApp, or a custom invoice URL like https://carebusinessconsultingsolutions.com/generate/invoice?...",
                   "Every time a client or agent needs to pay — they see a 'Pay Now' button that opens your link in a new tab",
                   "After they pay, you get a push notification (Ntfy) + email. Then click '✓ Confirm Pay' in Orders tab to activate the order",
-                  "For new user account activation — go to Add Users tab → click '✓ Activate' after confirming their signup fee payment",
+                  "For new client account activation — go to Add Users tab → click '✓ Activate' after confirming their $30 signup fee payment (agents auto-activate for free)",
                   "Links are saved permanently until you delete them — no need to re-add each time",
                 ].map((step, i) => (
                   <li key={i} className="flex items-start gap-3">
@@ -1276,7 +1291,7 @@ export default function AdminPage() {
                 <select value={bidAgentId} onChange={e=>setBidAgentId(e.target.value)}
                   className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
                   <option value="">Select agent…</option>
-                  {agents.map(a=><option key={a.id} value={a.id}>{a.name}{a.available?" (available)":""}</option>)}
+                  {agentsByState.map(a=><option key={a.id} value={a.id}>{a.name} — {a.__state}{a.available?" (available)":""}</option>)}
                 </select>
               </div>
               <div>

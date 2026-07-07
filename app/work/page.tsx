@@ -200,13 +200,13 @@ export default function WorkPage() {
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="bg-white border border-slate-200 rounded-2xl p-8 shadow-sm space-y-5">
-              {/* One-time fee notice */}
+              {/* Free signup notice */}
               <div className="p-4 bg-[#0f1f3d] rounded-xl flex items-center justify-between">
                 <div>
-                  <p className="font-bold text-white text-sm">One-Time Application Fee</p>
-                  <p className="text-xs text-slate-400 mt-0.5">Non-refundable · Covers background check processing</p>
+                  <p className="font-bold text-white text-sm">Application Fee</p>
+                  <p className="text-xs text-slate-400 mt-0.5">Free — no cost to apply or join</p>
                 </div>
-                <span className="text-2xl font-black text-[#f0b429]">$15</span>
+                <span className="text-2xl font-black text-[#f0b429]">$0</span>
               </div>
 
               <div className="grid sm:grid-cols-2 gap-5">
@@ -277,7 +277,7 @@ export default function WorkPage() {
                 className="w-full bg-[#c8991a] hover:bg-[#f0b429] disabled:opacity-60 text-[#0f1f3d] font-bold py-3 rounded-xl transition-colors flex items-center justify-center gap-2">
                 {loading ? <span className="animate-pulse">Submitting…</span> : <><Send className="w-4 h-4"/>Submit Application</>}
               </button>
-              <p className="text-xs text-center text-slate-400">By applying you agree to our <a href="/terms" className="underline">Terms of Service</a>. The $15 application fee will be collected after initial approval.</p>
+              <p className="text-xs text-center text-slate-400">By applying you agree to our <a href="/terms" className="underline">Terms of Service</a>. Agent signup is completely free.</p>
             </form>
           )}
         </div>

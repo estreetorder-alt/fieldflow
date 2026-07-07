@@ -271,7 +271,7 @@ export default function HomePage() {
               className="inline-flex items-center gap-2 bg-[#c8991a] hover:bg-[#f0b429] text-[#0f1f3d] font-bold px-8 py-4 rounded-xl text-lg transition-colors shadow-lg whitespace-nowrap">
               Join Our Team <ChevronRight className="w-5 h-5" aria-hidden="true"/>
             </Link>
-            <p className="text-xs text-slate-400 mt-3">One-time $15 non-refundable application fee</p>
+            <p className="text-xs text-slate-400 mt-3">Free to join — no application fee</p>
           </div>
         </div>
       </section>
