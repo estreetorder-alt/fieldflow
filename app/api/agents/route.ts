@@ -17,6 +17,8 @@ export async function GET(request: NextRequest) {
       pendingPayout: u.pendingPayout ?? 0, completedJobs: u.completedJobs ?? 0,
       createdAt: u.createdAt,
       state: resolveAgentState(u.coverageZone),
+      backgroundCheckStatus: u.backgroundCheckStatus ?? "not_started",
+      smsOptIn: u.smsOptIn ?? false,
     }))
     .sort((a, b) => a.state.localeCompare(b.state) || a.name.localeCompare(b.name));
 

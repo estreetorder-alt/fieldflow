@@ -33,6 +33,21 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json();
 
+  // Clients may only place orders as themselves or a verified sub-account they own
+  if (userRole === "client" ) {
+    const requestedClientIds = new Set<string>();
+    if (Array.isArray(body.orders)) body.orders.forEach((r: { clientId?: string }) => r.clientId && requestedClientIds.add(r.clientId));
+    if (body.clientId) requestedClientIds.add(body.clientId);
+    requestedClientIds.delete(userId);
+    if (requestedClientIds.size > 0) {
+      const { data: subs } = await supabase.from("users").select("id").eq("parent_client_id", userId);
+      const ownedSubIds = new Set((subs ?? []).map(s => (s as Record<string,unknown>).id as string));
+      for (const cid of requestedClientIds) {
+        if (!ownedSubIds.has(cid)) return NextResponse.json({ error: "Forbidden — invalid clientId" }, { status: 403 });
+      }
+    }
+  }
+
   const createSingle = async (row: {
     address: string; serviceId?: string; turnaroundTier?: string;
     notes?: string; customizeNotes?: string; customShotList?: string;

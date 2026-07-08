@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUserByEmail, createUser } from "@/lib/db";
 import { sendWelcomeEmail } from "@/lib/email";
+import { hashPassword } from "@/lib/password";
 
 export async function POST(request: NextRequest) {
   const userId = request.cookies.get("user_id")?.value;
@@ -24,7 +25,7 @@ export async function POST(request: NextRequest) {
   const newUser = await createUser({
     id: `user-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
     email: email.toLowerCase(),
-    password,
+    password: await hashPassword(password),
     role: adminCreate ? role : (body.role ?? "client"),
     name, phone: phone ?? "",
     company: company ?? undefined,

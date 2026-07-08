@@ -12,6 +12,7 @@ export async function POST(request: NextRequest) {
   const userId = request.cookies.get("user_id")?.value;
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const body = await request.json();
-  await addEmailLog({ type: "photo_email", to: userId, subject: `Photos from order ${body.orderId}`, body: `Photo IDs: ${body.photoIds?.join(", ")}` });
+  // Only log entries about the caller's own order photo-share action — not arbitrary log injection
+  await addEmailLog({ type: "photo_email", to: userId, subject: `Photos from order ${String(body.orderId ?? "").slice(0, 100)}`, body: `Photo IDs: ${(body.photoIds ?? []).slice(0, 50).join(", ")}` });
   return NextResponse.json({ ok: true });
 }

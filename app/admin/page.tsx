@@ -6,13 +6,15 @@ import {
   CheckCircle, Clock, XCircle, Wifi, WifiOff, Star, ToggleLeft, ToggleRight,
   Mail, MapPin, Car, Download, Package, Gavel, UserPlus, Eye, EyeOff, X,
   ShieldCheck, CreditCard, AlertCircle, ZapIcon, ChevronDown, ChevronUp, Link as LinkIcon, Plus as PlusIcon, Trash as TrashIcon,
+  AlertTriangle, History, Camera as CameraIcon, Wallet as WalletIcon,
 } from "lucide-react";
-import { resolveAgentState } from "@/lib/zipState";
 
 interface Order { id: string; address: string; status: string; clientId: string; assignedAgentId: string | null; totalPrice: number; compensationAmount: number; serviceType: string; turnaroundTier: string; notes: string; createdAt: string; client?: { name: string; email: string } | null; agent?: { name: string; rating?: number } | null; bids?: Bid[]; acceptedBidId?: string | null; }
 interface Bid { id: string; agentId: string; agentName: string; agentRating: number | null; amount: number; message: string; placedAt: string; status: string; placedByAdmin?: boolean; }
-interface Agent { id: string; name: string; email: string; phone: string; coverageZone: string; vehicle: string; available: boolean; rating: number; totalEarnings: number; pendingPayout: number; completedJobs: number; grade?: number; approved?: boolean; }
+interface Agent { id: string; name: string; email: string; phone: string; coverageZone: string; vehicle: string; available: boolean; rating: number; totalEarnings: number; pendingPayout: number; completedJobs: number; grade?: number; approved?: boolean; state?: string; backgroundCheckStatus?: string; smsOptIn?: boolean; }
 interface AUser { id: string; name: string; email: string; role: string; phone: string; company?: string; createdAt?: string; accountActive?: boolean; suspended?: boolean; }
+interface AdminDispute { id: string; orderId: string; clientId: string; clientName?: string; clientEmail?: string; orderAddress?: string; reason: string; description: string; status: string; resolution?: string | null; resolutionAmount?: number; resolutionNotes?: string; createdAt: string; }
+interface AuditEntry { id: number; actor_name: string; action: string; target_type: string; target_id: string; details: Record<string, unknown>; created_at: string; }
 interface PricingConfig { id: string; serviceType: string; name: string; basePrice: number; compensation: number; urgencyMultiplier: number; active: boolean; category: string; description: string; photoCount?: number; isCustom?: boolean; requiresInterior?: boolean; }
 interface CatalogCategory { id: string; label: string; services: PricingConfig[]; }
 interface EmailEntry { timestamp: string; type: string; to: string; subject: string; body: string; }
@@ -26,12 +28,12 @@ const TIER_BADGES: Record<string,string> = { standard:"bg-slate-50 text-slate-50
 
 export default function AdminPage() {
   const router = useRouter();
-  const [tab, setTab] = useState<"orders"|"agents"|"users"|"wallet"|"samples"|"payouts"|"payment-links"|"pricing"|"emails">("orders");
+  const [tab, setTab] = useState<"orders"|"agents"|"users"|"wallet"|"samples"|"payouts"|"payment-links"|"pricing"|"emails"|"disputes"|"audit">("orders");
   const [orders, setOrders] = useState<Order[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
   // Agents grouped by resolved state, states sorted alphabetically, agents sorted by name within each state
   const agentsByState = agents
-    .map(a => ({ ...a, __state: resolveAgentState(a.coverageZone) }))
+    .map(a => ({ ...a, __state: a.state ?? "Unassigned" }))
     .sort((a, b) => a.__state.localeCompare(b.__state) || a.name.localeCompare(b.name));
   const [allUsers, setAllUsers] = useState<AUser[]>([]);
   const [pricing, setPricing] = useState<PricingConfig[]>([]);
@@ -85,6 +87,11 @@ export default function AdminPage() {
 
   // Payouts
   const [payoutModal, setPayoutModal] = useState<{agentId:string;agentName:string;pendingPayout:number}|null>(null);
+  const [resolveDisputeModal, setResolveDisputeModal] = useState<{id:string;clientName:string}|null>(null);
+  const [resolveChoice, setResolveChoice] = useState<"reshoot"|"wallet_credit"|"rejected"|"other">("reshoot");
+  const [resolveAmount, setResolveAmount] = useState("");
+  const [resolveNotes, setResolveNotes] = useState("");
+  const [resolvingDispute, setResolvingDispute] = useState(false);
   const [paypalEmail, setPaypalEmail] = useState("");
   const [processingPayout, setProcessingPayout] = useState(false);
 
@@ -134,6 +141,21 @@ export default function AdminPage() {
     setPayouts(d.payouts ?? []);
   }, []);
 
+  const [disputes, setDisputes] = useState<AdminDispute[]>([]);
+  const [disputeFilter, setDisputeFilter] = useState<string>("open");
+  const fetchDisputes = useCallback(async (status?: string) => {
+    const r = await fetch(`/api/disputes${status && status !== "all" ? `?status=${status}` : ""}`);
+    const d = await r.json();
+    setDisputes(d.disputes ?? []);
+  }, []);
+
+  const [auditLog, setAuditLog] = useState<AuditEntry[]>([]);
+  const fetchAuditLog = useCallback(async () => {
+    const r = await fetch("/api/audit-log");
+    const d = await r.json();
+    setAuditLog(d.log ?? []);
+  }, []);
+
   useEffect(() => {
     setLoading(true);
     fetchAll().finally(() => setLoading(false));
@@ -149,6 +171,8 @@ export default function AdminPage() {
 
   useEffect(() => { if (tab === "payouts") fetchPayouts(); }, [tab, fetchPayouts]);
   useEffect(() => { if (tab === "payment-links") fetchPaymentLinks(); }, [tab, fetchPaymentLinks]);
+  useEffect(() => { if (tab === "disputes") fetchDisputes(disputeFilter); }, [tab, fetchDisputes, disputeFilter]);
+  useEffect(() => { if (tab === "audit") fetchAuditLog(); }, [tab, fetchAuditLog]);
   useEffect(() => { if (tab === "wallet") fetchWallet(); }, [tab, fetchWallet]);
   useEffect(() => { if (tab === "users") fetchApplications(); }, [tab, fetchApplications]);
 
@@ -177,6 +201,11 @@ export default function AdminPage() {
   async function toggleAgentAvailability(agent: Agent) {
     await fetch(`/api/agents/${agent.id}`, { method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ available:!agent.available }) });
     setAgents(prev => prev.map(a => a.id===agent.id ? {...a,available:!a.available} : a));
+  }
+
+  async function updateBackgroundCheck(agentId: string, status: string) {
+    await fetch(`/api/agents/${agentId}`, { method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ backgroundCheckStatus: status }) });
+    setAgents(prev => prev.map(a => a.id===agentId ? {...a, backgroundCheckStatus: status} : a));
   }
 
   async function saveAgentRating(agentId: string) {
@@ -291,16 +320,31 @@ export default function AdminPage() {
     fetchAll(); fetchPayouts();
   }
 
+  async function submitDisputeResolution() {
+    if (!resolveDisputeModal) return;
+    if (resolveChoice === "wallet_credit" && (!resolveAmount || Number(resolveAmount) <= 0)) return;
+    setResolvingDispute(true);
+    await fetch(`/api/disputes/${resolveDisputeModal.id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ resolution: resolveChoice, amount: resolveAmount ? Number(resolveAmount) : undefined, notes: resolveNotes }),
+    });
+    setResolvingDispute(false);
+    setResolveDisputeModal(null); setResolveChoice("reshoot"); setResolveAmount(""); setResolveNotes("");
+    fetchDisputes(disputeFilter);
+  }
+
   const TABS = [
     ["orders","Orders",<ClipboardList key="o" className="w-4 h-4"/>],
     ["agents","Agents",<Users key="a" className="w-4 h-4"/>],
     ["users","Users",<UserPlus key="u" className="w-4 h-4"/>],
     ["wallet","Wallet",<DollarSign key="w" className="w-4 h-4 text-emerald-600"/>],
+    ["disputes","Disputes",<AlertTriangle key="disp" className="w-4 h-4 text-red-500"/>],
     ["samples","Samples",<ShieldCheck key="s" className="w-4 h-4"/>],
     ["payouts","Payouts",<CreditCard key="pay" className="w-4 h-4"/>],
     ["pricing","Pricing",<DollarSign key="p" className="w-4 h-4"/>],
     ["payment-links","Payment Links",<DollarSign key="pl" className="w-4 h-4 text-emerald-600"/>],
     ["emails","Email Log",<Mail key="e" className="w-4 h-4"/>],
+    ["audit","Audit Log",<History key="aud" className="w-4 h-4"/>],
   ] as const;
 
   return (
@@ -550,6 +594,18 @@ export default function AdminPage() {
                           <button onClick={()=>toggleAgentAvailability(agent)} className="flex items-center gap-1 text-xs text-slate-500 hover:text-blue-600">
                             {agent.available?<ToggleRight className="w-4 h-4 text-green-500"/>:<ToggleLeft className="w-4 h-4"/>}Toggle
                           </button>
+                          <select value={agent.backgroundCheckStatus ?? "not_started"} onChange={e=>updateBackgroundCheck(agent.id, e.target.value)}
+                            className={`text-xs font-medium px-2 py-0.5 rounded-full border cursor-pointer ${
+                              agent.backgroundCheckStatus==="passed" ? "bg-green-50 text-green-700 border-green-200" :
+                              agent.backgroundCheckStatus==="failed" ? "bg-red-50 text-red-700 border-red-200" :
+                              agent.backgroundCheckStatus==="pending" ? "bg-amber-50 text-amber-700 border-amber-200" :
+                              "bg-slate-50 text-slate-500 border-slate-200"
+                            }`}>
+                            <option value="not_started">BG Check: Not Started</option>
+                            <option value="pending">BG Check: Pending</option>
+                            <option value="passed">BG Check: Passed</option>
+                            <option value="failed">BG Check: Failed</option>
+                          </select>
                         </div>
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs text-slate-500">
                           <span className="flex items-center gap-1"><Mail className="w-3 h-3"/>{agent.email}</span>
@@ -1244,7 +1300,7 @@ export default function AdminPage() {
             </div>
           </div>
 
-        ) : (
+        ) : tab === "emails" ? (
           <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
             <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
               <h2 className="font-semibold text-slate-900">Email Log</h2>
@@ -1267,6 +1323,85 @@ export default function AdminPage() {
                       </div>
                       <span className="text-xs text-slate-400 whitespace-nowrap" suppressHydrationWarning>{new Date(e.timestamp).toLocaleTimeString()}</span>
                     </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : tab === "disputes" ? (
+          <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between flex-wrap gap-2">
+              <div>
+                <h2 className="font-semibold text-slate-900">Disputes</h2>
+                <p className="text-xs text-slate-400 mt-0.5">Snapect has no cash-refund policy — resolve via reshoot, wallet credit, or explanation</p>
+              </div>
+              <div className="flex gap-1">
+                {["open","under_review","resolved","rejected","all"].map(s=>(
+                  <button key={s} onClick={()=>setDisputeFilter(s)}
+                    className={`text-xs font-medium px-3 py-1.5 rounded-lg border ${disputeFilter===s?"bg-slate-900 text-white border-slate-900":"border-slate-200 text-slate-600 hover:bg-slate-50"}`}>
+                    {s.replace("_"," ")}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {disputes.length===0 ? (
+              <div className="text-center py-12 text-slate-400"><AlertTriangle className="w-8 h-8 mx-auto mb-2 text-slate-300"/><p>No disputes{disputeFilter!=="all"?` (${disputeFilter.replace("_"," ")})`:""}</p></div>
+            ) : disputes.map(d=>(
+              <div key={d.id} className="p-5 border-b border-slate-100 last:border-0">
+                <div className="flex items-start justify-between gap-3 mb-2 flex-wrap">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                        d.status==="resolved"?"bg-green-100 text-green-700":
+                        d.status==="rejected"?"bg-red-100 text-red-700":
+                        d.status==="under_review"?"bg-blue-100 text-blue-700":"bg-amber-100 text-amber-700"
+                      }`}>{d.status.replace("_"," ")}</span>
+                      <span className="text-xs text-slate-500 bg-slate-50 px-2 py-0.5 rounded-full">{d.reason.replace("_"," ")}</span>
+                    </div>
+                    <p className="font-medium text-slate-800 text-sm">{d.clientName} <span className="text-slate-400 font-normal">— {d.clientEmail}</span></p>
+                    <p className="text-xs text-slate-500 mt-0.5">Order: {d.orderAddress ?? d.orderId}</p>
+                  </div>
+                  <span className="text-xs text-slate-400" suppressHydrationWarning>{new Date(d.createdAt).toLocaleDateString()}</span>
+                </div>
+                <p className="text-sm text-slate-600 mb-3">{d.description}</p>
+                {d.resolution ? (
+                  <div className="text-xs bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 inline-block">
+                    Resolved: <strong>{d.resolution.replace("_"," ")}</strong>{d.resolutionAmount ? ` — $${d.resolutionAmount} credited` : ""}{d.resolutionNotes ? ` — ${d.resolutionNotes}` : ""}
+                  </div>
+                ) : (
+                  <div className="flex gap-2 flex-wrap">
+                    {d.status === "open" && (
+                      <button onClick={async()=>{ await fetch(`/api/disputes/${d.id}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({status:"under_review"})}); fetchDisputes(disputeFilter); }}
+                        className="text-xs font-medium px-3 py-1.5 rounded-lg border border-blue-200 text-blue-600 hover:bg-blue-50">Mark Under Review</button>
+                    )}
+                    <button onClick={()=>setResolveDisputeModal({id:d.id, clientName:d.clientName??""})}
+                      className="text-xs font-medium px-3 py-1.5 rounded-lg bg-slate-900 text-white hover:bg-slate-700">Resolve</button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100">
+              <h2 className="font-semibold text-slate-900">Admin Audit Log</h2>
+              <p className="text-xs text-slate-400 mt-0.5">Every activation, payout, price change, sample decision, and order override — most recent first</p>
+            </div>
+            {auditLog.length===0 ? (
+              <div className="text-center py-12 text-slate-400"><History className="w-8 h-8 mx-auto mb-2 text-slate-300"/><p>No admin actions logged yet</p></div>
+            ) : (
+              <div className="divide-y divide-slate-100">
+                {auditLog.map(entry=>(
+                  <div key={entry.id} className="px-6 py-3 flex items-start justify-between gap-3">
+                    <div>
+                      <span className="text-xs font-mono bg-slate-100 text-slate-700 px-2 py-0.5 rounded">{entry.action}</span>
+                      <span className="ml-2 text-sm text-slate-700">{entry.actor_name}</span>
+                      {entry.target_type && <span className="ml-2 text-xs text-slate-400">→ {entry.target_type} {entry.target_id}</span>}
+                      {Object.keys(entry.details||{}).length>0 && (
+                        <p className="text-xs text-slate-400 mt-0.5">{Object.entries(entry.details).map(([k,v])=>`${k}: ${v}`).join(" · ")}</p>
+                      )}
+                    </div>
+                    <span className="text-xs text-slate-400 whitespace-nowrap" suppressHydrationWarning>{new Date(entry.created_at).toLocaleString()}</span>
                   </div>
                 ))}
               </div>
@@ -1339,6 +1474,51 @@ export default function AdminPage() {
                 <CreditCard className="w-4 h-4"/>{processingPayout?"Processing…":"Process Payout"}
               </button>
               <button onClick={()=>setPayoutModal(null)} className="px-4 text-slate-500 text-sm">Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Resolve Dispute Modal */}
+      {resolveDisputeModal&&(
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-slate-900">Resolve Dispute — {resolveDisputeModal.clientName}</h3>
+              <button onClick={()=>setResolveDisputeModal(null)} className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-400"><X className="w-5 h-5"/></button>
+            </div>
+            <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-4">No cash refunds — choose a reshoot, wallet credit, or a rejection with explanation.</p>
+            <div className="space-y-2 mb-4">
+              {[
+                {v:"reshoot",label:"Free Reshoot", icon:<CameraIcon className="w-4 h-4"/>},
+                {v:"wallet_credit",label:"Wallet Credit", icon:<WalletIcon className="w-4 h-4"/>},
+                {v:"rejected",label:"Reject — No Action", icon:<XCircle className="w-4 h-4"/>},
+                {v:"other",label:"Other", icon:<AlertCircle className="w-4 h-4"/>},
+              ].map(opt=>(
+                <button key={opt.v} onClick={()=>setResolveChoice(opt.v as typeof resolveChoice)}
+                  className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-xl border text-sm font-medium transition-colors ${resolveChoice===opt.v?"border-slate-900 bg-slate-900 text-white":"border-slate-200 text-slate-600 hover:bg-slate-50"}`}>
+                  {opt.icon}{opt.label}
+                </button>
+              ))}
+            </div>
+            {resolveChoice==="wallet_credit" && (
+              <div className="mb-4">
+                <label className="text-xs font-medium text-slate-600 block mb-1">Credit Amount ($) *</label>
+                <input type="number" min="1" value={resolveAmount} onChange={e=>setResolveAmount(e.target.value)} placeholder="25"
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"/>
+              </div>
+            )}
+            <div className="mb-4">
+              <label className="text-xs font-medium text-slate-600 block mb-1">Notes to client</label>
+              <textarea value={resolveNotes} onChange={e=>setResolveNotes(e.target.value)} rows={3} placeholder="Explain the outcome…"
+                className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"/>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={submitDisputeResolution} disabled={resolvingDispute || (resolveChoice==="wallet_credit" && !resolveAmount)}
+                className="flex-1 flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-700 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl">
+                {resolvingDispute?"Resolving…":"Submit Resolution"}
+              </button>
+              <button onClick={()=>setResolveDisputeModal(null)} className="px-4 text-slate-500 text-sm">Cancel</button>
             </div>
           </div>
         </div>

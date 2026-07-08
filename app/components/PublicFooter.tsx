@@ -42,6 +42,7 @@ export default function PublicFooter() {
             <ul className="space-y-2 text-sm text-slate-500">
               <li><Link href="/privacy" className="hover:text-[#c8991a] transition-colors">Privacy Policy</Link></li>
               <li><Link href="/terms" className="hover:text-[#c8991a] transition-colors">Terms of Service</Link></li>
+              <li><Link href="/refund-policy" className="hover:text-[#c8991a] transition-colors">Refund Policy</Link></li>
               <li><Link href="/register/client" className="hover:text-[#c8991a] transition-colors">Client Sign Up</Link></li>
               <li><Link href="/register/agent" className="hover:text-[#c8991a] transition-colors">Agent Registration</Link></li>
             </ul>

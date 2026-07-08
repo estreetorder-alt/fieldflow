@@ -6,7 +6,7 @@ import Link from "next/link";
 import {
   ArrowLeft, Camera, MapPin, Clock, CheckCircle, RefreshCw,
   XCircle, DollarSign, User, FileText, Download, Calendar,
-  AlertCircle,
+  AlertCircle, Star, AlertTriangle,
 } from "lucide-react";
 
 interface StatusEvent {
@@ -51,12 +51,36 @@ const TIMELINE_DOT: Record<string, string> = {
   cancelled: "bg-red-400",
 };
 
+interface Dispute { id: string; status: string; reason: string; resolution?: string | null; resolutionNotes?: string; orderId: string; }
+interface Review { id: string; rating: number; comment: string; }
+
+const DISPUTE_REASONS = [
+  { value: "quality", label: "Photo quality issue" },
+  { value: "missing_shots", label: "Missing required shots" },
+  { value: "late", label: "Delivered late" },
+  { value: "wrong_address", label: "Wrong property photographed" },
+  { value: "other", label: "Other" },
+];
+
 export default function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  const [review, setReview] = useState<Review | null>(null);
+  const [showReviewForm, setShowReviewForm] = useState(false);
+  const [reviewRating, setReviewRating] = useState(0);
+  const [reviewComment, setReviewComment] = useState("");
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
+
+  const [dispute, setDispute] = useState<Dispute | null>(null);
+  const [showDisputeForm, setShowDisputeForm] = useState(false);
+  const [disputeReason, setDisputeReason] = useState("quality");
+  const [disputeDescription, setDisputeDescription] = useState("");
+  const [disputeSubmitting, setDisputeSubmitting] = useState(false);
+  const [disputeError, setDisputeError] = useState("");
 
   useEffect(() => {
     fetch(`/api/orders/${id}`)
@@ -66,9 +90,43 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
         const data = await res.json();
         setOrder(data.order);
         setLoading(false);
+        if (data.order?.status === "completed") {
+          fetch(`/api/reviews?orderId=${id}`).then(r => r.json()).then(d => setReview(d.review ?? null)).catch(() => {});
+          fetch(`/api/disputes`).then(r => r.json()).then(d => {
+            const existing = (d.disputes ?? []).find((x: Dispute) => x.orderId === id);
+            setDispute(existing ?? null);
+          }).catch(() => {});
+        }
       })
       .catch(() => { setError("Failed to load order."); setLoading(false); });
   }, [id, router]);
+
+  async function submitReview() {
+    if (!reviewRating) return;
+    setReviewSubmitting(true);
+    const res = await fetch("/api/reviews", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ orderId: id, rating: reviewRating, comment: reviewComment }),
+    });
+    const data = await res.json();
+    setReviewSubmitting(false);
+    if (res.ok) { setReview(data.review); setShowReviewForm(false); }
+  }
+
+  async function submitDispute() {
+    if (!disputeDescription.trim()) { setDisputeError("Please describe the issue."); return; }
+    setDisputeSubmitting(true);
+    setDisputeError("");
+    const res = await fetch("/api/disputes", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ orderId: id, reason: disputeReason, description: disputeDescription }),
+    });
+    const data = await res.json();
+    setDisputeSubmitting(false);
+    if (!res.ok) { setDisputeError(data.error ?? "Failed to submit dispute."); return; }
+    setDispute(data.dispute);
+    setShowDisputeForm(false);
+  }
 
   function handleDownload() {
     window.open(`/api/orders/${id}/report`, "_blank");
@@ -308,6 +366,102 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                   <Download className="w-4 h-4" />
                   Download Full Report
                 </button>
+              </div>
+            )}
+
+            {/* Rate this job */}
+            {isComplete && (
+              <div className="bg-white border border-slate-200 rounded-2xl p-5">
+                <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Rate This Job</h3>
+                {review ? (
+                  <div>
+                    <div className="flex items-center gap-1 mb-1">
+                      {[1,2,3,4,5].map(n => <Star key={n} className={`w-4 h-4 ${n <= review.rating ? "fill-amber-400 text-amber-400" : "text-slate-200"}`}/>)}
+                    </div>
+                    {review.comment && <p className="text-xs text-slate-500 italic">&quot;{review.comment}&quot;</p>}
+                    <p className="text-xs text-slate-400 mt-1">Thanks for your feedback!</p>
+                  </div>
+                ) : showReviewForm ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-1">
+                      {[1,2,3,4,5].map(n => (
+                        <button key={n} onClick={() => setReviewRating(n)}>
+                          <Star className={`w-6 h-6 transition-colors ${n <= reviewRating ? "fill-amber-400 text-amber-400" : "text-slate-200 hover:text-amber-200"}`}/>
+                        </button>
+                      ))}
+                    </div>
+                    <textarea
+                      value={reviewComment} onChange={e => setReviewComment(e.target.value)}
+                      placeholder="Optional comment about your field agent…"
+                      rows={2}
+                      className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                    />
+                    <div className="flex gap-2">
+                      <button onClick={submitReview} disabled={!reviewRating || reviewSubmitting}
+                        className="flex-1 bg-slate-900 hover:bg-slate-700 disabled:opacity-40 text-white text-xs font-semibold py-2 rounded-lg transition-colors">
+                        {reviewSubmitting ? "Submitting…" : "Submit Rating"}
+                      </button>
+                      <button onClick={() => setShowReviewForm(false)} className="text-xs text-slate-400 px-2">Cancel</button>
+                    </div>
+                  </div>
+                ) : (
+                  <button onClick={() => setShowReviewForm(true)} className="w-full flex items-center justify-center gap-2 border border-slate-200 hover:border-amber-300 text-sm font-medium text-slate-600 py-2.5 rounded-xl transition-colors">
+                    <Star className="w-4 h-4 text-amber-400" />
+                    Rate your field agent
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* File a dispute */}
+            {isComplete && (
+              <div className="bg-white border border-slate-200 rounded-2xl p-5">
+                <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Issue With This Order?</h3>
+                {dispute ? (
+                  <div className="text-sm">
+                    <span className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-full mb-2 ${
+                      dispute.status === "resolved" ? "bg-green-100 text-green-700" :
+                      dispute.status === "rejected" ? "bg-red-100 text-red-700" :
+                      "bg-amber-100 text-amber-700"
+                    }`}>
+                      {dispute.status === "open" ? "Under review" : dispute.status.replace("_", " ")}
+                    </span>
+                    {dispute.resolution && (
+                      <p className="text-xs text-slate-500">
+                        Outcome: {dispute.resolution === "wallet_credit" ? "Wallet credit issued" : dispute.resolution === "reshoot" ? "Reshoot scheduled" : "Reviewed — no further action"}
+                        {dispute.resolutionNotes && ` — ${dispute.resolutionNotes}`}
+                      </p>
+                    )}
+                    {!dispute.resolution && <p className="text-xs text-slate-400">We&apos;ll email you once it&apos;s reviewed.</p>}
+                  </div>
+                ) : showDisputeForm ? (
+                  <div className="space-y-3">
+                    <select value={disputeReason} onChange={e => setDisputeReason(e.target.value)}
+                      className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200">
+                      {DISPUTE_REASONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+                    </select>
+                    <textarea
+                      value={disputeDescription} onChange={e => setDisputeDescription(e.target.value)}
+                      placeholder="Describe what went wrong…"
+                      rows={3}
+                      className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                    />
+                    {disputeError && <p className="text-xs text-red-600">{disputeError}</p>}
+                    <p className="text-xs text-slate-400">Note: Snapect resolves disputes via a free reshoot or wallet credit — see our <Link href="/refund-policy" className="underline">Refund Policy</Link>. We don&apos;t issue cash refunds.</p>
+                    <div className="flex gap-2">
+                      <button onClick={submitDispute} disabled={disputeSubmitting}
+                        className="flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white text-xs font-semibold py-2 rounded-lg transition-colors">
+                        {disputeSubmitting ? "Submitting…" : "Submit Dispute"}
+                      </button>
+                      <button onClick={() => setShowDisputeForm(false)} className="text-xs text-slate-400 px-2">Cancel</button>
+                    </div>
+                  </div>
+                ) : (
+                  <button onClick={() => setShowDisputeForm(true)} className="w-full flex items-center justify-center gap-2 border border-slate-200 hover:border-red-300 text-sm font-medium text-slate-600 py-2.5 rounded-xl transition-colors">
+                    <AlertTriangle className="w-4 h-4 text-red-500" />
+                    File a Dispute
+                  </button>
+                )}
               </div>
             )}
 

@@ -194,18 +194,18 @@ function ClientPageInner() {
       lat: addrLat, lng: addrLng,
     };
 
-    // Try Stripe if configured
+    // Try Whop checkout if configured
     if (!selectedSvc.isCustom) {
-      const stripeRes = await fetch("/api/stripe", {
+      const whopRes = await fetch("/api/whop", {
         method:"POST", headers:{"Content-Type":"application/json"},
         body: JSON.stringify({ orderData, totalPrice: price, description: `${selectedSvc.name} — ${address}` }),
       });
-      const stripeData = await stripeRes.json();
-      if (stripeData.url) {
-        window.location.href = stripeData.url;
+      const whopData = await whopRes.json();
+      if (whopData.url) {
+        window.location.href = whopData.url;
         return;
       }
-      // skip=true means Stripe not configured, fall through
+      // skip=true means Whop not configured, fall through
     }
 
     const r = await fetch("/api/orders", {
@@ -548,7 +548,7 @@ function ClientPageInner() {
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[92vh] overflow-y-auto">
             <div className="flex items-center justify-between p-6 border-b border-slate-100 sticky top-0 bg-white z-10">
-              <div><h2 className="text-xl font-bold text-slate-900">Request Inspection</h2><p className="text-sm text-slate-400 mt-0.5">45+ services available · Stripe payment at checkout</p></div>
+              <div><h2 className="text-xl font-bold text-slate-900">Request Inspection</h2><p className="text-sm text-slate-400 mt-0.5">45+ services available · Secure payment via Whop at checkout</p></div>
               <button onClick={()=>{setShowNewOrder(false);resetForm();}} className="p-2 rounded-xl hover:bg-slate-100 text-slate-400"><X className="w-5 h-5"/></button>
             </div>
 
@@ -701,7 +701,7 @@ function ClientPageInner() {
                     <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 flex items-center justify-between">
                       <div>
                         <p className="text-sm font-medium text-blue-700">{selectedSvc?.name}</p>
-                        <p className="text-xs text-blue-500 mt-0.5 flex items-center gap-1"><CreditCard className="w-3 h-3"/>Paid securely via Stripe at checkout</p>
+                        <p className="text-xs text-blue-500 mt-0.5 flex items-center gap-1"><CreditCard className="w-3 h-3"/>Paid securely via Whop at checkout</p>
                       </div>
                       <div className="text-3xl font-bold text-blue-700">${price}</div>
                     </div>

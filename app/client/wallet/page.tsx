@@ -1,6 +1,6 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useCallback, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, DollarSign, Plus, Clock, CheckCircle, ArrowDownCircle, ArrowUpCircle, RefreshCw, Wallet, AlertTriangle } from "lucide-react";
 
@@ -25,7 +25,16 @@ const TYPE_ICONS: Record<string,React.ReactNode> = {
 };
 
 export default function WalletPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-slate-50 flex items-center justify-center text-slate-400">Loading…</div>}>
+      <WalletPageInner />
+    </Suspense>
+  );
+}
+
+function WalletPageInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [balance, setBalance] = useState(0);
   const [transactions, setTransactions] = useState<WalletTx[]>([]);
   const [paymentLinks, setPaymentLinks] = useState<PaymentLink[]>([]);
@@ -55,7 +64,23 @@ export default function WalletPage() {
 
   useEffect(() => { fetchWallet(); }, [fetchWallet]);
 
+  const [cardTopupResult, setCardTopupResult] = useState<"success" | "cancelled" | null>(null);
+  useEffect(() => {
+    const result = searchParams.get("topup");
+    if (result === "success" || result === "cancelled") {
+      setCardTopupResult(result);
+      if (result === "success") {
+        // Webhook confirms almost instantly, but poll once more shortly after redirect
+        const t = setTimeout(fetchWallet, 2500);
+        return () => clearTimeout(t);
+      }
+    }
+  }, [searchParams, fetchWallet]);
+
   const finalAmount = selectedAmount ?? (customAmount ? Number(customAmount) : null);
+
+  const [payingWithCard, setPayingWithCard] = useState(false);
+  const [cardError, setCardError] = useState("");
 
   async function requestTopup() {
     if (!finalAmount || finalAmount <= 0) return;
@@ -68,6 +93,20 @@ export default function WalletPage() {
     setRequestingTopup(false);
     setShowTopup(false);
     fetchWallet();
+  }
+
+  async function payWithCard() {
+    if (!finalAmount || finalAmount <= 0) return;
+    setPayingWithCard(true);
+    setCardError("");
+    const res = await fetch("/api/wallet/checkout", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ amount: finalAmount }),
+    });
+    const data = await res.json();
+    setPayingWithCard(false);
+    if (!res.ok) { setCardError(data.error ?? "Card top-up is unavailable right now."); return; }
+    window.location.href = data.url;
   }
 
   return (
@@ -97,6 +136,28 @@ export default function WalletPage() {
             <Plus className="w-4 h-4"/>Add Funds
           </button>
         </div>
+
+        {/* Card top-up result (Whop redirect) */}
+        {cardTopupResult === "success" && (
+          <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-start gap-3">
+            <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5"/>
+            <div>
+              <p className="font-bold text-green-900 text-sm">Payment Successful!</p>
+              <p className="text-green-800 text-xs mt-0.5">Your wallet is being credited — this usually takes just a few seconds.</p>
+              <button onClick={() => setCardTopupResult(null)} className="text-xs text-green-700 underline mt-1">Dismiss</button>
+            </div>
+          </div>
+        )}
+        {cardTopupResult === "cancelled" && (
+          <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-slate-400 flex-shrink-0 mt-0.5"/>
+            <div>
+              <p className="font-bold text-slate-700 text-sm">Payment Cancelled</p>
+              <p className="text-slate-500 text-xs mt-0.5">No charge was made. You can try again anytime.</p>
+              <button onClick={() => setCardTopupResult(null)} className="text-xs text-slate-500 underline mt-1">Dismiss</button>
+            </div>
+          </div>
+        )}
 
         {/* Low balance warning */}
         {balance < 40 && (
@@ -155,6 +216,19 @@ export default function WalletPage() {
                 onChange={e => { setCustomAmount(e.target.value); setSelectedAmount(null); }}
                 placeholder="Enter amount"
                 className="w-full pl-7 pr-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#c8991a]"/>
+            </div>
+
+            {/* Instant card top-up via Whop */}
+            <button onClick={payWithCard} disabled={!finalAmount || finalAmount <= 0 || payingWithCard}
+              className="w-full flex items-center justify-center gap-2 bg-[#0f1f3d] hover:bg-[#16294f] disabled:opacity-40 text-white font-bold py-3 rounded-xl transition-colors mb-2">
+              {payingWithCard ? "Redirecting to checkout…" : finalAmount ? `Pay $${finalAmount} by Card — Instant` : "Enter an amount to pay by card"}
+            </button>
+            {cardError && <p className="text-xs text-red-600 text-center mb-4">{cardError}</p>}
+
+            <div className="flex items-center gap-2 my-5">
+              <div className="flex-1 h-px bg-slate-200"/>
+              <span className="text-xs text-slate-400 font-medium">or pay manually (credited after admin confirms)</span>
+              <div className="flex-1 h-px bg-slate-200"/>
             </div>
 
             {/* Payment links */}

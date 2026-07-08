@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSubAccounts, createUser, getUserByEmail } from "@/lib/db";
+import { hashPassword } from "@/lib/password";
 
 export async function GET(request: NextRequest) {
   const userId = request.cookies.get("user_id")?.value;
@@ -19,7 +20,7 @@ export async function POST(request: NextRequest) {
   if (exists) return NextResponse.json({ error: "Email already registered" }, { status: 409 });
   const sub = await createUser({
     id: `user-${Date.now()}-${Math.random().toString(36).slice(2,5)}`,
-    email, password, role: "client", name, phone: "",
+    email, password: await hashPassword(password), role: "client", name, phone: "",
   });
   // Set parent_client_id
   const { supabase } = await import("@/lib/supabase");

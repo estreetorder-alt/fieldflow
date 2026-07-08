@@ -40,8 +40,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
+  const adminId = request.cookies.get("user_id")?.value;
   const userRole = request.cookies.get("user_role")?.value;
-  if (userRole !== "admin") return NextResponse.json({ error: "Admin only" }, { status: 403 });
+  if (!adminId || userRole !== "admin") return NextResponse.json({ error: "Admin only" }, { status: 403 });
 
   const body = await request.json();
   const { id, basePrice, compensation, active, rushFlat24, rushFlat6 } = body;
@@ -66,6 +67,14 @@ export async function PATCH(request: NextRequest) {
     ...(rushFlat24 !== undefined ? { rush_flat_24: rushFlat24 } : {}),
     ...(rushFlat6 !== undefined ? { rush_flat_6: rushFlat6 } : {}),
   }, { onConflict: "id" });
+
+  const { getUserById, logAdminAction } = await import("@/lib/db");
+  const admin = await getUserById(adminId);
+  await logAdminAction({
+    actorId: adminId, actorName: admin?.name ?? "Admin", action: "pricing.update",
+    targetType: "service", targetId: id,
+    details: { basePrice: basePrice ?? svc.basePrice, compensation: compensation ?? svc.compensation, active: active ?? svc.active },
+  });
 
   return NextResponse.json({ ok: true });
 }

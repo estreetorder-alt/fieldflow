@@ -78,12 +78,15 @@ export async function sendWelcomeEmail(user: { email: string; name: string; role
 }
 
 export async function sendPaymentConfirmationEmail(user: { email: string; name: string }, amount: number, type: string): Promise<void> {
-  const subject = "Payment Confirmed — Account Activated";
+  const isFree = amount <= 0;
+  const subject = isFree ? "Account Activated" : "Payment Confirmed — Account Activated";
   const html = emailWrapper(
-    "Payment Received & Account Activated!",
-    `<p style="color:#475569;font-size:15px;line-height:1.7;">Thank you, ${user.name}. Your payment of <strong>$${amount}</strong> has been received and your Snapect account is now active.</p>
+    isFree ? "Account Activated!" : "Payment Received & Account Activated!",
+    `<p style="color:#475569;font-size:15px;line-height:1.7;">${isFree
+        ? `Thank you, ${user.name}. Your Snapect account is now active — no payment required.`
+        : `Thank you, ${user.name}. Your payment of <strong>$${amount}</strong> has been received and your Snapect account is now active.`}</p>
      <table style="width:100%;border:1px solid #e2e8f0;border-radius:10px;padding:16px;margin:16px 0;border-collapse:separate;">
-       ${row("Payment", `$${amount}`)}
+       ${isFree ? row("Payment", "Free — $0") : row("Payment", `$${amount}`)}
        ${row("Type", type)}
        ${row("Status", "✅ Confirmed")}
      </table>
@@ -91,7 +94,7 @@ export async function sendPaymentConfirmationEmail(user: { email: string; name: 
     `${BASE_URL}/login`,
     "Access Your Dashboard"
   );
-  await addEmailLog({ type: "payment_confirmed", to: user.email, subject, body: `Payment $${amount} confirmed for ${user.name}` });
+  await addEmailLog({ type: "payment_confirmed", to: user.email, subject, body: isFree ? `Account activated (free) for ${user.name}` : `Payment $${amount} confirmed for ${user.name}` });
   await sendViaResend(user.email, subject, html);
 }
 
@@ -312,6 +315,33 @@ export async function sendAgentRejectedEmail(agent: { email: string; name: strin
   );
   await addEmailLog({ type: "agent_rejected", to: agent.email, subject, body: `Agent rejected: ${agent.name}` });
   await sendViaResend(agent.email, subject, html);
+}
+
+export async function sendDisputeResolutionEmail(opts: {
+  email: string; name: string; orderAddress: string;
+  resolution: "reshoot" | "wallet_credit" | "rejected" | "other";
+  amount?: number; notes?: string;
+}): Promise<void> {
+  const subject = "Update on Your Dispute";
+  const resolutionLabel = {
+    reshoot: "We've scheduled a free reshoot",
+    wallet_credit: `We've credited $${opts.amount ?? 0} to your Snapect wallet`,
+    rejected: "We've reviewed your dispute",
+    other: "We've reviewed your dispute",
+  }[opts.resolution];
+  const html = emailWrapper(
+    "Dispute Resolved",
+    `<p style="color:#475569;font-size:15px;line-height:1.7;">Hi ${opts.name}, we've reviewed your dispute regarding <strong>${opts.orderAddress}</strong>.</p>
+     <table style="width:100%;border:1px solid #e2e8f0;border-radius:10px;padding:16px;margin:16px 0;border-collapse:separate;">
+       ${row("Outcome", resolutionLabel)}
+       ${opts.notes ? row("Notes", opts.notes) : ""}
+     </table>
+     <p style="color:#475569;font-size:13px;">Per Snapect policy, we don't issue cash refunds — outstanding issues are resolved through a free reshoot or wallet credit toward a future order. See our <a href="${BASE_URL}/refund-policy">Refund Policy</a> for details.</p>`,
+    opts.resolution === "wallet_credit" ? `${BASE_URL}/client/wallet` : `${BASE_URL}/client`,
+    opts.resolution === "wallet_credit" ? "View Wallet" : "Go to Dashboard"
+  );
+  await addEmailLog({ type: "dispute_resolved", to: opts.email, subject, body: `Dispute resolved (${opts.resolution}) for ${opts.name}` });
+  await sendViaResend(opts.email, subject, html);
 }
 
 // ── ADMIN NOTIFICATIONS ───────────────────────────────────────

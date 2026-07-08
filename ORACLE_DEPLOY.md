@@ -129,8 +129,9 @@ NEXT_PUBLIC_SUPABASE_URL=https://uwjzurlovyjvmycxbvhz.supabase.co
 SUPABASE_SERVICE_KEY=your_service_role_key_here
 NEXT_PUBLIC_BASE_URL=https://yourdomain.com
 MAPBOX_TOKEN=your_mapbox_token_here
-STRIPE_SECRET_KEY=sk_live_your_stripe_key
-STRIPE_WEBHOOK_SECRET=whsec_your_webhook_secret
+WHOP_API_KEY=your_whop_company_api_key
+WHOP_COMPANY_ID=biz_your_company_id
+WHOP_WEBHOOK_SECRET=your_whop_webhook_signing_secret
 RESEND_API_KEY=re_your_resend_key
 NODE_ENV=production
 PORT=3000
@@ -301,14 +302,15 @@ On your server, update `.env.local`:
 ```bash
 nano /var/www/fieldflow/.env.local
 # Change NEXT_PUBLIC_BASE_URL to your domain
-# Change STRIPE_WEBHOOK_SECRET to new webhook pointing to your domain
+# Change WHOP_WEBHOOK_SECRET to new webhook pointing to your domain
 ```
 
-### 6.2 Update Stripe Webhook
-1. Go to **stripe.com** → Developers → Webhooks → Add endpoint
-2. URL: `https://yourdomain.com/api/stripe/webhook`
-3. Events: `checkout.session.completed`
-4. Copy the webhook signing secret → update `.env.local`
+### 6.2 Update Whop Webhook
+1. Go to your **Whop Dashboard** → Developer tab → Webhooks → Create Webhook
+2. URL: `https://yourdomain.com/api/whop/webhook`
+3. Events: `payment.succeeded`
+4. Ensure API version is v1
+5. Copy the webhook signing secret → update `.env.local`
 
 ### 6.3 Rebuild and Restart
 ```bash

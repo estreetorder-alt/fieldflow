@@ -12,6 +12,10 @@ export interface User {
   grade?: number; completionRate?: number; responseRate?: number; approved?: boolean;
   parentClientId?: string;
   accountActive?: boolean; suspended?: boolean;
+  backgroundCheckStatus?: "not_started" | "pending" | "passed" | "failed";
+  backgroundCheckNotes?: string;
+  backgroundCheckUpdatedAt?: string;
+  smsOptIn?: boolean;
 }
 
 export interface Bid {
@@ -77,6 +81,10 @@ function mapUser(row: Record<string, unknown>): User {
     parentClientId: row.parent_client_id as string | undefined,
     accountActive: row.account_active as boolean | undefined,
     suspended: row.suspended as boolean | undefined,
+    backgroundCheckStatus: (row.background_check_status as User["backgroundCheckStatus"]) ?? "not_started",
+    backgroundCheckNotes: row.background_check_notes as string | undefined,
+    backgroundCheckUpdatedAt: row.background_check_updated_at as string | undefined,
+    smsOptIn: row.sms_opt_in as boolean | undefined,
   };
 }
 
@@ -185,6 +193,7 @@ export async function createUser(user: Omit<User, "createdAt">): Promise<User> {
     total_earnings: user.totalEarnings ?? 0,
     pending_payout: user.pendingPayout ?? 0,
     completed_jobs: user.completedJobs ?? 0,
+    parent_client_id: user.parentClientId ?? null,
   }).select().single();
   if (error) throw new Error(error.message);
   return mapUser(data as Record<string, unknown>);
@@ -201,6 +210,10 @@ export async function updateUser(id: string, fields: Partial<User>): Promise<voi
   if (fields.pendingPayout !== undefined) patch.pending_payout = fields.pendingPayout;
   if (fields.totalEarnings !== undefined) patch.total_earnings = fields.totalEarnings;
   if (fields.completedJobs !== undefined) patch.completed_jobs = fields.completedJobs;
+  if (fields.backgroundCheckStatus !== undefined) { patch.background_check_status = fields.backgroundCheckStatus; patch.background_check_updated_at = new Date().toISOString(); }
+  if (fields.backgroundCheckNotes !== undefined) patch.background_check_notes = fields.backgroundCheckNotes;
+  if (fields.smsOptIn !== undefined) patch.sms_opt_in = fields.smsOptIn;
+  if (fields.suspended !== undefined) patch.suspended = fields.suspended;
   await supabase.from("users").update(patch).eq("id", id);
 }
 
@@ -579,10 +592,11 @@ export async function getSubAccounts(parentClientId: string): Promise<User[]> {
 }
 
 export async function createSubAccount(sub: { name: string; email: string; password: string; parentClientId: string }): Promise<User> {
+  const { hashPassword } = await import("./password");
   return createUser({
     id: `user-${Date.now()}-${Math.random().toString(36).slice(2,5)}`,
-    email: sub.email, password: sub.password, role: "client",
-    name: sub.name, phone: "",
+    email: sub.email, password: await hashPassword(sub.password), role: "client",
+    name: sub.name, phone: "", parentClientId: sub.parentClientId,
   });
 }
 
@@ -688,7 +702,8 @@ export async function unsuspendUserAccount(userId: string): Promise<void> {
 // ── Password Reset ────────────────────────────────────────────
 
 export async function createPasswordResetToken(userId: string): Promise<string> {
-  const token = `${Date.now()}-${Math.random().toString(36).slice(2,10)}-${Math.random().toString(36).slice(2,10)}`;
+  const { randomBytes } = await import("crypto");
+  const token = randomBytes(32).toString("hex"); // cryptographically secure, 256 bits of entropy
   const expires = new Date(Date.now() + 3600000); // 1 hour
   await supabase.from("password_reset_tokens").insert({
     user_id: userId, token, expires_at: expires.toISOString(),
@@ -708,7 +723,8 @@ export async function validateResetToken(token: string): Promise<string | null> 
 export async function useResetToken(token: string, newPassword: string): Promise<boolean> {
   const userId = await validateResetToken(token);
   if (!userId) return false;
-  await supabase.from("users").update({ password: newPassword }).eq("id", userId);
+  const { hashPassword } = await import("./password");
+  await supabase.from("users").update({ password: await hashPassword(newPassword) }).eq("id", userId);
   await supabase.from("password_reset_tokens").update({ used: true }).eq("token", token);
   return true;
 }
@@ -890,4 +906,144 @@ export async function getAgentApplications(): Promise<Record<string,unknown>[]> 
   const { data } = await supabase.from("agent_applications")
     .select("*").order("created_at", { ascending: false });
   return (data ?? []) as Record<string,unknown>[];
+}
+
+// ── Disputes (no cash refunds — reshoot / wallet credit / rejected) ──
+
+export interface Dispute {
+  id: string; orderId: string; clientId: string;
+  reason: string; description: string; photoUrls: string[];
+  status: "open" | "under_review" | "resolved" | "rejected";
+  resolution?: "reshoot" | "wallet_credit" | "rejected" | "other" | null;
+  resolutionAmount?: number; resolutionNotes?: string;
+  resolvedBy?: string | null; resolvedAt?: string | null;
+  createdAt: string;
+  clientName?: string; clientEmail?: string; orderAddress?: string;
+}
+
+function mapDispute(row: Record<string, unknown>): Dispute {
+  const client = row.users as Record<string, unknown> | undefined;
+  const order = row.orders as Record<string, unknown> | undefined;
+  return {
+    id: row.id as string, orderId: row.order_id as string, clientId: row.client_id as string,
+    reason: row.reason as string, description: row.description as string,
+    photoUrls: (row.photo_urls as string[]) ?? [],
+    status: row.status as Dispute["status"],
+    resolution: row.resolution as Dispute["resolution"],
+    resolutionAmount: Number(row.resolution_amount ?? 0),
+    resolutionNotes: row.resolution_notes as string,
+    resolvedBy: row.resolved_by as string | null,
+    resolvedAt: row.resolved_at as string | null,
+    createdAt: row.created_at as string,
+    clientName: client?.name as string | undefined,
+    clientEmail: client?.email as string | undefined,
+    orderAddress: order?.address as string | undefined,
+  };
+}
+
+export async function createDispute(d: { orderId: string; clientId: string; reason: string; description: string; photoUrls?: string[] }): Promise<Dispute> {
+  const { data, error } = await supabase.from("disputes").insert({
+    order_id: d.orderId, client_id: d.clientId, reason: d.reason,
+    description: d.description, photo_urls: d.photoUrls ?? [],
+  }).select().single();
+  if (error) throw new Error(error.message);
+  return mapDispute(data as Record<string, unknown>);
+}
+
+export async function getDisputeById(id: string): Promise<Dispute | null> {
+  const { data } = await supabase.from("disputes").select("*, users!disputes_client_id_fkey(name,email), orders(address)").eq("id", id).single();
+  return data ? mapDispute(data as Record<string, unknown>) : null;
+}
+
+export async function getDisputesByClient(clientId: string): Promise<Dispute[]> {
+  const { data } = await supabase.from("disputes").select("*, orders(address)").eq("client_id", clientId).order("created_at", { ascending: false });
+  return (data ?? []).map(r => mapDispute(r as Record<string, unknown>));
+}
+
+export async function getAllDisputes(status?: string): Promise<Dispute[]> {
+  let q = supabase.from("disputes").select("*, users!disputes_client_id_fkey(name,email), orders(address)").order("created_at", { ascending: false });
+  if (status) q = q.eq("status", status);
+  const { data } = await q;
+  return (data ?? []).map(r => mapDispute(r as Record<string, unknown>));
+}
+
+export async function resolveDispute(id: string, resolution: { resolution: "reshoot" | "wallet_credit" | "rejected" | "other"; amount?: number; notes: string; resolvedBy: string }): Promise<Dispute> {
+  const dispute = await getDisputeById(id);
+  if (!dispute) throw new Error("Dispute not found");
+
+  if (resolution.resolution === "wallet_credit" && resolution.amount && resolution.amount > 0) {
+    await addWalletTopup(dispute.clientId, resolution.amount, `Dispute resolution credit — ${id}`);
+  }
+
+  const { data, error } = await supabase.from("disputes").update({
+    status: resolution.resolution === "rejected" ? "rejected" : "resolved",
+    resolution: resolution.resolution,
+    resolution_amount: resolution.amount ?? 0,
+    resolution_notes: resolution.notes,
+    resolved_by: resolution.resolvedBy,
+    resolved_at: new Date().toISOString(),
+  }).eq("id", id).select().single();
+  if (error) throw new Error(error.message);
+  return mapDispute(data as Record<string, unknown>);
+}
+
+export async function setDisputeStatus(id: string, status: "under_review"): Promise<void> {
+  await supabase.from("disputes").update({ status }).eq("id", id);
+}
+
+// ── Reviews (client rates a completed job) ─────────────────────
+
+export interface Review {
+  id: string; orderId: string; clientId: string; agentId: string;
+  rating: number; comment: string; createdAt: string;
+  clientName?: string;
+}
+
+export async function createReview(r: { orderId: string; clientId: string; agentId: string; rating: number; comment?: string }): Promise<Review> {
+  const { data, error } = await supabase.from("reviews").insert({
+    order_id: r.orderId, client_id: r.clientId, agent_id: r.agentId,
+    rating: r.rating, comment: r.comment ?? "",
+  }).select().single();
+  if (error) throw new Error(error.message);
+
+  // Recompute agent's average rating
+  const { data: allReviews } = await supabase.from("reviews").select("rating").eq("agent_id", r.agentId);
+  if (allReviews?.length) {
+    const avg = allReviews.reduce((sum, row) => sum + Number((row as Record<string, unknown>).rating), 0) / allReviews.length;
+    await supabase.from("users").update({ rating: Math.round(avg * 10) / 10 }).eq("id", r.agentId);
+  }
+
+  const row = data as Record<string, unknown>;
+  return { id: row.id as string, orderId: row.order_id as string, clientId: row.client_id as string, agentId: row.agent_id as string, rating: row.rating as number, comment: row.comment as string, createdAt: row.created_at as string };
+}
+
+export async function getReviewByOrder(orderId: string): Promise<Review | null> {
+  const { data } = await supabase.from("reviews").select("*").eq("order_id", orderId).maybeSingle();
+  if (!data) return null;
+  const row = data as Record<string, unknown>;
+  return { id: row.id as string, orderId: row.order_id as string, clientId: row.client_id as string, agentId: row.agent_id as string, rating: row.rating as number, comment: row.comment as string, createdAt: row.created_at as string };
+}
+
+export async function getReviewsForAgent(agentId: string): Promise<Review[]> {
+  const { data } = await supabase.from("reviews").select("*, users!reviews_client_id_fkey(name)").eq("agent_id", agentId).order("created_at", { ascending: false }).limit(50);
+  return (data ?? []).map(r => {
+    const row = r as Record<string, unknown>;
+    const client = row.users as Record<string, unknown> | undefined;
+    return { id: row.id as string, orderId: row.order_id as string, clientId: row.client_id as string, agentId: row.agent_id as string, rating: row.rating as number, comment: row.comment as string, createdAt: row.created_at as string, clientName: client?.name as string | undefined };
+  });
+}
+
+// ── Admin audit log ─────────────────────────────────────────────
+
+export async function logAdminAction(entry: { actorId: string; actorName: string; action: string; targetType?: string; targetId?: string; details?: Record<string, unknown> }): Promise<void> {
+  await supabase.from("audit_log").insert({
+    actor_id: entry.actorId, actor_name: entry.actorName, action: entry.action,
+    target_type: entry.targetType ?? "", target_id: entry.targetId ?? "",
+    details: entry.details ?? {},
+  });
+}
+
+export async function getAuditLog(limit = 200): Promise<Record<string, unknown>[]> {
+  const { data } = await supabase.from("audit_log").select("*").order("created_at", { ascending: false }).limit(limit);
+  return (data ?? []) as Record<string, unknown>[];
 }

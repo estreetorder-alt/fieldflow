@@ -29,7 +29,7 @@ const STEPS = [
   { n:"02", title:"Choose Your Service", desc:"45+ predefined services with fixed prices and shot lists. Or customize your own order." },
   { n:"03", title:"Select Turnaround", desc:"Next business day, 24-hour rush (+$15), or 6-hour rush (+$35). Orders before 10 AM dispatched same day." },
   { n:"04", title:"Add Date Stamp", desc:"Optional complimentary date stamp burned into every photo — ideal for BPO, legal, and insurance use." },
-  { n:"05", title:"Pay & Submit", desc:"Pay securely via Stripe. Order dispatched to your nearest highest-graded agent within seconds." },
+  { n:"05", title:"Pay & Submit", desc:"Pay securely via Whop. Order dispatched to your nearest highest-graded agent within seconds." },
 ];
 
 const TRUSTED_BY = ["Johnson Realty LLC", "Midwest Property Group", "First National Bank", "CoreLogic Partners", "Asset Management Co.", "Premier REO Services"];
@@ -193,7 +193,7 @@ export default function HomePage() {
               { icon:<Shield className="w-6 h-6"/>, title:"Verified & Graded Agents", desc:"Every agent submits a 7-photo sample set before approval. Grades are based on quality, speed, and reliability. Highest-graded agents get priority dispatch." },
               { icon:<Zap className="w-6 h-6"/>, title:"Auto-Dispatch in Seconds", desc:"Orders are dispatched to the highest-graded available agent in your ZIP within seconds. No manual assignment, no delays." },
               { icon:<Clock className="w-6 h-6"/>, title:"87% Done Within 24 Hours", desc:"Orders before 10 AM local time are completed by next business day. Rush options: 24-hour (+$15) and 6-hour (+$35) with flat fees." },
-              { icon:<DollarSign className="w-6 h-6"/>, title:"Fixed Transparent Pricing", desc:"No dynamic pricing, no surprises. Every service has a fixed price. You see the full cost before paying via Stripe." },
+              { icon:<DollarSign className="w-6 h-6"/>, title:"Fixed Transparent Pricing", desc:"No dynamic pricing, no surprises. Every service has a fixed price. You see the full cost before paying via Whop." },
               { icon:<Camera className="w-6 h-6"/>, title:"30-Day Photo Storage", desc:"Photos delivered by email instantly and stored securely for 30 days. Download, select, or email photos from your dashboard." },
               { icon:<Users className="w-6 h-6"/>, title:"Multi-User Accounts", desc:"Create employee sub-accounts. Each employee can place orders tracked to your billing. Ideal for BPO companies with large teams." },
             ].map(f=>(

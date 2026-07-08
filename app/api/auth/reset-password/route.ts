@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUserByEmail, createPasswordResetToken, validateResetToken, useResetToken } from "@/lib/db";
 import { sendAdminNotification } from "@/lib/email";
+import { isRateLimited, recordAttempt, getClientIp } from "@/lib/rateLimit";
 
 const BASE = process.env.NEXT_PUBLIC_BASE_URL ?? "https://snapect.com";
 
@@ -9,6 +10,15 @@ export async function POST(request: NextRequest) {
 
   // Step 1: Request reset
   if (email && !token) {
+    const ip = getClientIp(request);
+    const emailKey = `reset:${String(email).toLowerCase()}`;
+    const ipKey = `reset-ip:${ip}`;
+    if (await isRateLimited(emailKey, 3, 60) || await isRateLimited(ipKey, 10, 60)) {
+      // Same generic message — don't reveal rate-limit state to a potential attacker either
+      return NextResponse.json({ ok: true, message: "If that email exists, a reset link has been sent." });
+    }
+    await Promise.all([recordAttempt(emailKey), recordAttempt(ipKey)]);
+
     const user = await getUserByEmail(email);
     if (!user) {
       // Don't reveal if email exists

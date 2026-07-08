@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { confirmTopup, getUserById } from "@/lib/db";
+import { confirmTopup, getUserById, logAdminAction } from "@/lib/db";
 import { sendPaymentConfirmationEmail } from "@/lib/email";
 import { supabase } from "@/lib/supabase";
 
 type Params = { params: Promise<{ id: string }> };
 
 export async function PATCH(request: NextRequest, { params }: Params) {
+  const adminId = request.cookies.get("user_id")?.value;
   const userRole = request.cookies.get("user_role")?.value;
-  if (userRole !== "admin") return NextResponse.json({ error: "Admin only" }, { status: 403 });
+  if (!adminId || userRole !== "admin") return NextResponse.json({ error: "Admin only" }, { status: 403 });
 
   const { id } = await params;
   const { action } = await request.json();
@@ -19,6 +20,9 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     if (!row) return NextResponse.json({ error: "Transaction not found" }, { status: 404 });
 
     await confirmTopup(id);
+
+    const admin = await getUserById(adminId);
+    await logAdminAction({ actorId: adminId, actorName: admin?.name ?? "Admin", action: "wallet.confirm_topup", targetType: "wallet_transaction", targetId: id, details: { userId: row.user_id, amount: row.amount } });
 
     // Email user that wallet was topped up
     const user = await getUserById(row.user_id as string);
@@ -34,6 +38,8 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 
   if (action === "cancel") {
     await supabase.from("wallet_transactions").update({ status: "cancelled" }).eq("id", id);
+    const admin = await getUserById(adminId);
+    await logAdminAction({ actorId: adminId, actorName: admin?.name ?? "Admin", action: "wallet.cancel_topup", targetType: "wallet_transaction", targetId: id });
     return NextResponse.json({ ok: true });
   }
 

@@ -18,7 +18,12 @@ export async function GET(request: NextRequest, { params }: Params) {
   const order = await getOrderById(id);
   if (!order) return NextResponse.json({ error: "Order not found" }, { status: 404 });
 
-  if (userRole === "client" && order.clientId !== userId)
+  if (userRole === "client" && order.clientId !== userId) {
+    const orderClient = await getUserById(order.clientId);
+    if (orderClient?.parentClientId !== userId)
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+  if (userRole === "agent" && order.assignedAgentId !== userId)
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const [client, agent] = await Promise.all([
