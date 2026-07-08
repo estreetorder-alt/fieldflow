@@ -7,7 +7,7 @@ import {
   DollarSign, FileText, X, Wifi, WifiOff, ChevronRight, Zap, Package,
   List, Trash2, Mail, Download, Image, Square, CheckSquare, Gavel, User,
   Search, AlertCircle, AlertTriangle, Info, ChevronDown, ChevronUp,
-  CreditCard, Star, Shield, Users,
+  CreditCard, Star, Shield, Users, Car, Megaphone, Home as HomeIcon, Headset,
 } from "lucide-react";
 
 interface Photo { id: string; filename: string; url: string; description: string; selectedByClient: boolean; }
@@ -16,6 +16,7 @@ interface Order {
   id: string; address: string; status: string; totalPrice: number; compensationAmount: number;
   serviceType: string; turnaroundTier: string; notes: string; customizeNotes: string;
   photos: Photo[]; photoExpiresAt: string | null; createdAt: string; invoicePaid: boolean;
+  offerAcceptedAt?: string | null;
   agent?: { name: string } | null; bids?: Bid[]; acceptedBidId?: string | null;
 }
 interface ServiceItem { id: string; name: string; description: string; basePrice: number; compensation: number; category: string; photoCount?: number; shotList?: string[]; isCustom?: boolean; requiresInterior?: boolean; }
@@ -107,6 +108,18 @@ function ClientPageInner() {
 
   // Payment success banner
   const [paymentSuccess, setPaymentSuccess] = useState(false);
+
+  // Velocity-style dashboard state
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [visibleCount, setVisibleCount] = useState(10);
+  const [navMenu, setNavMenu] = useState<"orders"|"settings"|null>(null);
+  const [announcement, setAnnouncement] = useState<{id:number;message:string}|null>(null);
+  const [quickView, setQuickView] = useState<string|null>(null);
+
+  useEffect(() => {
+    fetch("/api/announcements").then(r=>r.json()).then(d=>{ if(d.announcement) setAnnouncement(d.announcement); }).catch(()=>{});
+  }, []);
 
   const selectedSvc = catalog.flatMap(c=>c.services).find(s=>s.id===selectedServiceId);
   const price = calcPrice(selectedSvc, tier, selectedSvc?.isCustom ? Number(customPrice) : undefined);
@@ -273,30 +286,143 @@ function ClientPageInner() {
 
   const stats = { total:orders.length, pending:orders.filter(o=>o.status==="pending").length, inProgress:orders.filter(o=>o.status==="in_progress").length, completed:orders.filter(o=>o.status==="completed").length };
 
+  // ── Velocity-style ledger derivations ──
+  const filteredOrders = orders.filter(o => {
+    if (statusFilter !== "all" && o.status !== statusFilter) return false;
+    if (search.trim() && !o.address.toLowerCase().includes(search.trim().toLowerCase())) return false;
+    return true;
+  });
+  const visibleOrders = filteredOrders.slice(0, visibleCount);
+
+  // Completed orders per month, last 12 months (for the trend chart)
+  const chartMonths: { label: string; count: number }[] = (() => {
+    const now = new Date();
+    const months: { key: string; label: string; count: number }[] = [];
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      months.push({ key: `${d.getFullYear()}-${d.getMonth()}`, label: d.toLocaleString("en-US", { month: "short" }), count: 0 });
+    }
+    for (const o of orders) {
+      if (o.status !== "completed") continue;
+      const d = new Date(o.createdAt);
+      const key = `${d.getFullYear()}-${d.getMonth()}`;
+      const m = months.find(mm => mm.key === key);
+      if (m) m.count++;
+    }
+    return months;
+  })();
+  const chartMax = Math.max(4, ...chartMonths.map(m => m.count));
+
+  // Split "123 Main St, Fayetteville NC 28301" → address line + city/state
+  function splitAddress(full: string): { line: string; area: string } {
+    const idx = full.indexOf(",");
+    if (idx === -1) return { line: full, area: "" };
+    return { line: full.slice(0, idx), area: full.slice(idx + 1).replace(/\b\d{5}(-\d{4})?\b/, "").trim() };
+  }
+
+  function reorder(o: Order) {
+    setAddress(o.address);
+    setBulkMode(false);
+    setShowNewOrder(true);
+  }
+
   return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="bg-white border-b border-slate-100 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
-        <div className="flex items-center gap-3">
-          <span className="w-9 h-9 bg-blue-600 text-white rounded-xl flex items-center justify-center font-bold">📷</span>
-          <span className="font-bold text-slate-900">Snapect</span>
-          <span className="text-xs bg-blue-50 text-blue-600 border border-blue-100 rounded-full px-2 py-0.5 font-medium">Client Portal</span>
-        </div>
-        <div className="flex items-center gap-4">
-          <div className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border ${liveConnected?"bg-green-50 text-green-600 border-green-200":"bg-slate-50 text-slate-400 border-slate-200"}`}>
+    <div className="min-h-screen bg-[#eef1f6]">
+      {/* ── Top nav — navy bar with dropdown menus (Velocity structure) ── */}
+      <header className="bg-[#0f1f3d] sticky top-0 z-30 shadow-md" onMouseLeave={()=>setNavMenu(null)}>
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2.5 flex-shrink-0">
+            <img src="/snapect-logo.png" alt="Snapect" className="h-8 w-auto object-contain" onError={e=>{(e.target as HTMLImageElement).style.display="none";}}/>
+            <span className="font-extrabold text-white tracking-tight hidden sm:inline">Snapect</span>
+            <span className="text-[10px] bg-[#c8991a] text-[#0f1f3d] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">Client Portal</span>
+          </div>
+
+          <nav className="flex items-center gap-0.5 text-sm">
+            <button onClick={()=>{setTab("orders");window.scrollTo({top:0,behavior:"smooth"});}}
+              className="flex items-center gap-1.5 text-slate-200 hover:text-white hover:bg-white/10 px-3 py-2 rounded-lg font-medium transition-colors">
+              <HomeIcon className="w-4 h-4"/><span className="hidden md:inline">Home</span>
+            </button>
+
+            {/* Orders dropdown */}
+            <div className="relative">
+              <button onClick={()=>setNavMenu(navMenu==="orders"?null:"orders")} onMouseEnter={()=>setNavMenu("orders")}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg font-medium transition-colors ${navMenu==="orders"?"bg-white/10 text-white":"text-slate-200 hover:text-white hover:bg-white/10"}`}>
+                <List className="w-4 h-4"/><span className="hidden md:inline">Orders</span><ChevronDown className="w-3.5 h-3.5"/>
+              </button>
+              {navMenu==="orders"&&(
+                <div className="absolute left-0 top-full mt-1 w-56 bg-[#16294f] border border-white/10 rounded-xl shadow-2xl overflow-hidden py-1">
+                  {[
+                    {label:"Place An Order", icon:<Plus className="w-4 h-4"/>, act:()=>{setBulkMode(false);setShowNewOrder(true);setNavMenu(null);}},
+                    {label:"Place Multi Orders", icon:<Package className="w-4 h-4"/>, act:()=>{setBulkMode(true);setShowNewOrder(true);setNavMenu(null);}},
+                    {label:"View Orders", icon:<List className="w-4 h-4"/>, act:()=>{setTab("orders");setNavMenu(null);document.getElementById("order-ledger")?.scrollIntoView({behavior:"smooth"});}},
+                  ].map(item=>(
+                    <button key={item.label} onClick={item.act} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-200 hover:bg-white/10 hover:text-white text-left">
+                      {item.icon}{item.label}
+                    </button>
+                  ))}
+                  <Link href="/coverage" className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-200 hover:bg-white/10 hover:text-white"><MapPin className="w-4 h-4"/>View Coverage Map</Link>
+                  <Link href="/contact" className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-200 hover:bg-white/10 hover:text-white"><DollarSign className="w-4 h-4"/>Request a Quote</Link>
+                </div>
+              )}
+            </div>
+
+            {/* Settings dropdown */}
+            <div className="relative">
+              <button onClick={()=>setNavMenu(navMenu==="settings"?null:"settings")} onMouseEnter={()=>setNavMenu("settings")}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg font-medium transition-colors ${navMenu==="settings"?"bg-white/10 text-white":"text-slate-200 hover:text-white hover:bg-white/10"}`}>
+                <Users className="w-4 h-4"/><span className="hidden md:inline">Settings</span><ChevronDown className="w-3.5 h-3.5"/>
+              </button>
+              {navMenu==="settings"&&(
+                <div className="absolute left-0 top-full mt-1 w-56 bg-[#16294f] border border-white/10 rounded-xl shadow-2xl overflow-hidden py-1">
+                  <button onClick={()=>{setTab("subaccounts");setNavMenu(null);}} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-200 hover:bg-white/10 hover:text-white text-left">
+                    <Users className="w-4 h-4"/>Manage Employees
+                  </button>
+                  <Link href="/client/wallet" className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-200 hover:bg-white/10 hover:text-white"><CreditCard className="w-4 h-4"/>Wallet &amp; Billing</Link>
+                  <Link href="/refund-policy" className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-200 hover:bg-white/10 hover:text-white"><Shield className="w-4 h-4"/>Refund Policy</Link>
+                </div>
+              )}
+            </div>
+
+            <Link href="/client/wallet" className="flex items-center gap-1.5 text-slate-200 hover:text-white hover:bg-white/10 px-3 py-2 rounded-lg font-medium transition-colors">
+              <DollarSign className="w-4 h-4"/><span className="hidden md:inline">Wallet</span>
+            </Link>
+            <Link href="/contact" className="flex items-center gap-1.5 text-slate-200 hover:text-white hover:bg-white/10 px-3 py-2 rounded-lg font-medium transition-colors">
+              <Info className="w-4 h-4"/><span className="hidden md:inline">FAQ</span>
+            </Link>
+            <button onClick={logout} className="flex items-center gap-1.5 text-slate-300 hover:text-red-300 hover:bg-white/10 px-3 py-2 rounded-lg font-medium transition-colors">
+              <LogOut className="w-4 h-4"/><span className="hidden md:inline">Logout</span>
+            </button>
+          </nav>
+
+          <div className={`hidden lg:flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-full border flex-shrink-0 ${liveConnected?"border-emerald-400/40 text-emerald-300":"border-white/20 text-slate-400"}`}>
             {liveConnected?<Wifi className="w-3 h-3"/>:<WifiOff className="w-3 h-3"/>}{liveConnected?"Live":"Connecting…"}
           </div>
-          <Link href="/client/wallet" className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 transition-colors text-sm font-bold px-3 py-1.5 rounded-lg">
-            <DollarSign className="w-3.5 h-3.5"/>Wallet
-          </Link>
-          <span className="text-sm text-slate-600">Welcome, <span className="font-semibold text-slate-900">{userName}</span></span>
-          <button onClick={logout} className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-red-600"><LogOut className="w-4 h-4"/>Logout</button>
         </div>
       </header>
 
-      <div className="max-w-4xl mx-auto px-6 py-8">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
+        {/* Client name + account number */}
+        <div className="flex items-baseline gap-3 mb-4 flex-wrap">
+          <h1 className="text-2xl font-extrabold text-[#0f1f3d]">{userName}</h1>
+          <span className="text-xs text-slate-400 font-medium">Account # {userId ? userId.replace(/\D/g,"").slice(0,6).padStart(6,"1") : "——"}</span>
+        </div>
+
+        {/* IMPORTANT MESSAGE banner (admin-managed) */}
+        {announcement&&(
+          <div className="mb-5">
+            <div className="flex items-center gap-2 mb-1.5">
+              <Megaphone className="w-4 h-4 text-[#c8991a]"/>
+              <span className="text-xs font-bold text-[#0f1f3d] uppercase tracking-[0.25em]">Important Message</span>
+            </div>
+            <div className="bg-amber-50 border border-[#c8991a]/50 rounded-xl px-4 py-3 text-sm text-[#7a5c0e] leading-relaxed">
+              {announcement.message}
+            </div>
+          </div>
+        )}
+
         {/* Payment success banner */}
         {paymentSuccess && (
-          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-2xl flex items-center gap-3">
+          <div className="mb-5 p-4 bg-green-50 border border-green-200 rounded-xl flex items-center gap-3">
             <CheckCircle className="w-5 h-5 text-green-600"/>
             <div>
               <p className="font-semibold text-green-800">Payment Successful!</p>
@@ -305,200 +431,324 @@ function ClientPageInner() {
           </div>
         )}
 
-        {/* Cutoff info */}
-        <div className={`mb-4 p-3 rounded-xl flex items-center gap-2 text-sm ${localHour<10?"bg-green-50 border border-green-200 text-green-800":"bg-amber-50 border border-amber-200 text-amber-800"}`}>
-          <Clock className="w-4 h-4 flex-shrink-0"/>
-          <span>{cutoffMsg}</span>
-        </div>
-
-        {/* Stats */}
-        <div className="grid grid-cols-4 gap-4 mb-6">
-          {[{label:"Total",val:stats.total,color:"text-slate-700"},{label:"Pending",val:stats.pending,color:"text-amber-600"},{label:"In Progress",val:stats.inProgress,color:"text-blue-600"},{label:"Completed",val:stats.completed,color:"text-green-600"}].map(({label,val,color})=>(
-            <div key={label} className="bg-white rounded-2xl border border-slate-100 p-5 text-center">
-              <div className={`text-3xl font-bold ${color}`}>{val}</div>
-              <div className="text-xs text-slate-400 mt-1">{label}</div>
+        <div className="grid lg:grid-cols-[270px_1fr] gap-6 items-start">
+          {/* ── Left rail ── */}
+          <aside className="space-y-4">
+            {/* Brand panel */}
+            <div className="bg-[#0f1f3d] rounded-2xl p-5 text-center shadow-lg overflow-hidden relative">
+              <div className="absolute inset-x-0 top-0 h-1 bg-[#c8991a]"/>
+              <img src="/snapect-logo.png" alt="Snapect" className="h-12 w-auto object-contain mx-auto mb-3" onError={e=>{(e.target as HTMLImageElement).style.display="none";}}/>
+              <p className="text-white font-extrabold text-lg leading-tight">Nationwide Field Photos</p>
+              <p className="text-[#c8991a] text-[11px] font-bold uppercase tracking-[0.25em] mt-1.5">Verified Agents · 35 States</p>
             </div>
-          ))}
-        </div>
 
-        {/* Tabs */}
-        <div className="flex gap-1 bg-slate-100 p-1 rounded-xl mb-5 w-fit">
-          {([["orders","My Orders"],["subaccounts","Employee Accounts"]] as const).map(([t,label])=>(
-            <button key={t} onClick={()=>setTab(t)} className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${tab===t?"bg-white text-slate-900 shadow-sm":"text-slate-500 hover:text-slate-700"}`}>{label}</button>
-          ))}
-        </div>
-
-        {tab==="subaccounts" ? (
-          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-              <div><h2 className="font-semibold text-slate-900">Employee Sub-Accounts</h2><p className="text-xs text-slate-400 mt-0.5">Each employee can log in and place orders billed to your account</p></div>
-              <button onClick={()=>setShowAddSub(!showAddSub)} className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-3 py-2 rounded-xl"><Plus className="w-4 h-4"/>Add Employee</button>
+            {/* Primary actions */}
+            <div className="grid grid-cols-2 gap-2.5">
+              <button onClick={()=>{setBulkMode(false);setShowNewOrder(true);}}
+                className="flex items-center justify-center gap-1.5 bg-[#c8991a] hover:bg-[#f0b429] text-[#0f1f3d] font-bold text-sm py-2.5 rounded-xl transition-colors shadow-sm">
+                <Plus className="w-4 h-4"/>New Order
+              </button>
+              <button onClick={()=>{setBulkMode(true);setShowNewOrder(true);}}
+                className="flex items-center justify-center gap-1.5 bg-white border-2 border-[#c8991a] text-[#0f1f3d] hover:bg-[#c8991a]/10 font-bold text-sm py-2.5 rounded-xl transition-colors">
+                <Package className="w-4 h-4"/>Multi Orders
+              </button>
             </div>
-            {showAddSub&&(
-              <div className="p-5 bg-blue-50/50 border-b border-slate-100">
-                {subError&&<p className="text-sm text-red-600 mb-3">{subError}</p>}
-                <div className="grid grid-cols-3 gap-3 mb-3">
-                  {[{label:"Name",key:"name",ph:"Jane Smith"},{label:"Email",key:"email",ph:"jane@company.com"},{label:"Password",key:"password",ph:"Set password"}].map(f=>(
-                    <div key={f.key}>
-                      <label className="text-xs font-medium text-slate-600 block mb-1">{f.label}</label>
-                      <input type={f.key==="password"?"password":"text"} value={subForm[f.key as keyof typeof subForm]} onChange={e=>setSubForm(s=>({...s,[f.key]:e.target.value}))} placeholder={f.ph}
-                        className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"/>
-                    </div>
-                  ))}
+
+            {/* Cutoff notice */}
+            <div className={`p-3 rounded-xl flex items-start gap-2 text-xs leading-relaxed ${localHour<10?"bg-green-50 border border-green-200 text-green-800":"bg-amber-50 border border-amber-200 text-amber-800"}`}>
+              <Clock className="w-3.5 h-3.5 flex-shrink-0 mt-0.5"/>
+              <span>{cutoffMsg}</span>
+            </div>
+
+            {/* Customer support card */}
+            <a href="mailto:support@snapect.com" className="block bg-[#16294f] rounded-2xl p-4 hover:bg-[#1a3260] transition-colors group">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 bg-[#c8991a] rounded-full flex items-center justify-center flex-shrink-0">
+                  <Headset className="w-5 h-5 text-[#0f1f3d]"/>
                 </div>
-                <button onClick={addSubAccount} disabled={addingSub} className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-semibold px-4 py-2 rounded-xl">{addingSub?"Adding…":"Add Employee"}</button>
+                <div className="flex-1 min-w-0">
+                  <p className="text-white font-bold text-sm">Customer Support</p>
+                  <p className="text-slate-400 text-[11px] truncate">support@snapect.com</p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-[#c8991a] group-hover:translate-x-0.5 transition-transform"/>
               </div>
-            )}
-            {subAccounts.length===0 ? (
-              <div className="text-center py-12 text-slate-400"><Users className="w-8 h-8 mx-auto mb-2 text-slate-300"/><p>No employee accounts yet</p></div>
-            ) : subAccounts.map(s=>(
-              <div key={s.id} className="px-6 py-4 border-b border-slate-100 last:border-0 flex items-center justify-between">
-                <div><p className="font-medium text-slate-800">{s.name}</p><p className="text-xs text-slate-500">{s.email}</p></div>
-                <span className="text-xs text-slate-400" suppressHydrationWarning>{new Date(s.createdAt).toLocaleDateString()}</span>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-slate-900">My Orders</h2>
-              <button onClick={()=>setShowNewOrder(true)} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl"><Plus className="w-4 h-4"/>Request Inspection</button>
+            </a>
+
+            {/* Secondary actions */}
+            <div className="grid grid-cols-2 gap-2.5">
+              <button onClick={()=>{setTab("orders");setStatusFilter("all");setSearch("");setVisibleCount(1000);document.getElementById("order-ledger")?.scrollIntoView({behavior:"smooth"});}}
+                className="flex items-center justify-center gap-1.5 bg-[#0f1f3d] hover:bg-[#1a3260] text-white font-semibold text-xs py-2.5 rounded-xl transition-colors">
+                <List className="w-3.5 h-3.5"/>Orders Broad View
+              </button>
+              <Link href="/coverage" className="flex items-center justify-center gap-1.5 bg-[#0f1f3d] hover:bg-[#1a3260] text-white font-semibold text-xs py-2.5 rounded-xl transition-colors">
+                <MapPin className="w-3.5 h-3.5"/>Coverage Map
+              </Link>
             </div>
 
-            {loading ? <div className="text-center py-20 text-slate-400 text-sm">Connecting…</div>
-            : orders.length===0 ? (
-              <div className="bg-white rounded-2xl border border-dashed border-slate-200 p-12 text-center"><Camera className="w-10 h-10 text-slate-300 mx-auto mb-3"/><p className="text-slate-500 font-medium">No orders yet</p></div>
+            {/* Mini stats */}
+            <div className="bg-white border border-slate-200 rounded-2xl divide-y divide-slate-100">
+              {[{label:"Total Orders",val:stats.total,color:"text-[#0f1f3d]"},{label:"Pending",val:stats.pending,color:"text-amber-600"},{label:"In Progress",val:stats.inProgress,color:"text-blue-600"},{label:"Completed",val:stats.completed,color:"text-green-600"}].map(s=>(
+                <div key={s.label} className="flex items-center justify-between px-4 py-2.5">
+                  <span className="text-xs text-slate-500">{s.label}</span>
+                  <span className={`text-sm font-extrabold ${s.color}`}>{s.val}</span>
+                </div>
+              ))}
+            </div>
+          </aside>
+
+          {/* ── Main column ── */}
+          <main className="space-y-5 min-w-0">
+            {tab==="subaccounts" ? (
+              <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+                <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                  <div><h2 className="font-semibold text-slate-900">Employee Sub-Accounts</h2><p className="text-xs text-slate-400 mt-0.5">Each employee can log in and place orders billed to your account</p></div>
+                  <div className="flex items-center gap-2">
+                    <button onClick={()=>setTab("orders")} className="text-xs text-slate-500 hover:text-[#0f1f3d] font-medium px-3 py-2">← Back to orders</button>
+                    <button onClick={()=>setShowAddSub(!showAddSub)} className="flex items-center gap-1.5 bg-[#c8991a] hover:bg-[#f0b429] text-[#0f1f3d] text-sm font-bold px-3 py-2 rounded-xl"><Plus className="w-4 h-4"/>Add Employee</button>
+                  </div>
+                </div>
+                {showAddSub&&(
+                  <div className="p-5 bg-amber-50/50 border-b border-slate-100">
+                    {subError&&<p className="text-sm text-red-600 mb-3">{subError}</p>}
+                    <div className="grid grid-cols-3 gap-3 mb-3">
+                      {[{label:"Name",key:"name",ph:"Jane Smith"},{label:"Email",key:"email",ph:"jane@company.com"},{label:"Password",key:"password",ph:"Set password"}].map(f=>(
+                        <div key={f.key}>
+                          <label className="text-xs font-medium text-slate-600 block mb-1">{f.label}</label>
+                          <input type={f.key==="password"?"password":"text"} value={subForm[f.key as keyof typeof subForm]} onChange={e=>setSubForm(s=>({...s,[f.key]:e.target.value}))} placeholder={f.ph}
+                            className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#c8991a]"/>
+                        </div>
+                      ))}
+                    </div>
+                    <button onClick={addSubAccount} disabled={addingSub} className="bg-[#c8991a] hover:bg-[#f0b429] disabled:opacity-50 text-[#0f1f3d] text-sm font-bold px-4 py-2 rounded-xl">{addingSub?"Adding…":"Add Employee"}</button>
+                  </div>
+                )}
+                {subAccounts.length===0 ? (
+                  <div className="text-center py-12 text-slate-400"><Users className="w-8 h-8 mx-auto mb-2 text-slate-300"/><p>No employee accounts yet</p></div>
+                ) : subAccounts.map(s=>(
+                  <div key={s.id} className="px-6 py-4 border-b border-slate-100 last:border-0 flex items-center justify-between">
+                    <div><p className="font-medium text-slate-800">{s.name}</p><p className="text-xs text-slate-500">{s.email}</p></div>
+                    <span className="text-xs text-slate-400" suppressHydrationWarning>{new Date(s.createdAt).toLocaleDateString()}</span>
+                  </div>
+                ))}
+              </div>
             ) : (
-              <div className="space-y-3">
-                {orders.map(order=>{
-                  const showBids = bidsFor===order.id;
-                  const orderBids = bidsData[order.id]??[];
-                  const pendingBids = orderBids.filter(b=>b.status==="pending");
-                  const photosExpanded = expandedPhotos===order.id;
-                  const selSet = selectedPhotos[order.id]??new Set();
+              <>
+                {/* Completed Orders trend chart */}
+                <div className="bg-white rounded-2xl border border-slate-200 p-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <h2 className="text-sm font-extrabold text-[#0f1f3d] uppercase tracking-[0.3em]">Completed Orders</h2>
+                    <span className="text-xs text-slate-400">Last 12 months</span>
+                  </div>
+                  <svg viewBox="0 0 720 180" className="w-full h-40" role="img" aria-label="Completed orders per month">
+                    {/* gridlines */}
+                    {[0,1,2,3].map(i=>(
+                      <line key={i} x1="36" x2="712" y1={20+i*40} y2={20+i*40} stroke="#e8ecf3" strokeWidth="1"/>
+                    ))}
+                    {[0,1,2,3].map(i=>(
+                      <text key={i} x="30" y={24+i*40} textAnchor="end" fontSize="10" fill="#94a3b8">{Math.round(chartMax*(3-i)/3)}</text>
+                    ))}
+                    {/* line */}
+                    <polyline fill="none" stroke="#c8991a" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round"
+                      points={chartMonths.map((m,i)=>`${48+i*(656/11)},${140-(m.count/chartMax)*120}`).join(" ")}/>
+                    {/* dots + month labels */}
+                    {chartMonths.map((m,i)=>{
+                      const x = 48+i*(656/11), y = 140-(m.count/chartMax)*120;
+                      return (
+                        <g key={i}>
+                          <circle cx={x} cy={y} r="4" fill="#fff" stroke="#c8991a" strokeWidth="2"/>
+                          <text x={x} y="164" textAnchor="middle" fontSize="10" fill="#64748b">{m.label}</text>
+                        </g>
+                      );
+                    })}
+                  </svg>
+                </div>
 
-                  return (
-                    <div key={order.id} className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
-                      <Link href={`/client/orders/${order.id}`} className="block p-5 hover:bg-blue-50/30 group">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1 flex-wrap">
-                              <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full border ${STATUS_COLORS[order.status]}`}>
-                                {STATUS_ICONS[order.status]}{order.status.replace("_"," ")}
-                              </span>
-                              <span className="text-xs text-slate-400">{TIER_LABELS[order.turnaroundTier]}</span>
-                              {order.invoicePaid && <span className="text-xs text-green-600 font-medium">✓ Paid</span>}
-                            </div>
-                            <div className="flex items-center gap-1.5 text-slate-700 font-medium"><MapPin className="w-3.5 h-3.5 text-slate-400 flex-shrink-0"/><span className="truncate">{order.address}</span></div>
-                            <div className="flex items-center gap-4 mt-2 text-xs text-slate-500 flex-wrap">
-                              <span>{order.serviceType}</span>
-                              <span suppressHydrationWarning>{new Date(order.createdAt).toLocaleDateString()}</span>
-                              {order.agent&&<span>Agent: <span className="text-slate-700 font-medium">{order.agent.name}</span></span>}
-                              {order.photos.length>0&&<span className="text-blue-600">{order.photos.length} photo(s)</span>}
-                          {order.status==="completed" && order.photoExpiresAt && (() => {
-                            const days = getPhotoExpiryDays(order.photoExpiresAt);
-                            if (days === null) return null;
-                            if (days === 0) return <span className="text-red-600 font-semibold text-xs">Photos expired</span>;
-                            if (days <= 7) return <span className="text-red-500 font-semibold text-xs">⚠️ Photos expire in {days}d</span>;
-                            return <span className="text-amber-600 text-xs">Photos expire in {days}d</span>;
-                          })()}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-3 flex-shrink-0">
-                            <div className="text-right"><div className="font-bold text-slate-900 text-lg">${order.totalPrice}</div></div>
-                            <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-blue-400"/>
-                          </div>
-                        </div>
-                      </Link>
+                {/* Order ledger */}
+                <div id="order-ledger" className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+                  <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between gap-3 flex-wrap">
+                    <div className="relative flex-1 min-w-[200px] max-w-sm">
+                      <Search className="w-4 h-4 text-slate-300 absolute left-3 top-1/2 -translate-y-1/2"/>
+                      <input value={search} onChange={e=>{setSearch(e.target.value);setVisibleCount(10);}} placeholder="Search for an address"
+                        className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#c8991a]"/>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-slate-400 font-medium">Filters</span>
+                      <select value={statusFilter} onChange={e=>{setStatusFilter(e.target.value);setVisibleCount(10);}}
+                        className="border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#c8991a] bg-white">
+                        <option value="all">All Orders (by ordered date)</option>
+                        <option value="pending">Pending</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="completed">Completed</option>
+                        <option value="cancelled">Cancelled</option>
+                      </select>
+                      <button onClick={()=>{setBulkMode(false);setShowNewOrder(true);}} className="flex items-center gap-1.5 bg-[#c8991a] hover:bg-[#f0b429] text-[#0f1f3d] text-sm font-bold px-3.5 py-2 rounded-xl whitespace-nowrap"><Plus className="w-4 h-4"/>New Order</button>
+                    </div>
+                  </div>
 
-                      {/* Bids panel */}
-                      {order.status==="pending"&&!order.acceptedBidId&&(
-                        <div className="border-t border-slate-100 px-5 py-3">
-                          <button onClick={e=>{e.preventDefault();if(!showBids)fetchBids(order.id);setBidsFor(showBids?null:order.id);}}
-                            className="flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-blue-600">
-                            <Gavel className="w-4 h-4"/>View Bids
-                            {pendingBids.length>0&&<span className="bg-blue-600 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">{pendingBids.length}</span>}
-                          </button>
-                          {showBids&&(
-                            <div className="mt-3 space-y-2">
-                              {orderBids.length===0 ? <p className="text-xs text-slate-400">No bids yet.</p>
-                              : orderBids.map(bid=>(
-                                <div key={bid.id} className={`flex items-center justify-between gap-3 p-3 rounded-xl border ${bid.status==="accepted"?"bg-green-50 border-green-200":bid.status==="rejected"?"bg-red-50 border-red-200 opacity-60":"bg-slate-50 border-slate-200"}`}>
-                                  <div className="flex-1">
-                                    <div className="flex items-center gap-2">
-                                      <User className="w-3.5 h-3.5 text-slate-400"/>
-                                      <span className="text-sm font-semibold text-slate-800">{bid.agentName}</span>
-                                      {bid.agentRating&&<span className="text-xs text-amber-600">★ {bid.agentRating.toFixed(1)}</span>}
-                                      {bid.placedByAdmin&&<span className="text-xs text-slate-400">(admin)</span>}
-                                    </div>
-                                    {bid.message&&<p className="text-xs text-slate-500 mt-0.5">"{bid.message}"</p>}
-                                  </div>
-                                  <div className="flex items-center gap-2 flex-shrink-0">
-                                    <span className="font-bold text-green-700">${bid.amount}</span>
-                                    {bid.status==="pending"&&(
-                                      <>
-                                        <button onClick={()=>respondToBid(order.id,bid.id,"accept")} disabled={actingBid===bid.id}
-                                          className="text-xs bg-green-600 hover:bg-green-700 text-white font-semibold px-2.5 py-1.5 rounded-lg disabled:opacity-50">{actingBid===bid.id?"…":"Accept"}</button>
-                                        <button onClick={()=>respondToBid(order.id,bid.id,"reject")} disabled={actingBid===bid.id}
-                                          className="text-xs bg-red-50 hover:bg-red-100 text-red-600 font-semibold px-2.5 py-1.5 rounded-lg disabled:opacity-50">Reject</button>
-                                      </>
-                                    )}
-                                    {bid.status==="accepted"&&<span className="text-xs text-green-700 font-semibold">✓ Accepted</span>}
-                                    {bid.status==="rejected"&&<span className="text-xs text-red-600">Rejected</span>}
-                                  </div>
+                  {loading ? <div className="text-center py-20 text-slate-400 text-sm">Connecting…</div>
+                  : filteredOrders.length===0 ? (
+                    <div className="p-12 text-center"><Camera className="w-10 h-10 text-slate-300 mx-auto mb-3"/><p className="text-slate-500 font-medium">{orders.length===0?"No orders yet — place your first order to get started":"No orders match your search"}</p></div>
+                  ) : (
+                    <div>
+                      {visibleOrders.map((order,rowIdx)=>{
+                        const showBids = bidsFor===order.id;
+                        const orderBids = bidsData[order.id]??[];
+                        const pendingBids = orderBids.filter(b=>b.status==="pending");
+                        const photosExpanded = expandedPhotos===order.id;
+                        const selSet = selectedPhotos[order.id]??new Set();
+                        const addr = splitAddress(order.address);
+                        const isQuick = quickView===order.id;
+                        const acceptedTime = order.offerAcceptedAt ? new Date(order.offerAcceptedAt).toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"}) : null;
+
+                        return (
+                          <div key={order.id} className={`border-b border-slate-100 last:border-0 ${rowIdx%2?"bg-slate-50/60":"bg-white"}`}>
+                            {/* Ledger row */}
+                            <div className="px-5 py-3 grid grid-cols-[auto_1fr_auto_auto] sm:grid-cols-[90px_1fr_150px_170px] gap-x-3 gap-y-1 items-center">
+                              <span className="text-xs text-slate-400 whitespace-nowrap" suppressHydrationWarning>{new Date(order.createdAt).toLocaleDateString("en-US",{month:"2-digit",day:"2-digit",year:"numeric"})}</span>
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <Link href={`/client/orders/${order.id}`} className="font-bold text-[#0f1f3d] hover:text-[#c8991a] transition-colors truncate text-sm uppercase">{addr.line}</Link>
+                                  <button onClick={()=>setQuickView(isQuick?null:order.id)} className="text-[11px] text-[#c8991a] hover:underline font-medium whitespace-nowrap">({isQuick?"Close":"Quick View"})</button>
                                 </div>
-                              ))}
+                                <p className="text-[11px] text-slate-500 truncate">{order.serviceType} · {order.photos.length>0?`${order.photos.length} photos`:TIER_LABELS[order.turnaroundTier]}{order.agent?` · ${order.agent.name}`:""} · <span className="font-semibold text-slate-600">${order.totalPrice}</span></p>
+                              </div>
+                              <span className="text-xs text-slate-500 text-right hidden sm:block truncate">{addr.area||"—"}</span>
+                              <div className="flex items-center justify-end gap-1.5 text-right">
+                                {order.status==="completed" ? (
+                                  <div className="flex flex-col items-end">
+                                    <span className="flex items-center gap-1.5 text-green-600 text-xs italic font-semibold"><CheckCircle className="w-4 h-4"/>Completed.</span>
+                                    <button onClick={()=>reorder(order)} className="text-[11px] text-[#c8991a] hover:underline font-medium">Reorder</button>
+                                  </div>
+                                ) : order.status==="cancelled" ? (
+                                  <span className="flex items-center gap-1.5 text-red-500 text-xs italic"><XCircle className="w-4 h-4"/>Cancelled.</span>
+                                ) : order.agent||order.status==="in_progress" ? (
+                                  <span className="flex items-center gap-1.5 text-slate-600 text-xs italic"><Car className="w-4 h-4 text-[#c8991a]"/>Accepted{acceptedTime?` ${acceptedTime}`:""}</span>
+                                ) : (
+                                  <span className="flex items-center gap-1.5 text-amber-600 text-xs italic"><User className="w-4 h-4"/>Rep notified.</span>
+                                )}
+                              </div>
                             </div>
-                          )}
-                        </div>
-                      )}
 
-                      {/* Photos panel */}
-                      {order.status==="completed"&&order.photos.length>0&&(
-                        <div className="border-t border-slate-100 px-5 pb-4 pt-3">
-                          <div className="flex items-center justify-between mb-3">
-                            <button onClick={()=>setExpandedPhotos(photosExpanded?null:order.id)} className="flex items-center gap-1.5 text-sm font-medium text-slate-700 hover:text-blue-600">
-                              <Image className="w-4 h-4"/>{photosExpanded?"Hide":"View"} Photos ({order.photos.length})
-                            </button>
-                            <div className="flex items-center gap-2">
-                              {selSet.size>0&&(
-                                <button onClick={()=>emailPhotos(order.id)} disabled={emailingOrder===order.id}
-                                  className="flex items-center gap-1.5 text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium px-3 py-1.5 rounded-lg">
-                                  <Mail className="w-3.5 h-3.5"/>{emailingOrder===order.id?"Sending…":`Email ${selSet.size}`}
-                                </button>
-                              )}
-                              <button onClick={()=>window.open(`/api/orders/${order.id}/invoice`,"_blank")}
-                                className="flex items-center gap-1.5 text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium px-3 py-1.5 rounded-lg">
-                                <Download className="w-3.5 h-3.5"/>Invoice
-                              </button>
-                            </div>
-                          </div>
-                          {photosExpanded&&(
-                            <div className="grid grid-cols-3 gap-2">
-                              {order.photos.map(ph=>{
-                                const isSel = selSet.has(ph.id);
-                                return (
-                                  <button key={ph.id} onClick={()=>togglePhotoSel(order.id,ph.id)}
-                                    className={`relative aspect-video rounded-xl overflow-hidden border-2 transition-all ${isSel?"border-blue-500":"border-slate-200 hover:border-slate-300"}`}>
-                                    {ph.url?.startsWith("data:") ? <img src={ph.url} alt={ph.description} className="w-full h-full object-cover"/>
-                                    : <div className="w-full h-full bg-slate-100 flex items-center justify-center"><Camera className="w-5 h-5 text-slate-400"/></div>}
-                                    <div className={`absolute top-1.5 right-1.5 ${isSel?"text-blue-600":"text-white/70"}`}>
-                                      {isSel?<CheckSquare className="w-4 h-4 drop-shadow"/>:<Square className="w-4 h-4 drop-shadow"/>}
+                            {/* Quick View expansion */}
+                            {isQuick&&(
+                              <div className="px-5 pb-4 pt-1 bg-[#f8fafc] border-t border-slate-100">
+                                <div className="flex items-center gap-3 flex-wrap text-xs text-slate-500 mb-3 pt-3">
+                                  <span className={`inline-flex items-center gap-1 font-medium px-2 py-0.5 rounded-full border ${STATUS_COLORS[order.status]}`}>{STATUS_ICONS[order.status]}{order.status.replace("_"," ")}</span>
+                                  <span>{TIER_LABELS[order.turnaroundTier]}</span>
+                                  {order.invoicePaid&&<span className="text-green-600 font-medium">✓ Paid</span>}
+                                  {order.status==="completed" && order.photoExpiresAt && (() => {
+                                    const days = getPhotoExpiryDays(order.photoExpiresAt);
+                                    if (days === null) return null;
+                                    if (days === 0) return <span className="text-red-600 font-semibold">Photos expired</span>;
+                                    if (days <= 7) return <span className="text-red-500 font-semibold">⚠️ Photos expire in {days}d</span>;
+                                    return <span className="text-amber-600">Photos expire in {days}d</span>;
+                                  })()}
+                                  <Link href={`/client/orders/${order.id}`} className="ml-auto text-[#c8991a] font-semibold hover:underline">Full order details →</Link>
+                                </div>
+
+                                {/* Bids panel */}
+                                {order.status==="pending"&&!order.acceptedBidId&&(
+                                  <div className="mb-3">
+                                    <button onClick={e=>{e.preventDefault();if(!showBids)fetchBids(order.id);setBidsFor(showBids?null:order.id);}}
+                                      className="flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-[#c8991a]">
+                                      <Gavel className="w-4 h-4"/>View Bids
+                                      {pendingBids.length>0&&<span className="bg-[#c8991a] text-[#0f1f3d] text-xs font-bold px-1.5 py-0.5 rounded-full">{pendingBids.length}</span>}
+                                    </button>
+                                    {showBids&&(
+                                      <div className="mt-3 space-y-2">
+                                        {orderBids.length===0 ? <p className="text-xs text-slate-400">No bids yet.</p>
+                                        : orderBids.map(bid=>(
+                                          <div key={bid.id} className={`flex items-center justify-between gap-3 p-3 rounded-xl border ${bid.status==="accepted"?"bg-green-50 border-green-200":bid.status==="rejected"?"bg-red-50 border-red-200 opacity-60":"bg-white border-slate-200"}`}>
+                                            <div className="flex-1">
+                                              <div className="flex items-center gap-2">
+                                                <User className="w-3.5 h-3.5 text-slate-400"/>
+                                                <span className="text-sm font-semibold text-slate-800">{bid.agentName}</span>
+                                                {bid.agentRating&&<span className="text-xs text-amber-600">★ {bid.agentRating.toFixed(1)}</span>}
+                                                {bid.placedByAdmin&&<span className="text-xs text-slate-400">(admin)</span>}
+                                              </div>
+                                              {bid.message&&<p className="text-xs text-slate-500 mt-0.5">"{bid.message}"</p>}
+                                            </div>
+                                            <div className="flex items-center gap-2 flex-shrink-0">
+                                              <span className="font-bold text-green-700">${bid.amount}</span>
+                                              {bid.status==="pending"&&(
+                                                <>
+                                                  <button onClick={()=>respondToBid(order.id,bid.id,"accept")} disabled={actingBid===bid.id}
+                                                    className="text-xs bg-green-600 hover:bg-green-700 text-white font-semibold px-2.5 py-1.5 rounded-lg disabled:opacity-50">{actingBid===bid.id?"…":"Accept"}</button>
+                                                  <button onClick={()=>respondToBid(order.id,bid.id,"reject")} disabled={actingBid===bid.id}
+                                                    className="text-xs bg-red-50 hover:bg-red-100 text-red-600 font-semibold px-2.5 py-1.5 rounded-lg disabled:opacity-50">Reject</button>
+                                                </>
+                                              )}
+                                              {bid.status==="accepted"&&<span className="text-xs text-green-700 font-semibold">✓ Accepted</span>}
+                                              {bid.status==="rejected"&&<span className="text-xs text-red-600">Rejected</span>}
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+
+                                {/* Photos panel */}
+                                {order.status==="completed"&&order.photos.length>0&&(
+                                  <div>
+                                    <div className="flex items-center justify-between mb-3">
+                                      <button onClick={()=>setExpandedPhotos(photosExpanded?null:order.id)} className="flex items-center gap-1.5 text-sm font-medium text-slate-700 hover:text-[#c8991a]">
+                                        <Image className="w-4 h-4"/>{photosExpanded?"Hide":"View"} Photos ({order.photos.length})
+                                      </button>
+                                      <div className="flex items-center gap-2">
+                                        {selSet.size>0&&(
+                                          <button onClick={()=>emailPhotos(order.id)} disabled={emailingOrder===order.id}
+                                            className="flex items-center gap-1.5 text-xs bg-amber-50 hover:bg-amber-100 text-[#7a5c0e] font-medium px-3 py-1.5 rounded-lg">
+                                            <Mail className="w-3.5 h-3.5"/>{emailingOrder===order.id?"Sending…":`Email ${selSet.size}`}
+                                          </button>
+                                        )}
+                                        <button onClick={()=>window.open(`/api/orders/${order.id}/invoice`,"_blank")}
+                                          className="flex items-center gap-1.5 text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium px-3 py-1.5 rounded-lg">
+                                          <Download className="w-3.5 h-3.5"/>Invoice
+                                        </button>
+                                      </div>
                                     </div>
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          )}
+                                    {photosExpanded&&(
+                                      <div className="grid grid-cols-3 gap-2">
+                                        {order.photos.map(ph=>{
+                                          const isSel = selSet.has(ph.id);
+                                          return (
+                                            <button key={ph.id} onClick={()=>togglePhotoSel(order.id,ph.id)}
+                                              className={`relative aspect-video rounded-xl overflow-hidden border-2 transition-all ${isSel?"border-[#c8991a]":"border-slate-200 hover:border-slate-300"}`}>
+                                              {ph.url?.startsWith("data:") ? <img src={ph.url} alt={ph.description} className="w-full h-full object-cover"/>
+                                              : <div className="w-full h-full bg-slate-100 flex items-center justify-center"><Camera className="w-5 h-5 text-slate-400"/></div>}
+                                              <div className={`absolute top-1.5 right-1.5 ${isSel?"text-[#c8991a]":"text-white/70"}`}>
+                                                {isSel?<CheckSquare className="w-4 h-4 drop-shadow"/>:<Square className="w-4 h-4 drop-shadow"/>}
+                                              </div>
+                                            </button>
+                                          );
+                                        })}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+
+                      {/* Load more */}
+                      {filteredOrders.length>visibleCount&&(
+                        <div className="px-5 py-4 text-right border-t border-slate-100">
+                          <button onClick={()=>setVisibleCount(c=>c+10)}
+                            className="text-sm font-semibold text-[#0f1f3d] border border-slate-300 hover:border-[#c8991a] hover:text-[#c8991a] px-4 py-2 rounded-xl transition-colors">
+                            Load More Orders…
+                          </button>
                         </div>
                       )}
                     </div>
-                  );
-                })}
-              </div>
+                  )}
+                </div>
+              </>
             )}
-          </>
-        )}
+          </main>
+        </div>
       </div>
 
       {/* Payment Links Modal — shown after order placed */}

@@ -87,6 +87,33 @@ export default function AdminPage() {
 
   // Payouts
   const [payoutModal, setPayoutModal] = useState<{agentId:string;agentName:string;pendingPayout:number}|null>(null);
+  const [annOpen, setAnnOpen] = useState(false);
+  const [annMsg, setAnnMsg] = useState("");
+  const [annAudience, setAnnAudience] = useState("all");
+  const [annActive, setAnnActive] = useState<{id:number;message:string;audience:string}|null>(null);
+  const [annSaving, setAnnSaving] = useState(false);
+
+  const fetchAnnouncement = useCallback(async () => {
+    const r = await fetch("/api/announcements?all=1");
+    const d = await r.json();
+    const active = (d.announcements ?? []).find((a: {active:boolean}) => a.active);
+    setAnnActive(active ?? null);
+  }, []);
+  useEffect(() => { fetchAnnouncement(); }, [fetchAnnouncement]);
+
+  async function publishAnnouncement() {
+    if (!annMsg.trim()) return;
+    setAnnSaving(true);
+    await fetch("/api/announcements", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ message: annMsg, audience: annAudience }) });
+    setAnnMsg(""); setAnnOpen(false); setAnnSaving(false); fetchAnnouncement();
+  }
+
+  async function clearAnnouncement() {
+    if (!annActive) return;
+    setAnnSaving(true);
+    await fetch("/api/announcements", { method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ id: annActive.id, active: false }) });
+    setAnnSaving(false); fetchAnnouncement();
+  }
   const [resolveDisputeModal, setResolveDisputeModal] = useState<{id:string;clientName:string}|null>(null);
   const [resolveChoice, setResolveChoice] = useState<"reshoot"|"wallet_credit"|"rejected"|"other">("reshoot");
   const [resolveAmount, setResolveAmount] = useState("");
@@ -367,6 +394,44 @@ export default function AdminPage() {
       </header>
 
       <div className="max-w-7xl mx-auto px-6 py-6">
+        {/* Site announcement banner control */}
+        <div className="bg-white border border-slate-200 rounded-2xl mb-6 overflow-hidden">
+          <button onClick={()=>setAnnOpen(!annOpen)} className="w-full px-5 py-3 flex items-center justify-between hover:bg-slate-50">
+            <span className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+              <AlertCircle className="w-4 h-4 text-amber-500"/>Dashboard Announcement
+              {annActive
+                ? <span className="text-xs bg-amber-100 text-amber-700 font-medium px-2 py-0.5 rounded-full">Active — {annActive.audience}</span>
+                : <span className="text-xs bg-slate-100 text-slate-500 font-medium px-2 py-0.5 rounded-full">None active</span>}
+            </span>
+            {annOpen?<ChevronUp className="w-4 h-4 text-slate-400"/>:<ChevronDown className="w-4 h-4 text-slate-400"/>}
+          </button>
+          {annOpen&&(
+            <div className="px-5 pb-5 pt-1 border-t border-slate-100">
+              {annActive&&(
+                <div className="flex items-start justify-between gap-3 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 mb-3">
+                  <p className="text-xs text-amber-800 leading-relaxed flex-1">{annActive.message}</p>
+                  <button onClick={clearAnnouncement} disabled={annSaving} className="text-xs text-red-600 font-semibold hover:underline flex-shrink-0">Clear</button>
+                </div>
+              )}
+              <textarea value={annMsg} onChange={e=>setAnnMsg(e.target.value)} rows={2}
+                placeholder="e.g. Our email server is backed up — completed order emails may be delayed. Photos are available on each order page."
+                className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 mb-2"/>
+              <div className="flex items-center gap-2">
+                <select value={annAudience} onChange={e=>setAnnAudience(e.target.value)} className="border border-slate-200 rounded-xl px-3 py-2 text-sm bg-white">
+                  <option value="all">Show to everyone</option>
+                  <option value="client">Clients only</option>
+                  <option value="agent">Agents only</option>
+                </select>
+                <button onClick={publishAnnouncement} disabled={annSaving||!annMsg.trim()}
+                  className="bg-slate-900 hover:bg-slate-700 disabled:opacity-40 text-white text-sm font-semibold px-4 py-2 rounded-xl">
+                  {annSaving?"Publishing…":"Publish Banner"}
+                </button>
+                <span className="text-xs text-slate-400">Replaces any currently active banner for that audience</span>
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-6">
           {[
