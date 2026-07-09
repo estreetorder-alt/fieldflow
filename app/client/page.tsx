@@ -17,6 +17,7 @@ interface Order {
   serviceType: string; turnaroundTier: string; notes: string; customizeNotes: string;
   photos: Photo[]; photoExpiresAt: string | null; createdAt: string; invoicePaid: boolean;
   offerAcceptedAt?: string | null; clientId?: string;
+  statusHistory?: { status: string; timestamp: string; note: string }[];
   agent?: { name: string } | null; bids?: Bid[]; acceptedBidId?: string | null;
 }
 interface ServiceItem { id: string; name: string; description: string; basePrice: number; compensation: number; category: string; photoCount?: number; shotList?: string[]; isCustom?: boolean; requiresInterior?: boolean; }
@@ -57,8 +58,8 @@ function ClientPageInner() {
   // Service catalog
   const [catalog, setCatalog] = useState<ServiceCategory[]>([]);
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
-  const [selectedServiceId, setSelectedServiceId] = useState("ext_7");
-  const [expandedCategory, setExpandedCategory] = useState<string|null>("bpo_exterior");
+  const [selectedServiceId, setSelectedServiceId] = useState("re_main6");
+  const [expandedCategory, setExpandedCategory] = useState<string|null>("real_estate");
 
   // Order form
   const [address, setAddress] = useState("");
@@ -85,7 +86,7 @@ function ClientPageInner() {
 
   // Bulk mode
   const [bulkMode, setBulkMode] = useState(false);
-  const [bulkRows, setBulkRows] = useState([{address:"",serviceId:"ext_7",tier:"standard"}]);
+  const [bulkRows, setBulkRows] = useState([{address:"",serviceId:"re_main6",tier:"standard"}]);
 
   // Photo / bids
   const [expandedPhotos, setExpandedPhotos] = useState<string|null>(null);
@@ -251,8 +252,8 @@ function ClientPageInner() {
     setAddress(""); setTier("standard"); setNotes(""); setDateStamp(false);
     setCustomShotList(""); setCustomPrice(""); setAddressValid(null);
     setAddressSuggestion(""); setCoverageStatus(null); setBulkMode(false);
-    setBulkRows([{address:"",serviceId:"ext_7",tier:"standard"}]);
-    setSelectedServiceId("ext_7"); setExpandedCategory("bpo_exterior");
+    setBulkRows([{address:"",serviceId:"re_main6",tier:"standard"}]);
+    setSelectedServiceId("re_main6"); setExpandedCategory("real_estate");
   }
 
   async function respondToBid(orderId: string, bidId: string, action: "accept"|"reject") {
@@ -321,6 +322,19 @@ function ClientPageInner() {
     return { line: full.slice(0, idx), area: full.slice(idx + 1).replace(/\b\d{5}(-\d{4})?\b/, "").trim() };
   }
 
+  // Latest Order Comments (last two days) — Velocity-style panel
+  const [dismissedComments, setDismissedComments] = useState<Set<string>>(new Set());
+  const latestComments = orders
+    .flatMap(o => (o.statusHistory ?? []).map((ev, i) => ({
+      key: `${o.id}-${i}`, orderId: o.id, address: o.address,
+      serviceType: o.serviceType, photoCount: o.photos.length,
+      note: ev.note, timestamp: ev.timestamp,
+    })))
+    .filter(c => c.note && Date.now() - new Date(c.timestamp).getTime() < 48 * 3600000)
+    .filter(c => !dismissedComments.has(c.key))
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+    .slice(0, 8);
+
   function reorder(o: Order) {
     router.push(`/client/order?address=${encodeURIComponent(o.address)}`);
   }
@@ -377,9 +391,9 @@ function ClientPageInner() {
             </div>
 
             <Link href="/client/wallet" className="flex items-center gap-1.5 text-slate-200 hover:text-white hover:bg-white/10 px-3 py-2 rounded-lg font-medium transition-colors">
-              <DollarSign className="w-4 h-4"/><span className="hidden md:inline">Wallet</span>
+              <DollarSign className="w-4 h-4"/><span className="hidden md:inline">Invoices</span>
             </Link>
-            <Link href="/contact" className="flex items-center gap-1.5 text-slate-200 hover:text-white hover:bg-white/10 px-3 py-2 rounded-lg font-medium transition-colors">
+            <Link href="/faq" className="flex items-center gap-1.5 text-slate-200 hover:text-white hover:bg-white/10 px-3 py-2 rounded-lg font-medium transition-colors">
               <Info className="w-4 h-4"/><span className="hidden md:inline">FAQ</span>
             </Link>
             <button onClick={logout} className="flex items-center gap-1.5 text-slate-300 hover:text-red-300 hover:bg-white/10 px-3 py-2 rounded-lg font-medium transition-colors">
@@ -555,6 +569,28 @@ function ClientPageInner() {
                     })}
                   </svg>
                 </div>
+
+                {/* Latest Order Comments (last two days) */}
+                {latestComments.length>0&&(
+                  <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+                    <div className="px-5 py-3 border-b border-slate-100">
+                      <h2 className="text-sm font-extrabold text-[#0f1f3d]">Latest Order Comments <span className="font-medium text-slate-400">(last two days)</span></h2>
+                    </div>
+                    <div className="max-h-56 overflow-y-auto divide-y divide-slate-100">
+                      {latestComments.map(c=>(
+                        <div key={c.key} className="px-4 py-2.5 flex items-start gap-3">
+                          <button onClick={()=>setDismissedComments(prev=>new Set(prev).add(c.key))}
+                            className="w-6 h-6 rounded bg-[#0f1f3d] text-white text-xs font-bold flex items-center justify-center flex-shrink-0 hover:bg-red-500 transition-colors" title="Dismiss">×</button>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[11px] text-slate-400" suppressHydrationWarning>{new Date(c.timestamp).toLocaleDateString("en-US",{month:"2-digit",day:"2-digit",year:"numeric"})} · {c.serviceType}{c.photoCount>0?` (${c.photoCount} photos)`:""}</p>
+                            <Link href={`/client/orders/${c.orderId}`} className="text-xs font-bold text-[#0f1f3d] hover:text-[#c8991a] uppercase truncate block">{c.address}</Link>
+                            <p className="text-xs text-slate-600 mt-0.5">{c.note}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Order ledger */}
                 <div id="order-ledger" className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
@@ -985,7 +1021,7 @@ function ClientPageInner() {
                     ))}
                   </div>
                   <div className="flex items-center justify-between">
-                    <button onClick={()=>setBulkRows(rows=>[...rows,{address:"",serviceId:"ext_7",tier:"standard"}])} disabled={bulkRows.length>=50}
+                    <button onClick={()=>setBulkRows(rows=>[...rows,{address:"",serviceId:"re_main6",tier:"standard"}])} disabled={bulkRows.length>=50}
                       className="flex items-center gap-1.5 text-sm text-blue-600 font-medium disabled:opacity-40"><Plus className="w-4 h-4"/>Add Address ({bulkRows.length}/50)</button>
                   </div>
                   <button onClick={submitBulk} disabled={submitting}

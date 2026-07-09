@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     let orderData: Record<string, unknown> = {};
     try { orderData = JSON.parse(metadata.orderData ?? "{}"); } catch { /* ignore */ }
 
-    const serviceId = orderData.serviceId as string ?? "ext_7";
+    const serviceId = orderData.serviceId as string ?? "re_main6";
     const tier = orderData.turnaroundTier as string ?? "standard";
     const totalPrice = payment.amount_after_fees ?? 0;
     const compensation = calcCompensation(serviceId, tier, orderData.customClientPrice as number);

@@ -38,7 +38,7 @@ export default function AdminPage() {
   const [allUsers, setAllUsers] = useState<AUser[]>([]);
   const [pricing, setPricing] = useState<PricingConfig[]>([]);
   const [pricingCatalog, setPricingCatalog] = useState<CatalogCategory[]>([]);
-  const [expandedPricingCat, setExpandedPricingCat] = useState<string>("bpo_exterior");
+  const [expandedPricingCat, setExpandedPricingCat] = useState<string>("real_estate");
   const [emails, setEmails] = useState<EmailEntry[]>([]);
   const [samples, setSamples] = useState<Sample[]>([]);
   const [payouts, setPayouts] = useState<Payout[]>([]);

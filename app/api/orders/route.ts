@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     customClientPrice?: number; dateStamp?: boolean;
     lat?: number; lng?: number; clientId?: string; bulkBatchId?: string | null;
   }) => {
-    const serviceId = row.serviceId ?? "ext_7";
+    const serviceId = row.serviceId ?? "re_main6";
     const tier = row.turnaroundTier ?? "standard";
     const svc = SERVICE_MAP[serviceId];
     const isCustom = svc?.isCustom ?? false;

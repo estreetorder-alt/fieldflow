@@ -14,7 +14,7 @@ const MAX_ROWS = 50;
 
 export default function MultiOrderPage() {
   const [catalog, setCatalog] = useState<ServiceCategory[]>([]);
-  const [rows, setRows] = useState([{address:"",serviceId:"ext_7",tier:"standard"}]);
+  const [rows, setRows] = useState([{address:"",serviceId:"re_main6",tier:"standard"}]);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState("");
   const [done, setDone] = useState(false);
@@ -131,7 +131,7 @@ export default function MultiOrderPage() {
                   </div>
                   <select value={row.serviceId} onChange={e=>setRow(i,{serviceId:e.target.value})}
                     className="px-2 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#c8991a]">
-                    {services.map(s=><option key={s.id} value={s.id}>{s.name} — ${s.basePrice}</option>)}
+                    {services.map(s=><option key={s.id} value={s.id}>{s.basePrice.toFixed(2)} — {s.name}</option>)}
                   </select>
                   <select value={row.tier} onChange={e=>setRow(i,{tier:e.target.value})}
                     className="px-2 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#c8991a]">
@@ -144,7 +144,7 @@ export default function MultiOrderPage() {
               </div>
             ))}
 
-            <button onClick={()=>setRows(rs=>[...rs,{address:"",serviceId:"ext_7",tier:"standard"}])} disabled={rows.length>=MAX_ROWS}
+            <button onClick={()=>setRows(rs=>[...rs,{address:"",serviceId:"re_main6",tier:"standard"}])} disabled={rows.length>=MAX_ROWS}
               className="flex items-center gap-1.5 text-sm text-[#0f1f3d] font-semibold disabled:opacity-40 hover:text-[#c8991a]">
               <Plus className="w-4 h-4"/>Add another property ({rows.length}/{MAX_ROWS})
             </button>
@@ -156,7 +156,7 @@ export default function MultiOrderPage() {
               <p className="text-slate-400 text-xs">Estimated total</p>
             </div>
             <div className="flex items-center gap-4">
-              <span className="text-2xl font-extrabold text-[#c8991a]">${total}</span>
+              <span className="text-2xl font-extrabold text-[#c8991a]">${total.toFixed(2)}</span>
               <button onClick={submitBulk} disabled={submitting||validRows.length===0}
                 className="bg-[#c8991a] hover:bg-[#f0b429] disabled:opacity-50 text-[#0f1f3d] font-extrabold px-5 py-3 rounded-xl flex items-center gap-2 transition-colors">
                 {submitting?"Submitting…":<><Package className="w-4 h-4"/>Submit {validRows.length} Order{validRows.length!==1?"s":""}</>}
