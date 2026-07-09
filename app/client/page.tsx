@@ -16,7 +16,7 @@ interface Order {
   id: string; address: string; status: string; totalPrice: number; compensationAmount: number;
   serviceType: string; turnaroundTier: string; notes: string; customizeNotes: string;
   photos: Photo[]; photoExpiresAt: string | null; createdAt: string; invoicePaid: boolean;
-  offerAcceptedAt?: string | null;
+  offerAcceptedAt?: string | null; clientId?: string;
   agent?: { name: string } | null; bids?: Bid[]; acceptedBidId?: string | null;
 }
 interface ServiceItem { id: string; name: string; description: string; basePrice: number; compensation: number; category: string; photoCount?: number; shotList?: string[]; isCustom?: boolean; requiresInterior?: boolean; }
@@ -171,6 +171,7 @@ function ClientPageInner() {
   }, []);
 
   useEffect(() => { if(tab==="subaccounts") fetchSubAccounts(); }, [tab, fetchSubAccounts]);
+  useEffect(() => { fetchSubAccounts(); }, [fetchSubAccounts]);
 
   // Address validation + coverage check
   async function validateAddress(addr: string) {
@@ -321,9 +322,7 @@ function ClientPageInner() {
   }
 
   function reorder(o: Order) {
-    setAddress(o.address);
-    setBulkMode(false);
-    setShowNewOrder(true);
+    router.push(`/client/order?address=${encodeURIComponent(o.address)}`);
   }
 
   return (
@@ -351,15 +350,9 @@ function ClientPageInner() {
               </button>
               {navMenu==="orders"&&(
                 <div className="absolute left-0 top-full mt-1 w-56 bg-[#16294f] border border-white/10 rounded-xl shadow-2xl overflow-hidden py-1">
-                  {[
-                    {label:"Place An Order", icon:<Plus className="w-4 h-4"/>, act:()=>{setBulkMode(false);setShowNewOrder(true);setNavMenu(null);}},
-                    {label:"Place Multi Orders", icon:<Package className="w-4 h-4"/>, act:()=>{setBulkMode(true);setShowNewOrder(true);setNavMenu(null);}},
-                    {label:"View Orders", icon:<List className="w-4 h-4"/>, act:()=>{setTab("orders");setNavMenu(null);document.getElementById("order-ledger")?.scrollIntoView({behavior:"smooth"});}},
-                  ].map(item=>(
-                    <button key={item.label} onClick={item.act} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-200 hover:bg-white/10 hover:text-white text-left">
-                      {item.icon}{item.label}
-                    </button>
-                  ))}
+                  <Link href="/client/order" className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-200 hover:bg-white/10 hover:text-white"><Plus className="w-4 h-4"/>Place An Order</Link>
+                  <Link href="/client/multi-order" className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-200 hover:bg-white/10 hover:text-white"><Package className="w-4 h-4"/>Place Multi Orders</Link>
+                  <button onClick={()=>{setTab("orders");setNavMenu(null);document.getElementById("order-ledger")?.scrollIntoView({behavior:"smooth"});}} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-200 hover:bg-white/10 hover:text-white text-left"><List className="w-4 h-4"/>View Orders</button>
                   <Link href="/coverage" className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-200 hover:bg-white/10 hover:text-white"><MapPin className="w-4 h-4"/>View Coverage Map</Link>
                   <Link href="/contact" className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-200 hover:bg-white/10 hover:text-white"><DollarSign className="w-4 h-4"/>Request a Quote</Link>
                 </div>
@@ -444,14 +437,14 @@ function ClientPageInner() {
 
             {/* Primary actions */}
             <div className="grid grid-cols-2 gap-2.5">
-              <button onClick={()=>{setBulkMode(false);setShowNewOrder(true);}}
+              <Link href="/client/order"
                 className="flex items-center justify-center gap-1.5 bg-[#c8991a] hover:bg-[#f0b429] text-[#0f1f3d] font-bold text-sm py-2.5 rounded-xl transition-colors shadow-sm">
                 <Plus className="w-4 h-4"/>New Order
-              </button>
-              <button onClick={()=>{setBulkMode(true);setShowNewOrder(true);}}
+              </Link>
+              <Link href="/client/multi-order"
                 className="flex items-center justify-center gap-1.5 bg-white border-2 border-[#c8991a] text-[#0f1f3d] hover:bg-[#c8991a]/10 font-bold text-sm py-2.5 rounded-xl transition-colors">
                 <Package className="w-4 h-4"/>Multi Orders
-              </button>
+              </Link>
             </div>
 
             {/* Cutoff notice */}
@@ -581,7 +574,7 @@ function ClientPageInner() {
                         <option value="completed">Completed</option>
                         <option value="cancelled">Cancelled</option>
                       </select>
-                      <button onClick={()=>{setBulkMode(false);setShowNewOrder(true);}} className="flex items-center gap-1.5 bg-[#c8991a] hover:bg-[#f0b429] text-[#0f1f3d] text-sm font-bold px-3.5 py-2 rounded-xl whitespace-nowrap"><Plus className="w-4 h-4"/>New Order</button>
+                      <Link href="/client/order" className="flex items-center gap-1.5 bg-[#c8991a] hover:bg-[#f0b429] text-[#0f1f3d] text-sm font-bold px-3.5 py-2 rounded-xl whitespace-nowrap"><Plus className="w-4 h-4"/>New Order</Link>
                     </div>
                   </div>
 
@@ -598,6 +591,7 @@ function ClientPageInner() {
                         const selSet = selectedPhotos[order.id]??new Set();
                         const addr = splitAddress(order.address);
                         const isQuick = quickView===order.id;
+                        const placedByEmployee = order.clientId && userId && order.clientId !== userId ? subAccounts.find(s=>s.id===order.clientId) : null;
                         const acceptedTime = order.offerAcceptedAt ? new Date(order.offerAcceptedAt).toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"}) : null;
 
                         return (
@@ -610,7 +604,7 @@ function ClientPageInner() {
                                   <Link href={`/client/orders/${order.id}`} className="font-bold text-[#0f1f3d] hover:text-[#c8991a] transition-colors truncate text-sm uppercase">{addr.line}</Link>
                                   <button onClick={()=>setQuickView(isQuick?null:order.id)} className="text-[11px] text-[#c8991a] hover:underline font-medium whitespace-nowrap">({isQuick?"Close":"Quick View"})</button>
                                 </div>
-                                <p className="text-[11px] text-slate-500 truncate">{order.serviceType} · {order.photos.length>0?`${order.photos.length} photos`:TIER_LABELS[order.turnaroundTier]}{order.agent?` · ${order.agent.name}`:""} · <span className="font-semibold text-slate-600">${order.totalPrice}</span></p>
+                                <p className="text-[11px] text-slate-500 truncate">{order.serviceType} · {order.photos.length>0?`${order.photos.length} photos`:TIER_LABELS[order.turnaroundTier]}{order.agent?` · ${order.agent.name}`:""}{placedByEmployee?` · Placed by ${placedByEmployee.name}`:""} · <span className="font-semibold text-slate-600">${order.totalPrice}</span></p>
                               </div>
                               <span className="text-xs text-slate-500 text-right hidden sm:block truncate">{addr.area||"—"}</span>
                               <div className="flex items-center justify-end gap-1.5 text-right">

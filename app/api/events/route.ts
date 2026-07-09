@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { getAllOrders, getOrdersByClientId, getOrdersByAgentId } from "@/lib/db";
+import { supabase } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -28,7 +29,12 @@ export async function GET(request: NextRequest) {
         try {
           let orders;
           if (userRole === "admin") orders = await getAllOrders();
-          else if (userRole === "client") orders = await getOrdersByClientId(userId!);
+          else if (userRole === "client") {
+            const { data: subs } = await supabase.from("users").select("id").eq("parent_client_id", userId!);
+            const subIds = (subs ?? []).map(s => (s as Record<string,unknown>).id as string);
+            const results = await Promise.all([userId!, ...subIds].map(id => getOrdersByClientId(id)));
+            orders = results.flat().sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+          }
           else orders = await getOrdersByAgentId(userId!);
           send("orders", JSON.stringify(orders));
         } catch { /* ignore */ }
