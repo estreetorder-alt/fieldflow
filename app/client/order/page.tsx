@@ -125,7 +125,6 @@ function PlaceOrderInner() {
     }
     if (n===1) {
       if (!street.trim()||!city.trim()||!stateAbbr||!zip.trim()) return "Complete the address fields";
-      if (addressValid===null) return "Click CHECK ADDRESS to verify the property first";
       return null;
     }
     return null;
@@ -186,8 +185,8 @@ function PlaceOrderInner() {
               <div className="w-14 h-14 bg-[#c8991a] rounded-full flex items-center justify-center mx-auto mb-3">
                 <CheckCircle className="w-7 h-7 text-[#0f1f3d]"/>
               </div>
-              <h1 className="text-xl font-bold text-white mb-1">Order Submitted!</h1>
-              <p className="text-slate-300 text-sm">Complete payment to activate it — an agent is dispatched the moment payment is confirmed.</p>
+              <h1 className="text-xl font-bold text-white mb-1">Order Placed — Order In Queue</h1>
+              <p className="text-slate-300 text-sm">Your order is in queue for field agents to bid on. Complete payment to activate it — an agent is dispatched the moment payment is confirmed and you accept a bid.</p>
             </div>
             <div className="p-6">
               {paymentLinks.length > 0 ? (
@@ -228,7 +227,10 @@ function PlaceOrderInner() {
           <Link href="/client" className="flex items-center gap-2 text-slate-200 hover:text-white text-sm font-medium">
             <ArrowLeft className="w-4 h-4"/>Back to Dashboard
           </Link>
-          <span className="text-white font-extrabold tracking-tight flex items-center gap-2"><Camera className="w-4 h-4 text-[#c8991a]"/>Place An Order</span>
+          <span className="flex items-center gap-2">
+            <img src="/snapect-logo.png" alt="Snapect" className="h-7 w-auto object-contain brightness-0 invert"/>
+            <span className="text-white font-extrabold tracking-tight hidden sm:inline">Place An Order</span>
+          </span>
           <Link href="/client/multi-order" className="flex items-center gap-1.5 text-[#c8991a] hover:text-[#f0b429] text-sm font-semibold">
             <Package className="w-4 h-4"/>Multi Orders
           </Link>
@@ -425,29 +427,9 @@ function PlaceOrderInner() {
               </div>
             </div>
 
-            <button onClick={checkAddress} disabled={checking}
-              className="mt-4 bg-[#0f1f3d] hover:bg-[#1a3260] disabled:opacity-50 text-white font-bold text-sm px-5 py-2.5 rounded-xl flex items-center gap-2">
-              {checking?<span className="w-4 h-4 border-2 border-[#c8991a] border-t-transparent rounded-full animate-spin"/>:<MapPin className="w-4 h-4 text-[#c8991a]"/>}Check Address
-            </button>
-
-            {addressValid===true&&(
-              <div className="mt-3 space-y-2">
-                <p className="flex items-center gap-1.5 text-sm text-green-700 font-semibold"><CheckCircle className="w-4 h-4"/>OK. We located the property</p>
-                <div className="text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5">
-                  {addressSuggestion&&<p><span className="font-semibold text-slate-600">We found:</span> {addressSuggestion}</p>}
-                  <p className="mt-0.5"><span className="font-semibold text-slate-600">Your input address:</span> {composedAddress}</p>
-                </div>
-              </div>
-            )}
-            {addressValid===false&&(
-              <p className="mt-3 flex items-center gap-1.5 text-sm text-red-600"><AlertCircle className="w-4 h-4"/>We could not locate that address — check spelling and ZIP. You can still continue if you&apos;re sure it&apos;s correct.</p>
-            )}
-            {coverageStatus&&(
-              <div className={`mt-3 flex items-center gap-2 text-xs font-semibold px-3 py-2.5 rounded-xl ${coverageStatus.covered?"bg-green-50 text-green-700 border border-green-200":"bg-amber-50 text-amber-700 border border-amber-200"}`}>
-                {coverageStatus.covered ? <><CheckCircle className="w-4 h-4"/>We have located {coverageStatus.agentCount} field agent{coverageStatus.agentCount!==1?"s":""} covering this ZIP</>
-                : <><AlertTriangle className="w-4 h-4"/>No agents in this ZIP yet — your order will be queued until one is available</>}
-              </div>
-            )}
+            <div className="mt-4 flex items-center gap-2 text-xs font-semibold px-3 py-2.5 rounded-xl bg-slate-50 text-slate-600 border border-slate-200">
+              <Info className="w-4 h-4 text-[#c8991a]"/>Fill in the address above, then continue — your order will be placed into the queue for a field agent to bid on.
+            </div>
 
             {/* Incentive payment */}
             <div className="mt-5 border-t border-slate-100 pt-4">

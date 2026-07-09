@@ -27,6 +27,9 @@ interface PaymentLink { id: string; label: string; url: string; amount?: number;
 
 const STATUS_COLORS: Record<string,string> = { under_review:"bg-purple-100 text-purple-700 border-purple-200", pending:"bg-amber-100 text-amber-700 border-amber-200", in_progress:"bg-blue-100 text-blue-700 border-blue-200", completed:"bg-green-100 text-green-700 border-green-200", cancelled:"bg-red-100 text-red-700 border-red-200" };
 const STATUS_ICONS: Record<string,React.ReactNode> = { under_review:<Clock className="w-3.5 h-3.5"/>, pending:<Clock className="w-3.5 h-3.5"/>, in_progress:<RefreshCw className="w-3.5 h-3.5"/>, completed:<CheckCircle className="w-3.5 h-3.5"/>, cancelled:<XCircle className="w-3.5 h-3.5"/> };
+const STATUS_LABELS: Record<string,string> = { under_review:"Under Review", pending:"Order In Queue", in_progress:"In Progress", completed:"Completed", cancelled:"Cancelled" };
+// Anonymized display for a bidding agent — vendors never see the agent's real name until a bid is accepted
+function anonBidder(agentId: string) { return `User ${agentId.replace(/[^a-zA-Z0-9]/g,"").slice(-6).toUpperCase()} (ID: ${agentId})`; }
 const TIER_LABELS: Record<string,string> = { standard:"Next Business Day", rush_24hr:"24-Hour Rush (+25%)", rush_6hr:"6-Hour Rush (+75%)" };
 const TIER_MULS: Record<string,number> = { standard:1, rush_24hr:1.25, rush_6hr:1.75 };
 
@@ -49,7 +52,7 @@ function ClientPageInner() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [showNewOrder, setShowNewOrder] = useState(false);
-  const [userName, setUserName] = useState("Client");
+  const [userName, setUserName] = useState("Vendor");
   const [userId, setUserId] = useState("");
   const [liveConnected, setLiveConnected] = useState(false);
   const esRef = useRef<EventSource|null>(null);
@@ -347,7 +350,7 @@ function ClientPageInner() {
           <div className="flex items-center gap-2.5 flex-shrink-0">
             <img src="/snapect-logo.png" alt="Snapect" className="h-8 w-auto object-contain" onError={e=>{(e.target as HTMLImageElement).style.display="none";}}/>
             <span className="font-extrabold text-white tracking-tight hidden sm:inline">Snapect</span>
-            <span className="text-[10px] bg-[#c8991a] text-[#0f1f3d] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">Client Portal</span>
+            <span className="text-[10px] bg-[#c8991a] text-[#0f1f3d] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">Vendor Portal</span>
           </div>
 
           <nav className="flex items-center gap-0.5 text-sm">
@@ -408,7 +411,7 @@ function ClientPageInner() {
       </header>
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
-        {/* Client name + account number */}
+        {/* Vendor name + account number */}
         <div className="flex items-baseline gap-3 mb-4 flex-wrap">
           <h1 className="text-2xl font-extrabold text-[#0f1f3d]">{userName}</h1>
           <span className="text-xs text-slate-400 font-medium">Account # {userId ? userId.replace(/\D/g,"").slice(0,6).padStart(6,"1") : "——"}</span>
@@ -468,14 +471,14 @@ function ClientPageInner() {
             </div>
 
             {/* Customer support card */}
-            <a href="mailto:support@snapect.com" className="block bg-[#16294f] rounded-2xl p-4 hover:bg-[#1a3260] transition-colors group">
+            <a href="mailto:info@snapect.com" className="block bg-[#16294f] rounded-2xl p-4 hover:bg-[#1a3260] transition-colors group">
               <div className="flex items-center gap-3">
                 <div className="w-11 h-11 bg-[#c8991a] rounded-full flex items-center justify-center flex-shrink-0">
                   <Headset className="w-5 h-5 text-[#0f1f3d]"/>
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-white font-bold text-sm">Customer Support</p>
-                  <p className="text-slate-400 text-[11px] truncate">support@snapect.com</p>
+                  <p className="text-slate-400 text-[11px] truncate">info@snapect.com</p>
                 </div>
                 <ChevronRight className="w-4 h-4 text-[#c8991a] group-hover:translate-x-0.5 transition-transform"/>
               </div>
@@ -663,7 +666,7 @@ function ClientPageInner() {
                             {isQuick&&(
                               <div className="px-5 pb-4 pt-1 bg-[#f8fafc] border-t border-slate-100">
                                 <div className="flex items-center gap-3 flex-wrap text-xs text-slate-500 mb-3 pt-3">
-                                  <span className={`inline-flex items-center gap-1 font-medium px-2 py-0.5 rounded-full border ${STATUS_COLORS[order.status]}`}>{STATUS_ICONS[order.status]}{order.status.replace("_"," ")}</span>
+                                  <span className={`inline-flex items-center gap-1 font-medium px-2 py-0.5 rounded-full border ${STATUS_COLORS[order.status]}`}>{STATUS_ICONS[order.status]}{STATUS_LABELS[order.status] ?? order.status.replace("_"," ")}</span>
                                   <span>{TIER_LABELS[order.turnaroundTier]}</span>
                                   {order.invoicePaid&&<span className="text-green-600 font-medium">✓ Paid</span>}
                                   {order.status==="completed" && order.photoExpiresAt && (() => {
@@ -692,9 +695,8 @@ function ClientPageInner() {
                                             <div className="flex-1">
                                               <div className="flex items-center gap-2">
                                                 <User className="w-3.5 h-3.5 text-slate-400"/>
-                                                <span className="text-sm font-semibold text-slate-800">{bid.agentName}</span>
+                                                <span className="text-sm font-semibold text-slate-800">Bid placed by {anonBidder(bid.agentId)}</span>
                                                 {bid.agentRating&&<span className="text-xs text-amber-600">★ {bid.agentRating.toFixed(1)}</span>}
-                                                {bid.placedByAdmin&&<span className="text-xs text-slate-400">(admin)</span>}
                                               </div>
                                               {bid.message&&<p className="text-xs text-slate-500 mt-0.5">"{bid.message}"</p>}
                                             </div>

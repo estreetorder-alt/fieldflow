@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
   // Admin always can log in
   if (user.role !== "admin") {
     if (user.suspended)
-      return NextResponse.json({ error: "Your account has been suspended. Contact support@snapect.com" }, { status: 403 });
+      return NextResponse.json({ error: "Your account has been suspended. Contact info@snapect.com" }, { status: 403 });
     if (!user.accountActive)
       return NextResponse.json({
         error: "pending_activation",

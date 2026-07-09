@@ -198,8 +198,7 @@ export default function AgentPage() {
     <div className="min-h-screen bg-slate-50">
       <header className="bg-white border-b border-slate-100 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
         <div className="flex items-center gap-3">
-          <span className="w-9 h-9 bg-blue-600 text-white rounded-xl flex items-center justify-center font-bold">📷</span>
-          <span className="font-bold text-slate-900">Snapect</span>
+          <img src="/snapect-logo.png" alt="Snapect" className="h-8 w-auto object-contain" onError={e=>{(e.target as HTMLImageElement).style.display="none";}}/>
           <span className="text-xs bg-green-50 text-green-700 border border-green-100 rounded-full px-2 py-0.5 font-medium">Agent Portal</span>
         </div>
         <div className="flex items-center gap-4">

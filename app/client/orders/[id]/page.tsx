@@ -44,6 +44,13 @@ const STATUS_ICONS: Record<string, React.ReactNode> = {
   cancelled: <XCircle className="w-4 h-4" />,
 };
 
+const STATUS_LABELS: Record<string, string> = {
+  pending: "Order In Queue",
+  in_progress: "In Progress",
+  completed: "Completed",
+  cancelled: "Cancelled",
+};
+
 const TIMELINE_DOT: Record<string, string> = {
   pending: "bg-amber-400",
   in_progress: "bg-blue-500",
@@ -190,7 +197,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
             <div className="flex items-center gap-2 mb-2">
               <span className={`inline-flex items-center gap-1.5 text-sm font-semibold px-3 py-1 rounded-full border ${STATUS_COLORS[order.status]}`}>
                 {STATUS_ICONS[order.status]}
-                {order.status.replace("_", " ")}
+                {STATUS_LABELS[order.status] ?? order.status.replace("_", " ")}
               </span>
               {order.turnaroundTier !== "standard" && (
                 <span className="text-xs bg-blue-50 text-blue-700 border border-blue-200 font-semibold px-2.5 py-1 rounded-full">

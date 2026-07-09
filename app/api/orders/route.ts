@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    await addEmailLog({ type: "new_order", to: "admin@fieldflow.com",
+    await addEmailLog({ type: "new_order", to: "info@snapect.com",
       subject: `New Order (Under Review) — ${row.address}`,
       body: `Service: ${svc?.name}. Price: $${totalPrice}. Awaiting payment confirmation.` });
 

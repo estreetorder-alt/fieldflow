@@ -2,8 +2,8 @@ import { addEmailLog } from "./db";
 import { sendNtfyNotification } from "./notify";
 
 const RESEND_KEY = process.env.RESEND_API_KEY ?? "";
-const FROM = "Snapect <noreply@snapect.com>";
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? "admin@snapect.com";
+const FROM = "Snapect <info@snapect.com>";
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? "info@snapect.com";
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://snapect.com";
 
 async function sendViaResend(to: string, subject: string, html: string): Promise<void> {
@@ -36,7 +36,7 @@ function emailWrapper(title: string, body: string, ctaUrl?: string, ctaText?: st
   </td></tr>
   <tr><td style="background:#f8f9fa;padding:20px 32px;text-align:center;border-top:1px solid #e2e8f0;">
     <p style="margin:0;color:#94a3b8;font-size:12px;">© ${new Date().getFullYear()} Snapect · <a href="${BASE_URL}/privacy" style="color:#c8991a;">Privacy Policy</a> · <a href="${BASE_URL}/terms" style="color:#c8991a;">Terms</a></p>
-    <p style="margin:6px 0 0;color:#94a3b8;font-size:11px;">support@snapect.com</p>
+    <p style="margin:6px 0 0;color:#94a3b8;font-size:11px;">info@snapect.com</p>
   </td></tr>
 </table>
 </td></tr></table>

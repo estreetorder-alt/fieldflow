@@ -164,7 +164,7 @@ function LoginForm() {
                   ))}
                 </div>
               ) : (
-                <p className="text-xs text-amber-700">Contact <a href="mailto:support@snapect.com" className="underline font-bold">support@snapect.com</a> to complete activation.</p>
+                <p className="text-xs text-amber-700">Contact <a href="mailto:info@snapect.com" className="underline font-bold">info@snapect.com</a> to complete activation.</p>
               )}
               <button onClick={() => setPendingActivation(false)} className="mt-3 text-xs text-slate-500 hover:text-slate-700 underline">Back to login</button>
             </div>

@@ -9,7 +9,7 @@ const NAV_LINKS = [
   { href: "/",                label: "Home" },
   { href: "/coverage",        label: "Coverage Area" },
   { href: "/services",        label: "Services" },
-  { href: "/register/client", label: "New Client Signup" },
+  { href: "/register/client", label: "New Vendor Signup" },
   { href: "/work",            label: "Join Our Team" },
   { href: "/contact",         label: "Contact" },
 ];

@@ -44,7 +44,7 @@ function WalletPageInner() {
   const [requestingTopup, setRequestingTopup] = useState(false);
   const [topupSuccess, setTopupSuccess] = useState(false);
   const [showTopup, setShowTopup] = useState(false);
-  const [userName, setUserName] = useState("Client");
+  const [userName, setUserName] = useState("Vendor");
 
   const fetchWallet = useCallback(async () => {
     const [walletRes, linksRes, meRes] = await Promise.all([
@@ -233,7 +233,7 @@ function WalletPageInner() {
 
             {/* Payment links */}
             {paymentLinks.length === 0 ? (
-              <p className="text-sm text-slate-500 text-center py-4">Payment links not configured yet. Contact <a href="mailto:support@snapect.com" className="text-[#c8991a] underline">support@snapect.com</a></p>
+              <p className="text-sm text-slate-500 text-center py-4">Payment links not configured yet. Contact <a href="mailto:info@snapect.com" className="text-[#c8991a] underline">info@snapect.com</a></p>
             ) : (
               <div className="space-y-3 mb-4">
                 <p className="text-xs font-bold text-slate-700 uppercase tracking-wide">Pay via:</p>

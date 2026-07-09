@@ -18,7 +18,7 @@ export default function ContactPage() {
       <section className="py-16 px-4 bg-[#faf8f3]">
         <div className="max-w-5xl mx-auto grid sm:grid-cols-3 gap-6 mb-12">
           {[
-            { icon:<Mail className="w-6 h-6"/>, title:"Email Us", lines:["support@snapect.com","We reply within 1 business day"], note:"For order issues, include your order ID" },
+            { icon:<Mail className="w-6 h-6"/>, title:"Email Us", lines:["info@snapect.com","We reply within 1 business day"], note:"For order issues, include your order ID" },
             { icon:<Phone className="w-6 h-6"/>, title:"Phone", lines:["(941) 723-3200","Mon–Fri 8 AM – 6 PM CST"], note:"Please do not call to check application status" },
             { icon:<Clock className="w-6 h-6"/>, title:"Support Hours", lines:["Monday – Friday","8:00 AM – 6:00 PM CST"], note:"Closed weekends and federal holidays" },
           ].map(c=>(
@@ -56,17 +56,17 @@ export default function ContactPage() {
         <div className="max-w-3xl mx-auto grid sm:grid-cols-2 gap-6">
           <div className="bg-[#1a3260] rounded-2xl p-6">
             <Users className="w-8 h-8 text-[#c8991a] mb-3"/>
-            <h3 className="font-bold text-white mb-2">Clients</h3>
+            <h3 className="font-bold text-white mb-2">Vendors</h3>
             <p className="text-slate-300 text-sm mb-4">For order help, billing questions, or account issues:</p>
-            <a href="mailto:support@snapect.com" className="inline-flex items-center gap-2 bg-[#c8991a] text-[#0f1f3d] font-bold px-4 py-2.5 rounded-xl text-sm hover:bg-[#f0b429] transition-colors">
-              <Mail className="w-4 h-4"/>Email Client Support
+            <a href="mailto:info@snapect.com" className="inline-flex items-center gap-2 bg-[#c8991a] text-[#0f1f3d] font-bold px-4 py-2.5 rounded-xl text-sm hover:bg-[#f0b429] transition-colors">
+              <Mail className="w-4 h-4"/>Email Vendor Support
             </a>
           </div>
           <div className="bg-[#1a3260] rounded-2xl p-6">
             <MessageSquare className="w-8 h-8 text-[#c8991a] mb-3"/>
             <h3 className="font-bold text-white mb-2">Field Agents</h3>
             <p className="text-slate-300 text-sm mb-4">For application status, payment questions, or technical issues:</p>
-            <a href="mailto:agents@snapect.com" className="inline-flex items-center gap-2 bg-[#c8991a] text-[#0f1f3d] font-bold px-4 py-2.5 rounded-xl text-sm hover:bg-[#f0b429] transition-colors">
+            <a href="mailto:info@snapect.com" className="inline-flex items-center gap-2 bg-[#c8991a] text-[#0f1f3d] font-bold px-4 py-2.5 rounded-xl text-sm hover:bg-[#f0b429] transition-colors">
               <Mail className="w-4 h-4"/>Email Agent Support
             </a>
           </div>

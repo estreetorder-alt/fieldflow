@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
         method: "POST",
         headers: { "Authorization": `Bearer ${RESEND_KEY}`, "Content-Type": "application/json" },
         body: JSON.stringify({
-          from: "Snapect <noreply@snapect.com>",
+          from: "Snapect <info@snapect.com>",
           to: [user.email],
           subject: "Reset Your Snapect Password",
           html: `

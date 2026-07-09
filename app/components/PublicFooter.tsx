@@ -13,7 +13,7 @@ export default function PublicFooter() {
               America's trusted field inspection and photo documentation platform. 45+ services, 35 states, verified agents.
             </p>
             <div className="mt-4 space-y-1 text-xs text-slate-400">
-              <p>support@snapect.com</p>
+              <p>info@snapect.com</p>
               <p>Mon–Fri · 8 AM – 6 PM CST</p>
             </div>
           </div>
@@ -33,7 +33,7 @@ export default function PublicFooter() {
               <li><Link href="/coverage" className="hover:text-[#c8991a] transition-colors">Coverage Map</Link></li>
               <li><Link href="/work" className="hover:text-[#c8991a] transition-colors">Become an Agent</Link></li>
               <li><Link href="/contact" className="hover:text-[#c8991a] transition-colors">Contact Us</Link></li>
-              <li><Link href="/login" className="hover:text-[#c8991a] transition-colors">Client Portal</Link></li>
+              <li><Link href="/login" className="hover:text-[#c8991a] transition-colors">Vendor Portal</Link></li>
               <li><Link href="/login" className="hover:text-[#c8991a] transition-colors">Agent Portal</Link></li>
             </ul>
           </div>
@@ -43,7 +43,7 @@ export default function PublicFooter() {
               <li><Link href="/privacy" className="hover:text-[#c8991a] transition-colors">Privacy Policy</Link></li>
               <li><Link href="/terms" className="hover:text-[#c8991a] transition-colors">Terms of Service</Link></li>
               <li><Link href="/refund-policy" className="hover:text-[#c8991a] transition-colors">Refund Policy</Link></li>
-              <li><Link href="/register/client" className="hover:text-[#c8991a] transition-colors">Client Sign Up</Link></li>
+              <li><Link href="/register/client" className="hover:text-[#c8991a] transition-colors">Vendor Sign Up</Link></li>
               <li><Link href="/register/agent" className="hover:text-[#c8991a] transition-colors">Agent Registration</Link></li>
             </ul>
           </div>

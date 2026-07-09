@@ -230,7 +230,7 @@ export default function HomePage() {
       <section className="py-20 px-4 bg-[#0f1f3d]" aria-labelledby="testimonials-heading">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-14">
-            <p className="text-[#c8991a] font-bold text-sm uppercase tracking-widest mb-2">Client Stories</p>
+            <p className="text-[#c8991a] font-bold text-sm uppercase tracking-widest mb-2">Vendor Stories</p>
             <h2 id="testimonials-heading" className="text-3xl sm:text-4xl font-extrabold text-white">Trusted Since 2008</h2>
             <p className="text-slate-400 mt-2">Real clients. Real results.</p>
           </div>
@@ -290,7 +290,7 @@ export default function HomePage() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <button onClick={() => router.push("/register/client")}
               className="bg-[#0f1f3d] hover:bg-[#1a1a2e] text-white font-bold px-8 py-4 rounded-xl text-lg transition-colors shadow-lg inline-flex items-center justify-center gap-2">
-              New Client Signup <ChevronRight className="w-5 h-5" aria-hidden="true"/>
+              New Vendor Signup <ChevronRight className="w-5 h-5" aria-hidden="true"/>
             </button>
             <Link href="/contact"
               className="border-2 border-[#0f1f3d] text-[#0f1f3d] hover:bg-[#0f1f3d] hover:text-white font-semibold px-8 py-4 rounded-xl text-lg transition-colors inline-flex items-center justify-center">

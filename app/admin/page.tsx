@@ -379,8 +379,7 @@ export default function AdminPage() {
       <header className="bg-white border-b border-slate-200 px-6 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-purple-700 rounded-lg flex items-center justify-center"><Camera className="w-4 h-4 text-white"/></div>
-            <span className="font-bold text-slate-900">Snapect</span>
+            <img src="/snapect-logo.png" alt="Snapect" className="h-8 w-auto object-contain" onError={e=>{(e.target as HTMLImageElement).style.display="none";}}/>
             <span className="text-xs bg-purple-100 text-purple-700 font-medium px-2 py-0.5 rounded-full">Admin Studio</span>
           </div>
           <div className="flex items-center gap-4">
@@ -419,7 +418,7 @@ export default function AdminPage() {
               <div className="flex items-center gap-2">
                 <select value={annAudience} onChange={e=>setAnnAudience(e.target.value)} className="border border-slate-200 rounded-xl px-3 py-2 text-sm bg-white">
                   <option value="all">Show to everyone</option>
-                  <option value="client">Clients only</option>
+                  <option value="client">Vendors only</option>
                   <option value="agent">Agents only</option>
                 </select>
                 <button onClick={publishAnnouncement} disabled={annSaving||!annMsg.trim()}
@@ -477,7 +476,7 @@ export default function AdminPage() {
                 <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5"/>
                 <div>
                   <p className="font-bold text-amber-900 text-sm">⚠️ No Payment Links Configured</p>
-                  <p className="text-amber-800 text-xs mt-1">Clients cannot pay for orders until you add a payment link. <button onClick={()=>setTab("payment-links")} className="font-bold underline">Set up Payment Links now →</button></p>
+                  <p className="text-amber-800 text-xs mt-1">Vendors cannot pay for orders until you add a payment link. <button onClick={()=>setTab("payment-links")} className="font-bold underline">Set up Payment Links now →</button></p>
                 </div>
               </div>
             )}
@@ -485,7 +484,7 @@ export default function AdminPage() {
               <h2 className="font-semibold text-slate-900">All Orders ({orders.length})</h2>
               <div className="flex items-center gap-2 flex-wrap">
                 <input value={orderSearch} onChange={e=>setOrderSearch(e.target.value)}
-                  placeholder="Search address or client…"
+                  placeholder="Search address or vendor…"
                   className="border border-slate-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#c8991a] w-52"/>
                 <select value={orderStatusFilter} onChange={e=>setOrderStatusFilter(e.target.value)}
                   className="border border-slate-200 rounded-lg px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#c8991a]">
@@ -503,7 +502,7 @@ export default function AdminPage() {
                 <thead className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wide">
                   <tr>
                     <th className="text-left px-4 py-3">Order / Address</th>
-                    <th className="text-left px-4 py-3">Client</th>
+                    <th className="text-left px-4 py-3">Vendor</th>
                     <th className="text-left px-4 py-3">Service</th>
                     <th className="text-left px-4 py-3">Price</th>
                     <th className="text-left px-4 py-3">Status</th>
@@ -728,7 +727,7 @@ export default function AdminPage() {
                     <h2 className="font-bold text-amber-900">
                       Pending Activation — {allUsers.filter(u => u.role !== "admin" && !u.accountActive && !u.suspended).length} user(s) waiting
                     </h2>
-                    <p className="text-xs text-amber-700 mt-0.5">These clients have registered and need to pay their $30 activation fee. Once you confirm payment, click ✓ Activate. (Agent signup is free and auto-activates — agents won&apos;t appear here.)</p>
+                    <p className="text-xs text-amber-700 mt-0.5">These vendors have registered and need to pay their $30 activation fee. Once you confirm payment, click ✓ Activate. (Agent signup is free and auto-activates — agents won&apos;t appear here.)</p>
                   </div>
                 </div>
                 <div className="divide-y divide-amber-100">
@@ -778,7 +777,7 @@ export default function AdminPage() {
                     <h2 className="font-bold text-blue-900">
                       Orders Awaiting Payment — {orders.filter(o => (o as unknown as Record<string,unknown>).payment_status === "pending").length} order(s)
                     </h2>
-                    <p className="text-xs text-blue-700 mt-0.5">Clients placed these orders and should have paid. Confirm payment to activate.</p>
+                    <p className="text-xs text-blue-700 mt-0.5">Vendors placed these orders and should have paid. Confirm payment to activate.</p>
                   </div>
                 </div>
                 <div className="divide-y divide-blue-100">
@@ -849,7 +848,7 @@ export default function AdminPage() {
               {addUserSuccess&&<div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-800 text-sm rounded-xl font-mono">{addUserSuccess}</div>}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {[
-                  {label:"Role *",type:"select",key:"role",opts:["agent","client"]},
+                  {label:"Role *",type:"select",key:"role",opts:["agent","client"],optLabels:{agent:"Agent",client:"Vendor"}},
                   {label:"Full Name *",type:"text",key:"name",ph:"Jane Smith"},
                   {label:"Email *",type:"email",key:"email",ph:"jane@example.com"},
                   {label:"Phone",type:"text",key:"phone",ph:"555-0101"},
@@ -859,7 +858,7 @@ export default function AdminPage() {
                     {f.type==="select" ? (
                       <select value={newUser[f.key as keyof typeof newUser]} onChange={e=>setNewUser(u=>({...u,[f.key]:e.target.value}))}
                         className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
-                        {f.opts!.map(o=><option key={o} value={o}>{o.charAt(0).toUpperCase()+o.slice(1)}</option>)}
+                        {f.opts!.map(o=><option key={o} value={o}>{(f as unknown as {optLabels?:Record<string,string>}).optLabels?.[o] ?? (o.charAt(0).toUpperCase()+o.slice(1))}</option>)}
                       </select>
                     ) : (
                       <input type={f.type} value={newUser[f.key as keyof typeof newUser]} onChange={e=>setNewUser(u=>({...u,[f.key]:e.target.value}))}
@@ -889,7 +888,7 @@ export default function AdminPage() {
               </div>
               <button onClick={addUser} disabled={addingUser}
                 className="mt-4 flex items-center gap-2 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-semibold px-5 py-2.5 rounded-xl">
-                <UserPlus className="w-4 h-4"/>{addingUser?"Creating…":`Create ${newUser.role==="agent"?"Agent":"Client"}`}
+                <UserPlus className="w-4 h-4"/>{addingUser?"Creating…":`Create ${newUser.role==="agent"?"Agent":"Vendor"}`}
               </button>
             </div>
             <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
@@ -949,7 +948,7 @@ export default function AdminPage() {
                   <h2 className="font-bold text-slate-900 flex items-center gap-2">
                     <DollarSign className="w-5 h-5 text-emerald-600"/>Pending Wallet Top-ups
                   </h2>
-                  <p className="text-xs text-slate-400 mt-0.5">Clients requested these top-ups — confirm after verifying payment received</p>
+                  <p className="text-xs text-slate-400 mt-0.5">Vendors requested these top-ups — confirm after verifying payment received</p>
                 </div>
                 {pendingTopups.length > 0 && (
                   <span className="bg-emerald-100 text-emerald-700 font-bold text-sm px-3 py-1 rounded-full">{pendingTopups.length} pending</span>
@@ -985,11 +984,11 @@ export default function AdminPage() {
               ))}
             </div>
 
-            {/* All client wallet balances */}
+            {/* All vendor wallet balances */}
             <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
               <div className="px-6 py-4 border-b border-slate-100">
-                <h2 className="font-bold text-slate-900">Client Wallet Balances</h2>
-                <p className="text-xs text-slate-400 mt-0.5">All active clients and their current wallet balance</p>
+                <h2 className="font-bold text-slate-900">Vendor Wallet Balances</h2>
+                <p className="text-xs text-slate-400 mt-0.5">All active vendors and their current wallet balance</p>
               </div>
               <div className="divide-y divide-slate-100">
                 {allUsers.filter(u => u.role === "client" && u.accountActive).map(u => (
@@ -1005,7 +1004,7 @@ export default function AdminPage() {
                   </div>
                 ))}
                 {allUsers.filter(u => u.role === "client" && u.accountActive).length === 0 && (
-                  <div className="text-center py-8 text-slate-400 text-sm">No active clients yet</div>
+                  <div className="text-center py-8 text-slate-400 text-sm">No active vendors yet</div>
                 )}
               </div>
             </div>
@@ -1020,7 +1019,7 @@ export default function AdminPage() {
                   </div>
                 ))}
               </div>
-              <p className="text-xs text-slate-400">Clients choose from these amounts when topping up. Each top-up creates a pending transaction you confirm here after receiving payment.</p>
+              <p className="text-xs text-slate-400">Vendors choose from these amounts when topping up. Each top-up creates a pending transaction you confirm here after receiving payment.</p>
             </div>
           </div>
 
@@ -1172,7 +1171,7 @@ export default function AdminPage() {
                           {/* Standard price — editable */}
                           <div className="col-span-2">
                             {svc.isCustom ? (
-                              <span className="text-xs text-slate-400 text-center block">Client sets</span>
+                              <span className="text-xs text-slate-400 text-center block">Vendor sets</span>
                             ) : (
                               <div className="relative">
                                 <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-xs">$</span>
@@ -1271,9 +1270,9 @@ export default function AdminPage() {
               <ol className="space-y-2 text-sm text-slate-300">
                 {[
                   "Paste any payment URL — PayPal.me, Venmo, Zelle, CashApp, or a custom invoice URL like https://carebusinessconsultingsolutions.com/generate/invoice?...",
-                  "Every time a client or agent needs to pay — they see a 'Pay Now' button that opens your link in a new tab",
+                  "Every time a vendor or agent needs to pay — they see a 'Pay Now' button that opens your link in a new tab",
                   "After they pay, you get a push notification (Ntfy) + email. Then click '✓ Confirm Pay' in Orders tab to activate the order",
-                  "For new client account activation — go to Add Users tab → click '✓ Activate' after confirming their $30 signup fee payment (agents auto-activate for free)",
+                  "For new vendor account activation — go to Add Users tab → click '✓ Activate' after confirming their $30 signup fee payment (agents auto-activate for free)",
                   "Links are saved permanently until you delete them — no need to re-add each time",
                 ].map((step, i) => (
                   <li key={i} className="flex items-start gap-3">
@@ -1289,11 +1288,11 @@ export default function AdminPage() {
               <h2 className="font-bold text-slate-900 mb-1 flex items-center gap-2 text-lg">
                 <DollarSign className="w-5 h-5 text-emerald-600"/>Add Payment Link
               </h2>
-              <p className="text-xs text-slate-500 mb-5">This link will appear as a "Pay Now" button for every client and agent payment.</p>
+              <p className="text-xs text-slate-500 mb-5">This link will appear as a "Pay Now" button for every vendor and agent payment.</p>
               {linkError && <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl">{linkError}</div>}
               <div className="grid sm:grid-cols-2 gap-4 mb-4">
                 <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">Label * <span className="font-normal text-slate-400">(shown to client)</span></label>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">Label * <span className="font-normal text-slate-400">(shown to vendor)</span></label>
                   <input value={newLink.label} onChange={e=>setNewLink(l=>({...l,label:e.target.value}))}
                     placeholder="e.g. Pay via PayPal"
                     className="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"/>
@@ -1305,7 +1304,7 @@ export default function AdminPage() {
                     className="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"/>
                 </div>
                 <div className="sm:col-span-2">
-                  <label className="text-xs font-bold text-slate-700 block mb-1">Payment URL * <span className="font-normal text-slate-400">(the full link clients will click)</span></label>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">Payment URL * <span className="font-normal text-slate-400">(the full link vendors will click)</span></label>
                   <input value={newLink.url} onChange={e=>setNewLink(l=>({...l,url:e.target.value}))}
                     placeholder="https://carebusinessconsultingsolutions.com/generate/invoice?care&realtoruplift&299"
                     className="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 font-mono text-xs"/>
@@ -1327,7 +1326,7 @@ export default function AdminPage() {
             <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
               <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
                 <h2 className="font-semibold text-slate-900">Saved Payment Links ({paymentLinks.length})</h2>
-                <p className="text-xs text-slate-400">These appear as Pay Now buttons to all clients and agents</p>
+                <p className="text-xs text-slate-400">These appear as Pay Now buttons to all vendors and agents</p>
               </div>
               {paymentLinks.length === 0 ? (
                 <div className="text-center py-16">
@@ -1574,7 +1573,7 @@ export default function AdminPage() {
               </div>
             )}
             <div className="mb-4">
-              <label className="text-xs font-medium text-slate-600 block mb-1">Notes to client</label>
+              <label className="text-xs font-medium text-slate-600 block mb-1">Notes to vendor</label>
               <textarea value={resolveNotes} onChange={e=>setResolveNotes(e.target.value)} rows={3} placeholder="Explain the outcome…"
                 className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"/>
             </div>

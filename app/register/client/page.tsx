@@ -55,12 +55,12 @@ export default function ClientRegisterPage() {
               <div className="p-8">
                 <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
                   <p className="font-bold text-amber-900 text-sm mb-1">⚠️ Account Pending Activation</p>
-                  <p className="text-amber-800 text-xs leading-relaxed">Your account has been created but is not yet active. Pay the $30 one-time activation fee to unlock your client dashboard and start placing orders. You will receive a confirmation email once we verify your payment.</p>
+                  <p className="text-amber-800 text-xs leading-relaxed">Your account has been created but is not yet active. Pay the $30 one-time activation fee to unlock your vendor dashboard and start placing orders. You will receive a confirmation email once we verify your payment.</p>
                 </div>
                 <p className="text-sm font-semibold text-slate-700 mb-4">Select payment method:</p>
                 {paymentLinks.length === 0 ? (
                   <div className="text-center py-8 text-slate-400">
-                    <p className="text-sm">Payment links are being set up. Please contact <a href="mailto:support@snapect.com" className="text-[#c8991a] underline">support@snapect.com</a> to complete your activation.</p>
+                    <p className="text-sm">Payment links are being set up. Please contact <a href="mailto:info@snapect.com" className="text-[#c8991a] underline">info@snapect.com</a> to complete your activation.</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -99,7 +99,7 @@ export default function ClientRegisterPage() {
         <div className="max-w-5xl mx-auto grid md:grid-cols-2 gap-12 items-center">
           <div className="text-white">
             <p className="text-[#c8991a] font-bold text-sm uppercase tracking-wider mb-3">Join Snapect</p>
-            <h1 className="text-3xl sm:text-4xl font-extrabold mb-5 leading-tight">Create Your Client Account</h1>
+            <h1 className="text-3xl sm:text-4xl font-extrabold mb-5 leading-tight">Create Your Vendor Account</h1>
             <p className="text-slate-300 text-lg mb-8 leading-relaxed">Order field inspections from verified agents nationwide. Most orders dispatched within seconds.</p>
             <ul className="space-y-4 mb-8">
               {[
