@@ -254,6 +254,19 @@ export default function AdminPage() {
     setBidModal(null); setBidAgentId(""); setBidAmount(""); setBidMessage(""); setSubmittingBid(false);
   }
 
+  async function deleteOrder(orderId: string, address: string) {
+    if (!confirm(`Delete this order permanently?\n\n${address}\n\nAll bids, photos and history will be removed. Any held wallet funds are refunded to the vendor.`)) return;
+    const r = await fetch(`/api/orders/${orderId}`, { method:"DELETE" });
+    if (!r.ok) { const d = await r.json().catch(()=>({})); alert(d.error ?? "Failed to delete order"); }
+  }
+
+  async function deleteBid(orderId: string, bidId: string) {
+    if (!confirm("Delete this bid permanently?")) return;
+    const r = await fetch(`/api/orders/${orderId}/bids`, { method:"DELETE", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ bidId }) });
+    if (!r.ok) { const d = await r.json().catch(()=>({})); alert(d.error ?? "Failed to delete bid"); return; }
+    fetchBids(orderId);
+  }
+
   async function fetchBids(orderId: string) {
     const r = await fetch(`/api/orders/${orderId}/bids`);
     const d = await r.json();
@@ -581,6 +594,10 @@ export default function AdminPage() {
                                 className="p-1.5 text-slate-400 hover:text-blue-600 border border-slate-200 rounded-lg">
                                 <Download className="w-3.5 h-3.5"/>
                               </button>
+                              <button onClick={()=>deleteOrder(order.id, order.address)} title="Delete order"
+                                className="p-1.5 text-slate-400 hover:text-red-600 hover:border-red-300 border border-slate-200 rounded-lg">
+                                <TrashIcon className="w-3.5 h-3.5"/>
+                              </button>
                             </div>
                           </td>
                         </tr>
@@ -611,6 +628,12 @@ export default function AdminPage() {
                                     )}
                                     {bid.status==="accepted"&&<span className="text-xs text-green-700 font-semibold">✓ Accepted</span>}
                                     {bid.status==="rejected"&&<span className="text-xs text-red-600">Rejected</span>}
+                                    {bid.status!=="accepted"&&(
+                                      <button onClick={()=>deleteBid(order.id,bid.id)} title="Delete bid"
+                                        className="p-1.5 text-slate-400 hover:text-red-600 border border-slate-200 rounded-lg">
+                                        <TrashIcon className="w-3.5 h-3.5"/>
+                                      </button>
+                                    )}
                                   </div>
                                 </div>
                               ))}

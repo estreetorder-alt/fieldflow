@@ -37,6 +37,7 @@ function WalletPageInner() {
   const [loading, setLoading] = useState(true);
   const [showTopup, setShowTopup] = useState(false);
   const [paidPending, setPaidPending] = useState(false);
+  const [selectedLinkId, setSelectedLinkId] = useState<string | null>(null);
   const [userName, setUserName] = useState("Vendor");
 
   const fetchWallet = useCallback(async () => {
@@ -57,12 +58,16 @@ function WalletPageInner() {
 
   useEffect(() => { fetchWallet(); }, [fetchWallet]);
 
-  // Opening a payment link silently records a pending top-up in the background
-  async function handleLinkClick(link: PaymentLink) {
-    if (link.amount && link.amount > 0) {
+  const selectedLink = paymentLinks.find(l => l.id === selectedLinkId) ?? null;
+
+  // Pay Now: open the invoice link for the selected amount and silently record a pending top-up
+  async function payNow() {
+    if (!selectedLink) return;
+    window.open(selectedLink.url, "_blank", "noopener,noreferrer");
+    if (selectedLink.amount && selectedLink.amount > 0) {
       await fetch("/api/wallet", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: link.amount, description: `Wallet top-up — ${link.label} $${link.amount}` }),
+        body: JSON.stringify({ amount: selectedLink.amount, description: `Wallet top-up — $${selectedLink.amount}` }),
       }).catch(()=>{});
     }
     setPaidPending(true);
@@ -131,26 +136,35 @@ function WalletPageInner() {
             {paymentLinks.length === 0 ? (
               <p className="text-sm text-slate-500 text-center py-4">Payment options are being set up. Contact <a href="mailto:info@snapect.com" className="text-[#c8991a] underline">info@snapect.com</a></p>
             ) : (
-              <div className="space-y-3">
-                {paymentLinks.map(link => (
-                  <a key={link.id}
-                    href={link.url}
-                    target="_blank" rel="noopener noreferrer"
-                    onClick={() => handleLinkClick(link)}
-                    className="flex items-center justify-between gap-3 p-4 border-2 border-[#c8991a] rounded-xl hover:bg-[#c8991a]/5 transition-colors group">
-                    <div>
-                      <p className="font-bold text-[#0f1f3d]">{link.label}</p>
-                      {link.description && <p className="text-xs text-slate-500">{link.description}</p>}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {link.amount ? <span className="font-bold text-[#c8991a] text-lg">${link.amount}</span> : null}
-                      <span className="text-xs bg-[#c8991a] text-white font-bold px-3 py-1.5 rounded-lg group-hover:bg-[#f0b429] whitespace-nowrap">
-                        Pay Now →
-                      </span>
-                    </div>
-                  </a>
-                ))}
-              </div>
+              <>
+                {/* Amount tiles — tap to select */}
+                <div className="grid grid-cols-4 gap-2 mb-5">
+                  {paymentLinks.map(link => {
+                    const isSel = selectedLinkId === link.id;
+                    return (
+                      <button key={link.id} onClick={() => setSelectedLinkId(isSel ? null : link.id)}
+                        className={`py-3.5 rounded-xl font-bold text-sm border-2 transition-all ${
+                          isSel
+                            ? "border-[#c8991a] bg-[#c8991a]/15 text-[#0f1f3d] ring-2 ring-[#c8991a]/40 scale-[1.03]"
+                            : "border-slate-200 text-slate-700 hover:border-[#c8991a]"
+                        }`}>
+                        ${link.amount ?? link.label.replace(/\D/g, "")}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Pay Now — only appears once an amount is selected */}
+                {selectedLink && (
+                  <button onClick={payNow}
+                    className="w-full flex items-center justify-center gap-2 bg-[#c8991a] hover:bg-[#f0b429] text-[#0f1f3d] font-extrabold py-3.5 rounded-xl text-base transition-colors shadow-sm">
+                    Pay Now — ${selectedLink.amount ?? selectedLink.label.replace(/\D/g, "")} →
+                  </button>
+                )}
+                {!selectedLink && (
+                  <p className="text-xs text-slate-400 text-center">Select an amount above to continue</p>
+                )}
+              </>
             )}
           </div>
         )}

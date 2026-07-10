@@ -176,3 +176,30 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 
   return NextResponse.json({ ok: true });
 }
+
+export async function DELETE(request: NextRequest, { params }: Params) {
+  const userId = request.cookies.get("user_id")?.value;
+  const userRole = request.cookies.get("user_role")?.value;
+  if (!userId || userRole !== "admin")
+    return NextResponse.json({ error: "Admin only" }, { status: 403 });
+
+  const { id } = await params;
+  const order = await getOrderById(id);
+  if (!order) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  // Refund any held wallet funds back to the client before deleting
+  try {
+    const { refundWalletHold } = await import("@/lib/db");
+    await refundWalletHold(order.clientId, id);
+  } catch { /* no hold to refund */ }
+
+  // Remove all related rows, then the order itself
+  await supabase.from("bids").delete().eq("order_id", id);
+  await supabase.from("photos").delete().eq("order_id", id);
+  await supabase.from("status_history").delete().eq("order_id", id);
+  await supabase.from("orders").delete().eq("id", id);
+
+  const admin = await getUserById(userId);
+  await logAdminAction({ actorId: userId, actorName: admin?.name ?? "Admin", action: "delete_order", targetType: "order", targetId: id, details: { address: order.address } });
+  return NextResponse.json({ ok: true });
+}

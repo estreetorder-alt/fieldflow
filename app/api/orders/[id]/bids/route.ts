@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { supabase } from "@/lib/supabase";
 import { getOrderById, getBidsByOrderId, createBid, updateBidStatus, rejectOtherBids, updateOrder, addStatusHistory, getUserById, anonUserId } from "@/lib/db";
 import { sendBidPlacedEmail, sendBidAcceptedEmail, sendBidRejectedEmail } from "@/lib/email";
 import { sendNtfyNotification } from "@/lib/notify";
@@ -142,5 +143,27 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     }
   }
 
+  return NextResponse.json({ ok: true });
+}
+
+export async function DELETE(request: NextRequest, { params }: Params) {
+  const userId = request.cookies.get("user_id")?.value;
+  const userRole = request.cookies.get("user_role")?.value;
+  if (!userId || userRole !== "admin")
+    return NextResponse.json({ error: "Admin only" }, { status: 403 });
+
+  const { id } = await params;
+  const { bidId } = await request.json();
+  if (!bidId) return NextResponse.json({ error: "bidId required" }, { status: 400 });
+
+  const bids = await getBidsByOrderId(id);
+  const bid = bids.find(b => b.id === bidId);
+  if (!bid) return NextResponse.json({ error: "Bid not found" }, { status: 404 });
+
+  const order = await getOrderById(id);
+  if (order?.acceptedBidId === bidId)
+    return NextResponse.json({ error: "Cannot delete an accepted bid — cancel or delete the order instead" }, { status: 409 });
+
+  await supabase.from("bids").delete().eq("id", bidId);
   return NextResponse.json({ ok: true });
 }

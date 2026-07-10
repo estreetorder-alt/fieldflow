@@ -127,6 +127,7 @@ function ClientPageInner() {
 
   // ── Notification bell ──
   const [bellOpen, setBellOpen] = useState(false);
+  const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const [seenNotifs, setSeenNotifs] = useState<Set<string>>(new Set());
   const [placedBanner, setPlacedBanner] = useState(false);
   useEffect(()=>{ try{ const raw = localStorage.getItem("snapect_seen_notifs"); if(raw) setSeenNotifs(new Set(JSON.parse(raw))); }catch{} },[]);
@@ -191,6 +192,7 @@ function ClientPageInner() {
 
   useEffect(() => {
     fetch("/api/auth/me").then(r=>r.json()).then(d=>{ if(d.user){ setUserName(d.user.name); setUserId(d.user.id); } });
+    fetch("/api/wallet").then(r=>r.json()).then(d=>{ if(typeof d.balance==="number") setWalletBalance(d.balance); }).catch(()=>{});
     fetch("/api/payment-links").then(r=>r.json()).then(d=>{ setPaymentLinks(d.links?.filter((l: PaymentLink) => l.active) ?? []); });
     const es = new EventSource("/api/events");
     esRef.current = es;
@@ -436,7 +438,16 @@ function ClientPageInner() {
         )}
 
         {/* Order placed banner */}
-        {placedBanner && (
+        {placedBanner && (walletBalance!==null && walletBalance<=0 ? (
+          <div className="mb-5 p-4 bg-red-50 border border-red-300 rounded-xl flex items-center gap-3">
+            <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0"/>
+            <div className="flex-1">
+              <p className="font-semibold text-red-800">Order placed — but not processed yet</p>
+              <p className="text-sm text-red-700">Your wallet balance is $0. Add funds to your wallet so your order can be processed.</p>
+            </div>
+            <Link href="/client/wallet" className="bg-[#c8991a] hover:bg-[#f0b429] text-[#0f1f3d] text-sm font-bold px-4 py-2 rounded-xl whitespace-nowrap">Add Funds</Link>
+          </div>
+        ) : (
           <div className="mb-5 p-4 bg-amber-50 border border-[#c8991a]/50 rounded-xl flex items-center gap-3">
             <span className="relative flex w-4 h-4 flex-shrink-0">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#c8991a] opacity-50"/>
@@ -447,7 +458,7 @@ function ClientPageInner() {
               <p className="text-sm text-slate-600">Field agents are being notified. You&apos;ll see offers appear on your order shortly.</p>
             </div>
           </div>
-        )}
+        ))}
 
         {/* Payment success banner */}
         {paymentSuccess && (
@@ -677,6 +688,11 @@ function ClientPageInner() {
                                   <span className="flex items-center gap-1.5 text-red-500 text-xs italic"><XCircle className="w-4 h-4"/>Cancelled.</span>
                                 ) : order.agent||order.status==="in_progress" ? (
                                   <span className="flex items-center gap-1.5 text-slate-600 text-xs italic"><Car className="w-4 h-4 text-[#c8991a]"/>Accepted{acceptedTime?` ${acceptedTime}`:""}</span>
+                                ) : walletBalance!==null && walletBalance<=0 ? (
+                                  <Link href="/client/wallet"
+                                    className="flex items-center gap-1.5 text-red-600 text-xs font-bold bg-red-50 border border-red-200 px-2.5 py-1 rounded-full hover:bg-red-100 transition-colors">
+                                    <AlertTriangle className="w-3.5 h-3.5"/>Order not processed — add funds to your wallet
+                                  </Link>
                                 ) : pendingBidCount>0 ? (
                                   <button onClick={e=>{e.preventDefault();setQuickView(order.id);fetchBids(order.id);setBidsFor(order.id);}}
                                     className="flex items-center gap-1.5 text-[#0f1f3d] text-xs font-bold bg-[#c8991a]/15 border border-[#c8991a] px-2.5 py-1 rounded-full hover:bg-[#c8991a]/25 transition-colors">
