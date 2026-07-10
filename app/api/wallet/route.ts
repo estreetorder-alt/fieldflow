@@ -19,7 +19,23 @@ export async function GET(request: NextRequest) {
     getWalletBalance(userId),
     getWalletTransactions(userId),
   ]);
-  return NextResponse.json({ balance, transactions });
+
+  // Soft check: if client is viewing wallet and balance is low, try auto top-up
+  let autoTopup = null;
+  if (userRole === "client") {
+    try {
+      const { maybeRunAutoTopup } = await import("@/lib/autoTopup");
+      autoTopup = await maybeRunAutoTopup(userId);
+      if (autoTopup.ran && autoTopup.creditedNow) {
+        const fresh = await getWalletBalance(userId);
+        return NextResponse.json({ balance: fresh, transactions, autoTopup });
+      }
+    } catch (err) {
+      console.error("[wallet GET] auto-topup", err);
+    }
+  }
+
+  return NextResponse.json({ balance, transactions, autoTopup });
 }
 
 export async function POST(request: NextRequest) {

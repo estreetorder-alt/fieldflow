@@ -47,6 +47,26 @@ export default function AdminPage() {
   const [payouts, setPayouts] = useState<Payout[]>([]);
   const [pendingTopups, setPendingTopups] = useState<{id:string;userId:string;amount:number;description:string;createdAt:string;userName?:string;userEmail?:string}[]>([]);
   const [confirmingTopup, setConfirmingTopup] = useState<string|null>(null);
+  const [walletPlans, setWalletPlans] = useState<{id:string;name:string;amountUsd:number;credits:number;description:string;active:boolean;sortOrder:number}[]>([]);
+  const [newPlan, setNewPlan] = useState({ name: "", amount: "", description: "", sortOrder: "0" });
+  const [editingPlan, setEditingPlan] = useState<{id:string;name:string;amount:string;description:string;sortOrder:string}|null>(null);
+  const [planBusy, setPlanBusy] = useState<string|null>(null);
+  const [planError, setPlanError] = useState("");
+  const [planSuccess, setPlanSuccess] = useState("");
+  const [whopPayments, setWhopPayments] = useState<{
+    txId: string; userId: string; userName: string; userEmail: string; amount: number;
+    purpose: string; status: string; description: string; planName: string | null;
+    whopPaymentId: string | null; whopCheckoutId: string | null; failureMessage: string | null;
+    confirmedAt: string | null; createdAt: string;
+    webhookEventType: string | null; webhookEventId: string | null; webhookAt: string | null;
+  }[]>([]);
+  const [whopWebhooks, setWhopWebhooks] = useState<{
+    eventId: string; eventType: string; paymentId: string | null; userId: string | null;
+    userName: string | null; userEmail: string | null; purpose: string | null;
+    processedAt: string; createdAt: string;
+  }[]>([]);
+  const [whopActivityLoading, setWhopActivityLoading] = useState(false);
+  const [showWhopWebhooks, setShowWhopWebhooks] = useState(false);
   const [agentApplications, setAgentApplications] = useState<Record<string,unknown>[]>([]);
   const [editingPrice, setEditingPrice] = useState<Record<string,Partial<PricingConfig>>>({});
   const [ratingEdit, setRatingEdit] = useState<Record<string,number>>({});
@@ -160,6 +180,26 @@ export default function AdminPage() {
     setPendingTopups(d.pending ?? []);
   }, []);
 
+  const fetchWalletPlans = useCallback(async () => {
+    const r = await fetch("/api/wallet/plans?all=1");
+    const d = await r.json();
+    setWalletPlans(d.plans ?? []);
+  }, []);
+
+  const fetchWhopActivity = useCallback(async () => {
+    setWhopActivityLoading(true);
+    try {
+      const r = await fetch("/api/wallet/whop-activity?limit=50");
+      const d = await r.json();
+      if (r.ok) {
+        setWhopPayments(d.payments ?? []);
+        setWhopWebhooks(d.webhooks ?? []);
+      }
+    } finally {
+      setWhopActivityLoading(false);
+    }
+  }, []);
+
   const fetchApplications = useCallback(async () => {
     const r = await fetch("/api/applications");
     const d = await r.json();
@@ -204,7 +244,13 @@ export default function AdminPage() {
   useEffect(() => { if (tab === "payment-links") fetchPaymentLinks(); }, [tab, fetchPaymentLinks]);
   useEffect(() => { if (tab === "disputes") fetchDisputes(disputeFilter); }, [tab, fetchDisputes, disputeFilter]);
   useEffect(() => { if (tab === "audit") fetchAuditLog(); }, [tab, fetchAuditLog]);
-  useEffect(() => { if (tab === "wallet") fetchWallet(); }, [tab, fetchWallet]);
+  useEffect(() => {
+    if (tab === "wallet") {
+      fetchWallet();
+      fetchWalletPlans();
+      fetchWhopActivity();
+    }
+  }, [tab, fetchWallet, fetchWalletPlans, fetchWhopActivity]);
   useEffect(() => { if (tab === "users") fetchApplications(); }, [tab, fetchApplications]);
 
   async function handleLogout() { await fetch("/api/auth/logout", { method:"POST" }); router.push("/"); }
@@ -508,6 +554,79 @@ export default function AdminPage() {
     setProfileMsg({ok:true, text:"Profile saved"});
     setUserName(profileForm.name);
     setProfileForm(f=>({...f, currentPassword:"", newPassword:""}));
+  }
+
+  async function createWalletPlan() {
+    setPlanError("");
+    setPlanSuccess("");
+    const amount = Number(newPlan.amount);
+    if (!newPlan.name.trim()) { setPlanError("Plan name is required"); return; }
+    if (!Number.isFinite(amount) || amount <= 0) { setPlanError("Enter a valid USD amount"); return; }
+    setPlanBusy("create");
+    const r = await fetch("/api/wallet/plans", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: newPlan.name.trim(),
+        amountUsd: amount,
+        description: newPlan.description.trim(),
+        sortOrder: Number(newPlan.sortOrder) || 0,
+      }),
+    });
+    const d = await r.json();
+    setPlanBusy(null);
+    if (!r.ok) { setPlanError(d.error ?? "Failed to create plan"); return; }
+    setNewPlan({ name: "", amount: "", description: "", sortOrder: "0" });
+    setPlanSuccess(`Created ${d.plan?.name ?? "plan"} — clients will see it in billing`);
+    fetchWalletPlans();
+  }
+
+  async function saveWalletPlanEdit() {
+    if (!editingPlan) return;
+    setPlanError("");
+    setPlanSuccess("");
+    const amount = Number(editingPlan.amount);
+    if (!editingPlan.name.trim() || !Number.isFinite(amount) || amount <= 0) {
+      setPlanError("Name and a valid USD amount are required");
+      return;
+    }
+    setPlanBusy(editingPlan.id);
+    const r = await fetch(`/api/wallet/plans/${editingPlan.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: editingPlan.name.trim(),
+        amountUsd: amount,
+        description: editingPlan.description.trim(),
+        sortOrder: Number(editingPlan.sortOrder) || 0,
+      }),
+    });
+    const d = await r.json();
+    setPlanBusy(null);
+    if (!r.ok) { setPlanError(d.error ?? "Failed to update plan"); return; }
+    setEditingPlan(null);
+    setPlanSuccess("Plan updated");
+    fetchWalletPlans();
+  }
+
+  async function toggleWalletPlan(id: string, active: boolean) {
+    setPlanBusy(id);
+    await fetch(`/api/wallet/plans/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ active }),
+    });
+    setPlanBusy(null);
+    fetchWalletPlans();
+  }
+
+  async function deactivateWalletPlan(id: string) {
+    if (!confirm("Deactivate this plan? Clients will no longer see it. Past purchases stay in history.")) return;
+    setPlanBusy(id);
+    await fetch(`/api/wallet/plans/${id}`, { method: "DELETE" });
+    setPlanBusy(null);
+    setPlanSuccess("Plan deactivated");
+    fetchWalletPlans();
   }
 
   const TABS = [
@@ -1403,6 +1522,141 @@ export default function AdminPage() {
               ))}
             </div>
 
+            {/* Whop payment + webhook activity */}
+            <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+              <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="font-bold text-slate-900 flex items-center gap-2">
+                    <WalletIcon className="w-5 h-5 text-[#c8991a]"/>Whop Payment Activity
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-0.5">Which vendor paid what — linked to Whop checkout and webhook confirmation</p>
+                </div>
+                <button
+                  onClick={fetchWhopActivity}
+                  disabled={whopActivityLoading}
+                  className="flex items-center gap-1.5 text-xs font-semibold border border-slate-200 hover:bg-slate-50 text-slate-700 px-3 py-1.5 rounded-lg disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${whopActivityLoading ? "animate-spin" : ""}`}/>
+                  {whopActivityLoading ? "Loading…" : "Refresh"}
+                </button>
+              </div>
+
+              {whopActivityLoading && whopPayments.length === 0 ? (
+                <div className="text-center py-12 text-slate-400 text-sm">Loading Whop activity…</div>
+              ) : whopPayments.length === 0 ? (
+                <div className="text-center py-12 text-slate-400">
+                  <CreditCard className="w-8 h-8 mx-auto mb-2 text-slate-300"/>
+                  <p className="text-sm">No Whop wallet payments yet</p>
+                  <p className="text-xs mt-1">Shows when a vendor buys credits via Whop checkout</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-slate-50 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                        <th className="px-4 py-3">When</th>
+                        <th className="px-4 py-3">Vendor</th>
+                        <th className="px-4 py-3">Amount</th>
+                        <th className="px-4 py-3">Type</th>
+                        <th className="px-4 py-3">Status</th>
+                        <th className="px-4 py-3">Whop payment</th>
+                        <th className="px-4 py-3">Webhook</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {whopPayments.map((row) => {
+                        const purposeLabel: Record<string, string> = {
+                          plan_topup: "Plan",
+                          custom_topup: "Custom",
+                          auto_topup: "Auto",
+                        };
+                        const statusClass: Record<string, string> = {
+                          confirmed: "bg-emerald-100 text-emerald-700",
+                          pending: "bg-amber-100 text-amber-700",
+                          failed: "bg-red-100 text-red-700",
+                          cancelled: "bg-slate-100 text-slate-600",
+                        };
+                        return (
+                          <tr key={row.txId} className="hover:bg-slate-50/80">
+                            <td className="px-4 py-3 text-xs text-slate-500 whitespace-nowrap" suppressHydrationWarning>
+                              {etDateTime(row.confirmedAt ?? row.createdAt)}
+                            </td>
+                            <td className="px-4 py-3">
+                              <p className="font-medium text-slate-800">{row.userName}</p>
+                              <p className="text-xs text-slate-500">{row.userEmail}</p>
+                              {row.planName && <p className="text-[10px] text-[#c8991a] font-semibold mt-0.5">{row.planName}</p>}
+                            </td>
+                            <td className="px-4 py-3 font-bold text-emerald-600 whitespace-nowrap">${row.amount.toFixed(2)}</td>
+                            <td className="px-4 py-3 text-xs text-slate-600">{purposeLabel[row.purpose] ?? row.purpose}</td>
+                            <td className="px-4 py-3">
+                              <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${statusClass[row.status] ?? "bg-slate-100 text-slate-600"}`}>
+                                {row.status}
+                              </span>
+                              {row.failureMessage && (
+                                <p className="text-[10px] text-red-600 mt-1 max-w-[140px] truncate" title={row.failureMessage}>{row.failureMessage}</p>
+                              )}
+                            </td>
+                            <td className="px-4 py-3">
+                              {row.whopPaymentId ? (
+                                <code className="text-[10px] text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded block max-w-[120px] truncate" title={row.whopPaymentId}>
+                                  {row.whopPaymentId}
+                                </code>
+                              ) : (
+                                <span className="text-[10px] text-slate-400">Awaiting pay</span>
+                              )}
+                              <p className="text-[10px] text-slate-400 mt-0.5 truncate max-w-[120px]" title={row.txId}>{row.txId}</p>
+                            </td>
+                            <td className="px-4 py-3 text-xs">
+                              {row.webhookEventType ? (
+                                <>
+                                  <span className="text-emerald-700 font-semibold">{row.webhookEventType}</span>
+                                  {row.webhookAt && (
+                                    <p className="text-[10px] text-slate-400 mt-0.5" suppressHydrationWarning>{etDateTime(row.webhookAt)}</p>
+                                  )}
+                                </>
+                              ) : row.status === "confirmed" ? (
+                                <span className="text-slate-400">Credited</span>
+                              ) : (
+                                <span className="text-amber-600">Pending</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              <div className="border-t border-slate-100">
+                <button
+                  onClick={() => setShowWhopWebhooks(!showWhopWebhooks)}
+                  className="w-full px-6 py-3 flex items-center justify-between text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                >
+                  <span>Raw webhook event log ({whopWebhooks.length})</span>
+                  {showWhopWebhooks ? <ChevronUp className="w-4 h-4"/> : <ChevronDown className="w-4 h-4"/>}
+                </button>
+                {showWhopWebhooks && (
+                  <div className="px-6 pb-4 space-y-2 max-h-64 overflow-y-auto">
+                    {whopWebhooks.length === 0 ? (
+                      <p className="text-xs text-slate-400 py-2">No webhook events recorded yet</p>
+                    ) : whopWebhooks.map((ev) => (
+                      <div key={ev.eventId} className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs border border-slate-100 rounded-lg px-3 py-2 bg-slate-50/50">
+                        <span className="font-mono text-slate-500" suppressHydrationWarning>{etDateTime(ev.processedAt)}</span>
+                        <span className="font-semibold text-[#0f1f3d]">{ev.eventType}</span>
+                        {ev.userName && <span className="text-slate-700">{ev.userName} ({ev.userEmail})</span>}
+                        {ev.purpose && <span className="text-slate-500">{ev.purpose}</span>}
+                        {ev.paymentId && (
+                          <code className="text-[10px] bg-white border border-slate-200 px-1 rounded">{ev.paymentId}</code>
+                        )}
+                        <code className="text-[10px] text-slate-400">{ev.eventId}</code>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
             {/* All vendor wallet balances */}
             <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
               <div className="px-6 py-4 border-b border-slate-100">
@@ -1428,17 +1682,151 @@ export default function AdminPage() {
               </div>
             </div>
 
-            {/* Top-up amounts reference */}
-            <div className="bg-white rounded-2xl p-6 text-[#0f1f3d]">
-              <h3 className="font-bold text-[#c8991a] mb-3">Fixed Top-up Amounts</h3>
-              <div className="grid grid-cols-4 sm:grid-cols-8 gap-2 mb-4">
-                {[15,25,30,50,75,100,125,150].map(amt => (
-                  <div key={amt} className="bg-slate-50 rounded-xl p-3 text-center">
-                    <p className="font-bold text-[#c8991a]">${amt}</p>
-                  </div>
-                ))}
+            {/* Admin-managed wallet credit plans (USD) — stored in our DB, not Whop */}
+            <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+              <div className="px-6 py-4 border-b border-slate-100">
+                <h2 className="font-bold text-slate-900 flex items-center gap-2">
+                  <CreditCard className="w-5 h-5 text-[#c8991a]"/>Wallet Credit Plans
+                </h2>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Create packages here ($50, $100, …). Vendors see them in billing, pay on Whop, and get $1 = $1 credit after webhook confirmation. Plans are not created in Whop.
+                </p>
               </div>
-              <p className="text-xs text-slate-400">Vendors choose from these amounts when topping up. Each top-up creates a pending transaction you confirm here after receiving payment.</p>
+
+              {(planError || planSuccess) && (
+                <div className={`px-6 py-3 text-sm font-medium border-b border-slate-100 ${planError ? "bg-red-50 text-red-700" : "bg-emerald-50 text-emerald-700"}`}>
+                  {planError || planSuccess}
+                </div>
+              )}
+
+              {/* Create plan */}
+              <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/80">
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Add new plan</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                  <input
+                    value={newPlan.name}
+                    onChange={e => setNewPlan(p => ({ ...p, name: e.target.value }))}
+                    placeholder="Name (e.g. Starter $50)"
+                    className="border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                  />
+                  <input
+                    type="number"
+                    min="1"
+                    step="0.01"
+                    value={newPlan.amount}
+                    onChange={e => setNewPlan(p => ({ ...p, amount: e.target.value }))}
+                    placeholder="Amount USD"
+                    className="border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                  />
+                  <input
+                    value={newPlan.description}
+                    onChange={e => setNewPlan(p => ({ ...p, description: e.target.value }))}
+                    placeholder="Description (optional)"
+                    className="border border-slate-200 rounded-lg px-3 py-2 text-sm lg:col-span-1"
+                  />
+                  <input
+                    type="number"
+                    value={newPlan.sortOrder}
+                    onChange={e => setNewPlan(p => ({ ...p, sortOrder: e.target.value }))}
+                    placeholder="Sort"
+                    className="border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                  />
+                  <button
+                    onClick={createWalletPlan}
+                    disabled={planBusy === "create"}
+                    className="bg-[#0f1f3d] hover:bg-[#1a3260] text-white font-semibold text-sm px-4 py-2 rounded-lg disabled:opacity-50 flex items-center justify-center gap-1.5"
+                  >
+                    <PlusIcon className="w-4 h-4"/>{planBusy === "create" ? "Saving…" : "Create plan"}
+                  </button>
+                </div>
+                <p className="text-xs text-slate-400 mt-2">Credits default to the same USD amount (1:1).</p>
+              </div>
+
+              {/* Edit modal strip */}
+              {editingPlan && (
+                <div className="px-6 py-4 border-b border-amber-100 bg-amber-50/50 space-y-3">
+                  <p className="text-sm font-semibold text-slate-800">Edit plan</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    <input value={editingPlan.name} onChange={e => setEditingPlan({ ...editingPlan, name: e.target.value })} className="border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+                    <input type="number" min="1" step="0.01" value={editingPlan.amount} onChange={e => setEditingPlan({ ...editingPlan, amount: e.target.value })} className="border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+                    <input value={editingPlan.description} onChange={e => setEditingPlan({ ...editingPlan, description: e.target.value })} className="border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+                    <input type="number" value={editingPlan.sortOrder} onChange={e => setEditingPlan({ ...editingPlan, sortOrder: e.target.value })} className="border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={saveWalletPlanEdit} disabled={planBusy === editingPlan.id} className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2 rounded-lg disabled:opacity-50">
+                      {planBusy === editingPlan.id ? "…" : "Save changes"}
+                    </button>
+                    <button onClick={() => setEditingPlan(null)} className="border border-slate-200 text-slate-600 text-xs font-medium px-4 py-2 rounded-lg">Cancel</button>
+                  </div>
+                </div>
+              )}
+
+              {walletPlans.length === 0 ? (
+                <div className="text-center py-12 text-slate-400">
+                  <CreditCard className="w-8 h-8 mx-auto mb-2 text-slate-300"/>
+                  <p>No plans yet — create one above</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-slate-100">
+                  {walletPlans.map(plan => (
+                    <div key={plan.id} className="px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold text-slate-900">{plan.name}</span>
+                          <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${plan.active ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>
+                            {plan.active ? "Active" : "Inactive"}
+                          </span>
+                          <span className="text-xs text-slate-400">sort {plan.sortOrder}</span>
+                        </div>
+                        <p className="text-sm text-emerald-700 font-semibold mt-0.5">
+                          ${plan.amountUsd.toFixed(2)} USD → {plan.credits.toFixed(2)} credits
+                        </p>
+                        {plan.description && <p className="text-xs text-slate-500 mt-0.5">{plan.description}</p>}
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <button
+                          onClick={() => setEditingPlan({
+                            id: plan.id,
+                            name: plan.name,
+                            amount: String(plan.amountUsd),
+                            description: plan.description ?? "",
+                            sortOrder: String(plan.sortOrder),
+                          })}
+                          className="text-xs border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold px-3 py-1.5 rounded-lg"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => toggleWalletPlan(plan.id, !plan.active)}
+                          disabled={planBusy === plan.id}
+                          className="text-xs border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold px-3 py-1.5 rounded-lg disabled:opacity-50"
+                        >
+                          {plan.active ? "Deactivate" : "Activate"}
+                        </button>
+                        {plan.active && (
+                          <button
+                            onClick={() => deactivateWalletPlan(plan.id)}
+                            disabled={planBusy === plan.id}
+                            className="text-xs border border-red-200 text-red-600 hover:bg-red-50 font-medium px-3 py-1.5 rounded-lg disabled:opacity-50"
+                          >
+                            <TrashIcon className="w-3.5 h-3.5"/>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="bg-[#0f1f3d] rounded-2xl p-6 text-white">
+              <h3 className="font-bold text-[#f0b429] mb-2">How vendor billing uses these plans</h3>
+              <ol className="text-sm text-slate-300 space-y-1.5 list-decimal list-inside">
+                <li>You create a plan here (e.g. $50) — saved only in Snapect DB</li>
+                <li>Vendor clicks the plan in their wallet / billing page</li>
+                <li>We open Whop checkout for that USD amount dynamically</li>
+                <li>After Whop webhook confirms payment, their wallet is credited 1:1</li>
+              </ol>
             </div>
           </div>
 

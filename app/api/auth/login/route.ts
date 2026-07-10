@@ -32,11 +32,26 @@ export async function POST(request: NextRequest) {
   const emailKey = `login:${String(email ?? "").toLowerCase()}`;
   const ipKey = `login-ip:${ip}`;
 
+  const serviceKey = process.env.SUPABASE_SERVICE_KEY ?? "";
+  if (!serviceKey || serviceKey.includes("REPLACE_WITH") || serviceKey === "placeholder") {
+    return NextResponse.json({
+      error: "Database is not configured. Set SUPABASE_SERVICE_KEY in .env.local (Supabase → Settings → API → service_role).",
+    }, { status: 503 });
+  }
+
   if (await isRateLimited(emailKey, MAX_ATTEMPTS_PER_EMAIL, WINDOW_MINUTES) || await isRateLimited(ipKey, MAX_ATTEMPTS_PER_IP, WINDOW_MINUTES)) {
     return NextResponse.json({ error: "Too many login attempts. Please wait 15 minutes and try again." }, { status: 429 });
   }
 
-  const user = await getUserByEmail(email);
+  let user;
+  try {
+    user = await getUserByEmail(email);
+  } catch (err) {
+    console.error("[login] getUserByEmail failed", err);
+    return NextResponse.json({
+      error: "Cannot reach the database. Check NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_KEY.",
+    }, { status: 503 });
+  }
 
   if (!user || !(await verifyPassword(password, user.password))) {
     await Promise.all([recordAttempt(emailKey), recordAttempt(ipKey)]);
@@ -53,7 +68,8 @@ export async function POST(request: NextRequest) {
   if (user.role !== "admin") {
     if (user.suspended)
       return NextResponse.json({ error: "Your account has been suspended. Contact info@snapect.com" }, { status: 403 });
-    if (!user.accountActive)
+    // Only block when explicitly false (legacy/null rows stay allowed)
+    if (user.accountActive === false)
       return NextResponse.json({
         error: "pending_activation",
         message: "Your account is pending activation. Please complete your payment to access your dashboard.",

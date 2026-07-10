@@ -8,8 +8,26 @@ const PROTECTED: Record<string, string[]> = {
 
 const PUBLIC = ["/", "/login", "/register", "/services", "/coverage", "/work", "/contact", "/privacy", "/terms", "/refund-policy", "/faq", "/api/auth", "/api/payment-links", "/api/validate-address", "/api/coverage-check", "/api/zip-directory", "/sitemap.xml", "/robots.txt", "/snapect-logo.png", "/_next", "/favicon"];
 
+function isTunnelHost(host: string): boolean {
+  return host.includes("ngrok") || host.includes("loca.lt") || host.includes("trycloudflare");
+}
+
+function localAppOrigin(): string | null {
+  const base = (process.env.NEXT_PUBLIC_BASE_URL ?? "").replace(/\/$/, "");
+  if (base.includes("localhost") || base.includes("127.0.0.1")) return base;
+  return null;
+}
+
 export function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+  const { pathname, search } = request.nextUrl;
+  const host = request.headers.get("host") ?? "";
+
+  // Whop redirects to https ngrok (required). Login cookies are on localhost.
+  // Bounce wallet/billing return URLs back to local app immediately.
+  const local = localAppOrigin();
+  if (local && isTunnelHost(host) && pathname.startsWith("/client")) {
+    return NextResponse.redirect(`${local}${pathname}${search}`);
+  }
 
   // Allow public paths
   if (PUBLIC.some(p => pathname.startsWith(p))) return NextResponse.next();
