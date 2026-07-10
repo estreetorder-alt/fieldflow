@@ -20,6 +20,8 @@ interface Order {
   address: string;
   status: string;
   totalPrice: number;
+  compensationAmount: number;
+  acceptedBidId?: string | null;
   serviceType: string;
   turnaroundTier: string;
   notes: string;
@@ -177,7 +179,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
               <ArrowLeft className="w-4 h-4" />
               <span className="hidden sm:inline">My Orders</span>
             </Link>
-            <span className="text-slate-300">/</span>
+            <span className="text-slate-600">/</span>
             <span className="text-sm font-medium text-slate-700">{order.id}</span>
           </div>
           <button
@@ -215,8 +217,15 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
             </div>
           </div>
           <div className="text-right flex-shrink-0">
-            <div className="text-3xl font-black text-slate-900">${order.totalPrice}</div>
-            <div className="text-xs text-slate-400 mt-0.5 capitalize">{order.serviceType} · {order.turnaroundTier?.replace("_", " ")}</div>
+            {order.acceptedBidId ? (
+              <div className="text-3xl font-black text-slate-900">${order.compensationAmount}</div>
+            ) : (
+              <div className="inline-flex items-center gap-2 text-amber-600 text-sm font-semibold">
+                <span className="relative inline-flex rounded-full h-3.5 w-3.5 border-2 border-amber-500 border-t-transparent animate-spin"/>
+                Waiting for offers
+              </div>
+            )}
+            <div className="text-xs text-slate-400 mt-0.5 capitalize">{order.serviceType}</div>
           </div>
         </div>
 
@@ -269,7 +278,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
               <div className="p-6">
                 {order.photos.length === 0 ? (
                   <div className="text-center py-8">
-                    <Camera className="w-10 h-10 text-slate-200 mx-auto mb-3" />
+                    <Camera className="w-10 h-10 text-slate-700 mx-auto mb-3" />
                     <p className="text-sm text-slate-400">
                       {isComplete
                         ? "No photos were uploaded for this order."
@@ -316,20 +325,25 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
 
           {/* Right column — summary cards */}
           <div className="space-y-4">
-            {/* Pricing */}
+            {/* Order summary */}
             <div className="bg-white border border-slate-200 rounded-2xl p-5">
               <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-4">Order Summary</h3>
               <div className="space-y-3">
                 <div className="flex justify-between text-sm">
-                  <span className="text-slate-500 capitalize">{order.serviceType}</span>
-                  <span className="font-medium text-slate-700">
-                    ${order.totalPrice}
-                  </span>
+                  <span className="text-slate-500">Service</span>
+                  <span className="font-medium text-slate-700 capitalize text-right">{order.serviceType}</span>
                 </div>
-                <div className="border-t border-slate-100 pt-3 flex justify-between">
-                  <span className="font-semibold text-slate-900">Total</span>
-                  <span className="font-bold text-slate-900 text-lg">${order.totalPrice}</span>
-                </div>
+                {order.acceptedBidId ? (
+                  <div className="border-t border-slate-100 pt-3 flex justify-between">
+                    <span className="font-semibold text-slate-900">Accepted offer</span>
+                    <span className="font-bold text-slate-900 text-lg">${order.compensationAmount}</span>
+                  </div>
+                ) : (
+                  <div className="border-t border-slate-100 pt-3 text-xs text-amber-600 font-medium flex items-center gap-2">
+                    <span className="relative inline-flex rounded-full h-3 w-3 border-2 border-amber-500 border-t-transparent animate-spin"/>
+                    Waiting for agent offers — accept one from your dashboard
+                  </div>
+                )}
               </div>
             </div>
 
@@ -343,17 +357,14 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                   </div>
                   <div>
                     <div className="font-semibold text-slate-800">{order.agent.name}</div>
-                    <div className="text-xs text-slate-400 mt-0.5">{order.agent.email}</div>
-                    {order.agent.phone && (
-                      <div className="text-xs text-slate-400">{order.agent.phone}</div>
-                    )}
+                    <div className="text-xs text-slate-400 mt-0.5">Verified field agent</div>
                   </div>
                 </div>
               ) : (
                 <div className="text-center py-4">
-                  <User className="w-8 h-8 text-slate-200 mx-auto mb-2" />
-                  <p className="text-sm text-slate-400">Agent not yet assigned</p>
-                  <p className="text-xs text-slate-300 mt-1">We&apos;ll notify you when one is dispatched</p>
+                  <User className="w-8 h-8 text-slate-700 mx-auto mb-2" />
+                  <p className="text-sm text-slate-400">No agent assigned yet</p>
+                  <p className="text-xs text-slate-600 mt-1">Accept an offer to assign an agent instantly</p>
                 </div>
               )}
             </div>
@@ -383,7 +394,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                 {review ? (
                   <div>
                     <div className="flex items-center gap-1 mb-1">
-                      {[1,2,3,4,5].map(n => <Star key={n} className={`w-4 h-4 ${n <= review.rating ? "fill-amber-400 text-amber-400" : "text-slate-200"}`}/>)}
+                      {[1,2,3,4,5].map(n => <Star key={n} className={`w-4 h-4 ${n <= review.rating ? "fill-amber-400 text-amber-400" : "text-slate-700"}`}/>)}
                     </div>
                     {review.comment && <p className="text-xs text-slate-500 italic">&quot;{review.comment}&quot;</p>}
                     <p className="text-xs text-slate-400 mt-1">Thanks for your feedback!</p>
@@ -393,7 +404,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                     <div className="flex items-center gap-1">
                       {[1,2,3,4,5].map(n => (
                         <button key={n} onClick={() => setReviewRating(n)}>
-                          <Star className={`w-6 h-6 transition-colors ${n <= reviewRating ? "fill-amber-400 text-amber-400" : "text-slate-200 hover:text-amber-200"}`}/>
+                          <Star className={`w-6 h-6 transition-colors ${n <= reviewRating ? "fill-amber-400 text-amber-400" : "text-slate-700 hover:text-amber-200"}`}/>
                         </button>
                       ))}
                     </div>

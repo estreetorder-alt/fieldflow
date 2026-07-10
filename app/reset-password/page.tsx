@@ -60,17 +60,17 @@ function ResetPasswordForm() {
   const inp = "w-full pl-9 pr-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#c8991a]";
 
   return (
-    <div className="min-h-screen bg-[#0f1f3d] flex flex-col">
+    <div className="min-h-screen bg-white flex flex-col">
       <div className="p-4">
-        <Link href="/login" className="inline-flex items-center gap-1.5 text-sm text-slate-400 hover:text-white">
+        <Link href="/login" className="inline-flex items-center gap-1.5 text-sm text-slate-400 hover:text-[#0f1f3d]">
           <ArrowLeft className="w-3.5 h-3.5"/>Back to login
         </Link>
       </div>
       <div className="flex-1 flex items-center justify-center px-4">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
-            <img src="/snapect-logo.png" alt="Snapect" className="h-12 w-auto object-contain mx-auto mb-5 brightness-0 invert"/>
-            <h1 className="text-2xl font-bold text-white">
+            <img src="/snapect-logo.png" alt="Snapect" className="h-12 w-auto object-contain mx-auto mb-5"/>
+            <h1 className="text-2xl font-bold text-[#0f1f3d]">
               {step === "request" ? "Reset Your Password" :
                step === "reset" ? "Set New Password" :
                step === "done" ? "Password Updated!" : "Invalid Link"}

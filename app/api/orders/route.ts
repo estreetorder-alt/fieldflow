@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAllOrders, getOrdersByClientId, getOrdersByAgentId, createOrder, addEmailLog, getUserById, getPaymentLinks } from "@/lib/db";
+import { getAllOrders, getOrdersByClientId, getOrdersByAgentId, createOrder, addEmailLog, getUserById, getPaymentLinks, anonUserId } from "@/lib/db";
 import { supabase } from "@/lib/supabase";
 import { SERVICE_MAP, calcServicePrice, calcCompensation } from "@/lib/services";
 import { notifyOrderPlaced } from "@/lib/notify";
@@ -18,6 +18,12 @@ export async function GET(request: NextRequest) {
     const subIds = (subs ?? []).map(s => (s as Record<string,unknown>).id as string);
     const results = await Promise.all([userId, ...subIds].map(id => getOrdersByClientId(id)));
     orders = results.flat().sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    // Vendors never see real agent names — only anonymized user ids
+    orders = orders.map(o => ({
+      ...o,
+      agent: o.agent ? { name: anonUserId(o.assignedAgentId) } : null,
+      bids: (o.bids ?? []).map(b => ({ ...b, agentName: anonUserId(b.agentId) })),
+    }));
   } else {
     orders = await getOrdersByAgentId(userId);
   }
@@ -114,9 +120,6 @@ export async function POST(request: NextRequest) {
   }
 
   if (!body.address) return NextResponse.json({ error: "Address required" }, { status: 400 });
-  const svc = SERVICE_MAP[body.serviceId ?? ""];
-  if (svc?.isCustom && !body.customClientPrice)
-    return NextResponse.json({ error: "Custom orders require a price" }, { status: 400 });
 
   const order = await createSingle(body);
   return NextResponse.json({ order }, { status: 201 });

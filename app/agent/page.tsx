@@ -269,7 +269,7 @@ export default function AgentPage() {
           <div className="space-y-4">
             {myOrders.length===0 ? (
               <div className="bg-white rounded-2xl border border-dashed border-slate-200 p-12 text-center">
-                <Camera className="w-10 h-10 text-slate-300 mx-auto mb-3"/>
+                <Camera className="w-10 h-10 text-slate-600 mx-auto mb-3"/>
                 <p className="text-slate-500 font-medium">No active jobs</p>
               </div>
             ) : myOrders.map(order=>(
@@ -326,7 +326,7 @@ export default function AgentPage() {
           <div className="space-y-4">
             {availableOrders.length===0 ? (
               <div className="bg-white rounded-2xl border border-dashed border-slate-200 p-12 text-center">
-                <Package className="w-10 h-10 text-slate-300 mx-auto mb-3"/>
+                <Package className="w-10 h-10 text-slate-600 mx-auto mb-3"/>
                 <p className="text-slate-500 font-medium">No available orders right now</p>
               </div>
             ) : availableOrders.map(order=>{
@@ -346,10 +346,7 @@ export default function AgentPage() {
                       <div className="flex items-center gap-1.5 text-slate-700 font-medium"><MapPin className="w-3.5 h-3.5 text-slate-400"/>{order.address}</div>
                       {order.notes&&<p className="text-xs text-slate-500 mt-1">{order.notes}</p>}
                     </div>
-                    <div className="text-right flex-shrink-0">
-                      <div className="text-xs text-slate-400">Offered</div>
-                      <div className="text-lg font-bold text-green-700">${order.compensationAmount}</div>
-                    </div>
+
                   </div>
                   {myBid ? (
                     <div className={`flex items-center gap-2 p-3 rounded-xl text-sm ${myBid.status==="accepted"?"bg-green-50 text-green-700":myBid.status==="rejected"?"bg-red-50 text-red-700":"bg-blue-50 text-blue-700"}`}>
@@ -367,7 +364,7 @@ export default function AgentPage() {
                       <div className="flex gap-2">
                         <div className="relative flex-1">
                           <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400"/>
-                          <input type="number" min="1" placeholder={`${order.compensationAmount}`} value={bidAmount} onChange={e=>setBidAmount(e.target.value)}
+                          <input type="number" min="1" placeholder="Your offer amount" value={bidAmount} onChange={e=>setBidAmount(e.target.value)}
                             className="w-full pl-7 pr-3 py-2 text-sm border border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"/>
                         </div>
                         <input type="text" placeholder="Message (optional)" value={bidMessage} onChange={e=>setBidMessage(e.target.value)}
@@ -378,26 +375,18 @@ export default function AgentPage() {
                           className="flex items-center gap-1.5 text-xs bg-blue-600 hover:bg-blue-700 text-white font-medium px-3 py-2 rounded-lg disabled:opacity-50">
                           <Gavel className="w-3.5 h-3.5"/>{submittingBid?"Placing…":"Place Bid"}
                         </button>
-                        <button onClick={()=>directAccept(order.id)} disabled={acting===order.id}
-                          className="flex items-center gap-1.5 text-xs bg-green-600 hover:bg-green-700 text-white font-medium px-3 py-2 rounded-lg disabled:opacity-50">
-                          <CheckCircle className="w-3.5 h-3.5"/>Accept at ${order.compensationAmount}
-                        </button>
                         <button onClick={()=>{setBiddingOrder(null);setBidAmount("");setBidMessage("");setBidError("");}} className="text-xs text-slate-500 px-2">Cancel</button>
                       </div>
                     </div>
                   ) : (
                     <div className="flex gap-2">
-                      <button onClick={()=>{setBiddingOrder(order.id);setBidAmount(String(order.compensationAmount));}}
+                      <button onClick={()=>{setBiddingOrder(order.id);setBidAmount("");}}
                         className="flex items-center gap-1.5 text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold px-3 py-2 rounded-lg border border-blue-200">
                         <Gavel className="w-3.5 h-3.5"/>Place Bid
                       </button>
-                      <button onClick={()=>directAccept(order.id)} disabled={acting===order.id}
-                        className="flex items-center gap-1.5 text-xs bg-green-600 hover:bg-green-700 text-white font-semibold px-3 py-2 rounded-lg disabled:opacity-50">
-                        <CheckCircle className="w-3.5 h-3.5"/>{acting===order.id?"…":`Accept at $${order.compensationAmount}`}
-                      </button>
                       <button onClick={()=>declineOrder(order.id)} disabled={declining===order.id}
                         className="flex items-center gap-1.5 text-xs bg-red-50 hover:bg-red-100 text-red-600 font-semibold px-3 py-2 rounded-lg border border-red-200 disabled:opacity-50">
-                        {declining===order.id?"…":"Decline"}
+                        {declining===order.id?"…":"Skip"}
                       </button>
                     </div>
                   )}

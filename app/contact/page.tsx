@@ -7,11 +7,11 @@ export default function ContactPage() {
     <div className="min-h-screen bg-white">
       <PublicNav />
 
-      <section className="bg-[#0f1f3d] text-white py-20 px-4">
+      <section className="bg-white text-[#0f1f3d] py-20 px-4">
         <div className="max-w-3xl mx-auto text-center">
           <p className="text-[#c8991a] font-bold text-sm uppercase tracking-wider mb-3">Get in Touch</p>
           <h1 className="text-4xl sm:text-5xl font-extrabold mb-5">Contact Us</h1>
-          <p className="text-xl text-slate-300">Questions about orders, services, or agent applications? We're here to help.</p>
+          <p className="text-xl text-slate-600">Questions about orders, services, or agent applications? We're here to help.</p>
         </div>
       </section>
 
@@ -23,7 +23,7 @@ export default function ContactPage() {
             { icon:<Clock className="w-6 h-6"/>, title:"Support Hours", lines:["Monday – Friday","8:00 AM – 6:00 PM CST"], note:"Closed weekends and federal holidays" },
           ].map(c=>(
             <div key={c.title} className="bg-white border border-slate-200 rounded-2xl p-6 text-center hover:border-[#c8991a] transition-colors">
-              <div className="w-12 h-12 bg-[#0f1f3d] text-[#c8991a] rounded-xl flex items-center justify-center mx-auto mb-4">{c.icon}</div>
+              <div className="w-12 h-12 bg-white text-[#c8991a] rounded-xl flex items-center justify-center mx-auto mb-4">{c.icon}</div>
               <h3 className="font-bold text-[#0f1f3d] mb-2">{c.title}</h3>
               {c.lines.map(l=><p key={l} className="text-slate-600 text-sm">{l}</p>)}
               <p className="text-xs text-slate-400 mt-2 italic">{c.note}</p>
@@ -52,20 +52,20 @@ export default function ContactPage() {
         </div>
       </section>
 
-      <section className="py-16 px-4 bg-[#0f1f3d]">
+      <section className="py-16 px-4 bg-white">
         <div className="max-w-3xl mx-auto grid sm:grid-cols-2 gap-6">
-          <div className="bg-[#1a3260] rounded-2xl p-6">
+          <div className="bg-slate-50 rounded-2xl p-6">
             <Users className="w-8 h-8 text-[#c8991a] mb-3"/>
-            <h3 className="font-bold text-white mb-2">Vendors</h3>
-            <p className="text-slate-300 text-sm mb-4">For order help, billing questions, or account issues:</p>
+            <h3 className="font-bold text-[#0f1f3d] mb-2">Vendors</h3>
+            <p className="text-slate-600 text-sm mb-4">For order help, billing questions, or account issues:</p>
             <a href="mailto:info@snapect.com" className="inline-flex items-center gap-2 bg-[#c8991a] text-[#0f1f3d] font-bold px-4 py-2.5 rounded-xl text-sm hover:bg-[#f0b429] transition-colors">
               <Mail className="w-4 h-4"/>Email Vendor Support
             </a>
           </div>
-          <div className="bg-[#1a3260] rounded-2xl p-6">
+          <div className="bg-slate-50 rounded-2xl p-6">
             <MessageSquare className="w-8 h-8 text-[#c8991a] mb-3"/>
-            <h3 className="font-bold text-white mb-2">Field Agents</h3>
-            <p className="text-slate-300 text-sm mb-4">For application status, payment questions, or technical issues:</p>
+            <h3 className="font-bold text-[#0f1f3d] mb-2">Field Agents</h3>
+            <p className="text-slate-600 text-sm mb-4">For application status, payment questions, or technical issues:</p>
             <a href="mailto:info@snapect.com" className="inline-flex items-center gap-2 bg-[#c8991a] text-[#0f1f3d] font-bold px-4 py-2.5 rounded-xl text-sm hover:bg-[#f0b429] transition-colors">
               <Mail className="w-4 h-4"/>Email Agent Support
             </a>

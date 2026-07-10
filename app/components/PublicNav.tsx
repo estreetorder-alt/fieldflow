@@ -60,7 +60,7 @@ export default function PublicNav() {
           ))}
           <div className="pt-2 border-t border-slate-100">
             <Link href="/login" onClick={() => setOpen(false)}
-              className="block text-center bg-[#0f1f3d] text-white font-bold px-4 py-2.5 rounded-lg text-sm mt-2">
+              className="block text-center bg-white text-[#0f1f3d] font-bold px-4 py-2.5 rounded-lg text-sm mt-2">
               Login
             </Link>
           </div>

@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getAllOrders, getOrdersByClientId, getOrdersByAgentId } from "@/lib/db";
+import { getAllOrders, getOrdersByClientId, getOrdersByAgentId, anonUserId } from "@/lib/db";
 import { supabase } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
@@ -34,6 +34,12 @@ export async function GET(request: NextRequest) {
             const subIds = (subs ?? []).map(s => (s as Record<string,unknown>).id as string);
             const results = await Promise.all([userId!, ...subIds].map(id => getOrdersByClientId(id)));
             orders = results.flat().sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+            // Vendors never see real agent names — only anonymized user ids
+            orders = orders.map(o => ({
+              ...o,
+              agent: o.agent ? { name: anonUserId(o.assignedAgentId) } : null,
+              bids: (o.bids ?? []).map(b => ({ ...b, agentName: anonUserId(b.agentId) })),
+            }));
           }
           else orders = await getOrdersByAgentId(userId!);
           send("orders", JSON.stringify(orders));

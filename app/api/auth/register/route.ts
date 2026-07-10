@@ -59,10 +59,13 @@ export async function POST(request: NextRequest) {
     }, { status: 201 });
   }
 
-  // Clients are NOT auto-logged-in — they must pay the activation fee first
-  // Return success so client can redirect to payment
+  // Client signup is free — activate immediately, no activation fee
+  {
+    const { activateUserAccount } = await import("@/lib/db");
+    await activateUserAccount(newUser.id);
+  }
   return NextResponse.json({
     user: { id: newUser.id, name: newUser.name, role: newUser.role, email: newUser.email },
-    requiresPayment: true,
+    requiresPayment: false,
   }, { status: 201 });
 }

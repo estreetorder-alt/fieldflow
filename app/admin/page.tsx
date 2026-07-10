@@ -682,7 +682,7 @@ export default function AdminPage() {
                         <div className="flex items-center gap-0.5">
                           {[1,2,3,4,5].map(n=>(
                             <button key={n} onClick={()=>setRatingEdit(prev=>({...prev,[agent.id]:n}))}
-                              className={`w-5 h-5 ${n<=displayRating?"text-amber-400":"text-slate-200 hover:text-amber-300"}`}>
+                              className={`w-5 h-5 ${n<=displayRating?"text-amber-400":"text-slate-700 hover:text-amber-300"}`}>
                               <Star className="w-full h-full fill-current"/>
                             </button>
                           ))}
@@ -711,7 +711,7 @@ export default function AdminPage() {
                   </div>
                 );
               })}
-              {agents.length===0&&<div className="text-center py-12 text-slate-400"><Users className="w-8 h-8 mx-auto mb-2 text-slate-300"/><p>No agents yet</p></div>}
+              {agents.length===0&&<div className="text-center py-12 text-slate-400"><Users className="w-8 h-8 mx-auto mb-2 text-slate-600"/><p>No agents yet</p></div>}
             </div>
           </div>
 
@@ -727,7 +727,7 @@ export default function AdminPage() {
                     <h2 className="font-bold text-amber-900">
                       Pending Activation — {allUsers.filter(u => u.role !== "admin" && !u.accountActive && !u.suspended).length} user(s) waiting
                     </h2>
-                    <p className="text-xs text-amber-700 mt-0.5">These vendors have registered and need to pay their $30 activation fee. Once you confirm payment, click ✓ Activate. (Agent signup is free and auto-activates — agents won&apos;t appear here.)</p>
+                    <p className="text-xs text-amber-700 mt-0.5">Signup is now free for vendors and agents — accounts auto-activate. This list only shows legacy accounts that were never activated; click ✓ Activate to enable them.</p>
                   </div>
                 </div>
                 <div className="divide-y divide-amber-100">
@@ -737,7 +737,7 @@ export default function AdminPage() {
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-bold text-slate-900">{u.name}</span>
                           <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${u.role === "agent" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}`}>
-                            {u.role} — {u.role === "agent" ? "free" : "$30 fee"}
+                            {u.role} — free signup
                           </span>
                           <span className="text-xs bg-amber-200 text-amber-800 font-bold px-2 py-0.5 rounded-full">⏳ Awaiting Payment Confirmation</span>
                         </div>
@@ -956,7 +956,7 @@ export default function AdminPage() {
               </div>
               {pendingTopups.length === 0 ? (
                 <div className="text-center py-12 text-slate-400">
-                  <DollarSign className="w-8 h-8 mx-auto mb-2 text-slate-300"/>
+                  <DollarSign className="w-8 h-8 mx-auto mb-2 text-slate-600"/>
                   <p>No pending top-ups</p>
                 </div>
               ) : pendingTopups.map(tx => (
@@ -1010,11 +1010,11 @@ export default function AdminPage() {
             </div>
 
             {/* Top-up amounts reference */}
-            <div className="bg-[#0f1f3d] rounded-2xl p-6 text-white">
-              <h3 className="font-bold text-[#f0b429] mb-3">Fixed Top-up Amounts</h3>
+            <div className="bg-white rounded-2xl p-6 text-[#0f1f3d]">
+              <h3 className="font-bold text-[#c8991a] mb-3">Fixed Top-up Amounts</h3>
               <div className="grid grid-cols-4 sm:grid-cols-8 gap-2 mb-4">
                 {[15,25,30,50,75,100,125,150].map(amt => (
-                  <div key={amt} className="bg-[#1a3260] rounded-xl p-3 text-center">
+                  <div key={amt} className="bg-slate-50 rounded-xl p-3 text-center">
                     <p className="font-bold text-[#c8991a]">${amt}</p>
                   </div>
                 ))}
@@ -1030,7 +1030,7 @@ export default function AdminPage() {
               <p className="text-xs text-slate-400 mt-0.5">Review agent sample submissions before approving them to take orders</p>
             </div>
             {samples.length===0 ? (
-              <div className="text-center py-12 text-slate-400"><ShieldCheck className="w-8 h-8 mx-auto mb-2 text-slate-300"/><p>No pending samples</p></div>
+              <div className="text-center py-12 text-slate-400"><ShieldCheck className="w-8 h-8 mx-auto mb-2 text-slate-600"/><p>No pending samples</p></div>
             ) : samples.map(s=>(
               <div key={s.id} className="p-6 border-b border-slate-100 last:border-0">
                 <div className="flex items-center justify-between mb-3">
@@ -1089,7 +1089,7 @@ export default function AdminPage() {
                   </div>
                 ))}
                 {agents.filter(a=>a.pendingPayout>0).length===0&&(
-                  <div className="text-center py-12 text-slate-400"><CreditCard className="w-8 h-8 mx-auto mb-2 text-slate-300"/><p>No pending payouts</p></div>
+                  <div className="text-center py-12 text-slate-400"><CreditCard className="w-8 h-8 mx-auto mb-2 text-slate-600"/><p>No pending payouts</p></div>
                 )}
               </div>
             </div>
@@ -1184,13 +1184,13 @@ export default function AdminPage() {
 
                           {/* Rush 24hr — auto calculated */}
                           <div className="col-span-2 text-center">
-                            {svc.isCustom ? <span className="text-xs text-slate-300">—</span>
+                            {svc.isCustom ? <span className="text-xs text-slate-600">—</span>
                             : <span className="text-sm font-medium text-amber-600">${rush24}</span>}
                           </div>
 
                           {/* Rush 6hr — auto calculated */}
                           <div className="col-span-2 text-center">
-                            {svc.isCustom ? <span className="text-xs text-slate-300">—</span>
+                            {svc.isCustom ? <span className="text-xs text-slate-600">—</span>
                             : <span className="text-sm font-medium text-red-500">${rush6}</span>}
                           </div>
 
@@ -1263,16 +1263,16 @@ export default function AdminPage() {
             )}
 
             {/* How-to banner */}
-            <div className="bg-[#0f1f3d] rounded-2xl p-6 text-white">
-              <h2 className="text-lg font-bold text-[#f0b429] mb-3 flex items-center gap-2">
+            <div className="bg-white rounded-2xl p-6 text-[#0f1f3d]">
+              <h2 className="text-lg font-bold text-[#c8991a] mb-3 flex items-center gap-2">
                 <DollarSign className="w-5 h-5"/>How Payment Links Work
               </h2>
-              <ol className="space-y-2 text-sm text-slate-300">
+              <ol className="space-y-2 text-sm text-slate-600">
                 {[
                   "Paste any payment URL — PayPal.me, Venmo, Zelle, CashApp, or a custom invoice URL like https://carebusinessconsultingsolutions.com/generate/invoice?...",
                   "Every time a vendor or agent needs to pay — they see a 'Pay Now' button that opens your link in a new tab",
                   "After they pay, you get a push notification (Ntfy) + email. Then click '✓ Confirm Pay' in Orders tab to activate the order",
-                  "For new vendor account activation — go to Add Users tab → click '✓ Activate' after confirming their $30 signup fee payment (agents auto-activate for free)",
+                  "Vendor and agent signup is free — accounts auto-activate on registration (use Add Users tab only for legacy accounts)",
                   "Links are saved permanently until you delete them — no need to re-add each time",
                 ].map((step, i) => (
                   <li key={i} className="flex items-start gap-3">
@@ -1330,7 +1330,7 @@ export default function AdminPage() {
               </div>
               {paymentLinks.length === 0 ? (
                 <div className="text-center py-16">
-                  <DollarSign className="w-10 h-10 mx-auto mb-3 text-slate-300"/>
+                  <DollarSign className="w-10 h-10 mx-auto mb-3 text-slate-600"/>
                   <p className="text-slate-500 font-semibold">No payment links yet</p>
                   <p className="text-slate-400 text-sm mt-1">Add your first link above to start receiving payments</p>
                 </div>
@@ -1371,7 +1371,7 @@ export default function AdminPage() {
               <p className="text-xs text-slate-400">Stub emails — no real delivery</p>
             </div>
             {emails.length===0 ? (
-              <div className="text-center py-12 text-slate-400"><Mail className="w-8 h-8 mx-auto mb-2 text-slate-300"/><p>No emails logged yet</p></div>
+              <div className="text-center py-12 text-slate-400"><Mail className="w-8 h-8 mx-auto mb-2 text-slate-600"/><p>No emails logged yet</p></div>
             ) : (
               <div className="divide-y divide-slate-100">
                 {emails.map((e,i)=>(
@@ -1409,7 +1409,7 @@ export default function AdminPage() {
               </div>
             </div>
             {disputes.length===0 ? (
-              <div className="text-center py-12 text-slate-400"><AlertTriangle className="w-8 h-8 mx-auto mb-2 text-slate-300"/><p>No disputes{disputeFilter!=="all"?` (${disputeFilter.replace("_"," ")})`:""}</p></div>
+              <div className="text-center py-12 text-slate-400"><AlertTriangle className="w-8 h-8 mx-auto mb-2 text-slate-600"/><p>No disputes{disputeFilter!=="all"?` (${disputeFilter.replace("_"," ")})`:""}</p></div>
             ) : disputes.map(d=>(
               <div key={d.id} className="p-5 border-b border-slate-100 last:border-0">
                 <div className="flex items-start justify-between gap-3 mb-2 flex-wrap">
@@ -1452,7 +1452,7 @@ export default function AdminPage() {
               <p className="text-xs text-slate-400 mt-0.5">Every activation, payout, price change, sample decision, and order override — most recent first</p>
             </div>
             {auditLog.length===0 ? (
-              <div className="text-center py-12 text-slate-400"><History className="w-8 h-8 mx-auto mb-2 text-slate-300"/><p>No admin actions logged yet</p></div>
+              <div className="text-center py-12 text-slate-400"><History className="w-8 h-8 mx-auto mb-2 text-slate-600"/><p>No admin actions logged yet</p></div>
             ) : (
               <div className="divide-y divide-slate-100">
                 {auditLog.map(entry=>(

@@ -53,12 +53,12 @@ export default function AgentRegisterPage() {
         <div className="min-h-[80vh] flex items-center justify-center px-4 py-16">
           <div className="w-full max-w-lg">
             <div className="bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden">
-              <div className="bg-[#0f1f3d] p-8 text-center">
+              <div className="bg-white p-8 text-center">
                 <div className="w-16 h-16 bg-[#c8991a] rounded-full flex items-center justify-center mx-auto mb-4">
-                  <CheckCircle className="w-8 h-8 text-white"/>
+                  <CheckCircle className="w-8 h-8 text-[#0f1f3d]"/>
                 </div>
-                <h1 className="text-2xl font-bold text-white mb-2">Agent Account Created!</h1>
-                <p className="text-slate-300 text-sm">Free signup — your account is active. Log in now to get started.</p>
+                <h1 className="text-2xl font-bold text-[#0f1f3d] mb-2">Agent Account Created!</h1>
+                <p className="text-slate-600 text-sm">Free signup — your account is active. Log in now to get started.</p>
               </div>
               <div className="p-8">
                 <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-5">
@@ -81,7 +81,7 @@ export default function AgentRegisterPage() {
     <div className="min-h-screen bg-white">
       <PublicNav />
 
-      <section className="bg-[#0f1f3d] py-10 px-4">
+      <section className="bg-white py-10 px-4">
         <div className="max-w-4xl mx-auto">
           {/* Warning banner */}
           <div className="bg-amber-400/10 border border-amber-400/40 rounded-2xl p-4 mb-8 flex items-start gap-3">
@@ -94,7 +94,7 @@ export default function AgentRegisterPage() {
 
           <div className="grid md:grid-cols-3 gap-8">
             {/* Perks sidebar */}
-            <div className="text-white">
+            <div className="text-[#0f1f3d]">
               <p className="text-[#c8991a] font-bold text-sm uppercase tracking-wider mb-3">Why Join</p>
               <h1 className="text-2xl font-extrabold mb-5 leading-tight">Become a Field Agent</h1>
               <ul className="space-y-4">
@@ -105,14 +105,14 @@ export default function AgentRegisterPage() {
                   { icon:<CheckCircle className="w-4 h-4"/>, text:"No real estate license required" },
                   { icon:<Car className="w-4 h-4"/>, text:"Work your own hours, flexible schedule" },
                 ].map(({icon,text})=>(
-                  <li key={text} className="flex items-start gap-2.5 text-slate-300 text-sm">
+                  <li key={text} className="flex items-start gap-2.5 text-slate-600 text-sm">
                     <span className="text-[#c8991a] flex-shrink-0 mt-0.5">{icon}</span>{text}
                   </li>
                 ))}
               </ul>
-              <div className="mt-6 p-4 bg-[#1a3260] rounded-xl">
-                <p className="text-[#f0b429] font-bold text-sm mb-2">Signup</p>
-                <p className="text-4xl font-black text-white mb-1">Free</p>
+              <div className="mt-6 p-4 bg-slate-50 rounded-xl">
+                <p className="text-[#c8991a] font-bold text-sm mb-2">Signup</p>
+                <p className="text-4xl font-black text-[#0f1f3d] mb-1">Free</p>
                 <p className="text-slate-400 text-xs">No application fee. Create your account and start browsing jobs right away.</p>
               </div>
             </div>
@@ -123,7 +123,7 @@ export default function AgentRegisterPage() {
               <div className="flex items-center justify-between mb-8">
                 {STEPS.map((s,i)=>(
                   <div key={s} className="flex items-center">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all ${i<step?"bg-[#c8991a] text-[#0f1f3d]":i===step?"bg-[#0f1f3d] text-[#c8991a]":"bg-slate-100 text-slate-400"}`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all ${i<step?"bg-[#c8991a] text-[#0f1f3d]":i===step?"bg-white text-[#c8991a]":"bg-slate-100 text-slate-400"}`}>
                       {i<step?<CheckCircle className="w-4 h-4"/>:i+1}
                     </div>
                     <span className={`ml-1.5 text-xs font-medium hidden sm:block ${i===step?"text-[#0f1f3d]":"text-slate-400"}`}>{s}</span>
@@ -249,12 +249,12 @@ export default function AgentRegisterPage() {
                       <div key={l} className="flex justify-between"><span className="text-slate-500">{l}</span><span className="font-medium text-slate-800">{v}</span></div>
                     ))}
                   </div>
-                  <div className="p-4 bg-[#0f1f3d] rounded-xl flex items-center justify-between">
+                  <div className="p-4 bg-white rounded-xl flex items-center justify-between">
                     <div>
-                      <p className="font-bold text-white text-sm">Signup Fee</p>
+                      <p className="font-bold text-[#0f1f3d] text-sm">Signup Fee</p>
                       <p className="text-xs text-slate-400 mt-0.5">Free — your account is active immediately</p>
                     </div>
-                    <span className="text-2xl font-black text-[#f0b429]">$0</span>
+                    <span className="text-2xl font-black text-[#c8991a]">$0</span>
                   </div>
                   <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2">
                     <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5"/>

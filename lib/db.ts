@@ -217,6 +217,13 @@ export async function updateUser(id: string, fields: Partial<User>): Promise<voi
   await supabase.from("users").update(patch).eq("id", id);
 }
 
+// Anonymized display id for a user — vendors never see real agent names.
+// e.g. "user-1712345678901-abc" → "User 5678901"
+export function anonUserId(id: string | null | undefined): string {
+  const digits = (id ?? "").replace(/\D/g, "");
+  return `User ${(digits.slice(-7) || "0000000")}`;
+}
+
 // ── Orders ────────────────────────────────────────────────────
 
 async function enrichOrders(rows: Record<string, unknown>[]): Promise<Order[]> {

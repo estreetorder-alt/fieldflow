@@ -148,15 +148,15 @@ export default function ServicesPage() {
       <PublicNav />
 
       {/* Hero */}
-      <section className="bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 text-white py-20 px-4">
+      <section className="bg-white border-b border-slate-100 text-[#0f1f3d] py-20 px-4">
         <div className="max-w-3xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 bg-blue-500/20 border border-blue-400/30 text-blue-300 text-sm font-medium px-4 py-1.5 rounded-full mb-6">
-            <Star className="w-3.5 h-3.5" />
-            45+ services · Fixed transparent pricing · Rush available
+          <div className="inline-flex items-center gap-2 bg-[#c8991a]/10 border border-[#c8991a]/30 text-[#0f1f3d] text-sm font-medium px-4 py-1.5 rounded-full mb-6">
+            <Star className="w-3.5 h-3.5 text-[#c8991a]" />
+            45+ services · Verified local agents · Rush available
           </div>
-          <h1 className="text-4xl sm:text-5xl font-extrabold mb-5 leading-tight">Our Services & Pricing</h1>
-          <p className="text-xl text-slate-300 max-w-2xl mx-auto leading-relaxed">
-            Every service has a fixed price shown before you pay. Rush orders add a flat fee — not a percentage. No surprises.
+          <h1 className="text-4xl sm:text-5xl font-extrabold mb-5 leading-tight">Our Services</h1>
+          <p className="text-xl text-slate-600 max-w-2xl mx-auto leading-relaxed">
+            Choose a service, enter the address, and place your order. Verified field agents send offers within minutes — you pick the offer that works for you.
           </p>
         </div>
       </section>
@@ -165,12 +165,12 @@ export default function ServicesPage() {
       <section className="py-8 px-4 bg-slate-50 border-b border-slate-200">
         <div className="max-w-4xl mx-auto grid sm:grid-cols-3 gap-4 text-center">
           {[
-            { tier:"Standard", note:"Orders before 10 AM → next business day", extra:"Base price", color:"text-slate-700" },
-            { tier:"Rush 24hr", note:"Completed within 24 hours on business days", extra:"+$15 flat", color:"text-amber-600" },
-            { tier:"Rush 6hr",  note:"Completed within 6 daylight hours", extra:"+$35 flat", color:"text-red-600" },
+            { tier:"Standard", note:"Orders before 10 AM → next business day", color:"text-slate-700" },
+            { tier:"Rush 24hr", note:"Completed within 24 hours on business days", color:"text-amber-600" },
+            { tier:"Rush 6hr",  note:"Completed within 6 daylight hours", color:"text-red-600" },
           ].map(t=>(
             <div key={t.tier} className="bg-white border border-slate-200 rounded-xl p-4">
-              <div className={`text-lg font-bold ${t.color}`}>{t.tier} — {t.extra}</div>
+              <div className={`text-lg font-bold ${t.color}`}>{t.tier}</div>
               <div className="text-xs text-slate-400 mt-1">{t.note}</div>
             </div>
           ))}
@@ -185,7 +185,7 @@ export default function ServicesPage() {
             return (
               <div key={cat.category} className="rounded-2xl overflow-hidden border border-slate-200 shadow-sm">
                 {/* Category header */}
-                <div className={`${c.header} text-white px-6 py-4`}>
+                <div className="bg-slate-50 border-b border-slate-100 text-[#0f1f3d] px-6 py-4">
                   <h2 className="text-lg font-bold">{cat.category}</h2>
                   <p className="text-sm opacity-80 mt-0.5">{cat.desc}</p>
                 </div>
@@ -195,18 +195,9 @@ export default function ServicesPage() {
                     <div key={svc.name} className="p-5 flex flex-col">
                       <div className="flex items-start justify-between gap-2 mb-2">
                         <h3 className="font-semibold text-slate-900 text-sm leading-snug">{svc.name}</h3>
-                        {svc.price > 0 ? (
-                          <span className={`text-xs font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${c.badge}`}>${svc.price}</span>
-                        ) : (
-                          <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 whitespace-nowrap">You set price</span>
-                        )}
+                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${c.badge}`}>{svc.price > 0 ? "Available" : "Custom"}</span>
                       </div>
-                      {svc.price > 0 && (
-                        <div className="flex items-center gap-3 text-xs text-slate-400 mb-3">
-                          <span>24hr: <span className="font-semibold text-amber-600">${svc.rush24}</span></span>
-                          <span>6hr: <span className="font-semibold text-red-500">${svc.rush6}</span></span>
-                        </div>
-                      )}
+
                       <ul className="space-y-1 mt-auto">
                         {svc.shots.map((shot,i)=>(
                           <li key={i} className="flex items-start gap-1.5 text-xs text-slate-500">

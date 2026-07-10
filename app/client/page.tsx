@@ -7,7 +7,7 @@ import {
   DollarSign, FileText, X, Wifi, WifiOff, ChevronRight, Zap, Package,
   List, Trash2, Mail, Download, Image, Square, CheckSquare, Gavel, User,
   Search, AlertCircle, AlertTriangle, Info, ChevronDown, ChevronUp,
-  CreditCard, Star, Shield, Users, Car, Megaphone, Home as HomeIcon, Headset,
+  CreditCard, Star, Shield, Users, Car, Megaphone, Home as HomeIcon, Headset, Bell,
 } from "lucide-react";
 
 interface Photo { id: string; filename: string; url: string; description: string; selectedByClient: boolean; }
@@ -29,8 +29,8 @@ const STATUS_COLORS: Record<string,string> = { under_review:"bg-purple-100 text-
 const STATUS_ICONS: Record<string,React.ReactNode> = { under_review:<Clock className="w-3.5 h-3.5"/>, pending:<Clock className="w-3.5 h-3.5"/>, in_progress:<RefreshCw className="w-3.5 h-3.5"/>, completed:<CheckCircle className="w-3.5 h-3.5"/>, cancelled:<XCircle className="w-3.5 h-3.5"/> };
 const STATUS_LABELS: Record<string,string> = { under_review:"Under Review", pending:"Order In Queue", in_progress:"In Progress", completed:"Completed", cancelled:"Cancelled" };
 // Anonymized display for a bidding agent — vendors never see the agent's real name until a bid is accepted
-function anonBidder(agentId: string) { return `User ${agentId.replace(/[^a-zA-Z0-9]/g,"").slice(-6).toUpperCase()} (ID: ${agentId})`; }
-const TIER_LABELS: Record<string,string> = { standard:"Next Business Day", rush_24hr:"24-Hour Rush (+25%)", rush_6hr:"6-Hour Rush (+75%)" };
+function anonBidder(agentId: string) { return `User ${agentId.replace(/\D/g,"").slice(-7) || "0000000"}`; }
+const TIER_LABELS: Record<string,string> = { standard:"Next Business Day", rush_24hr:"24-Hour Rush", rush_6hr:"6-Hour Rush" };
 const TIER_MULS: Record<string,number> = { standard:1, rush_24hr:1.25, rush_6hr:1.75 };
 
 function getPhotoExpiryDays(photoExpiresAt: string | null): number | null {
@@ -125,6 +125,32 @@ function ClientPageInner() {
     fetch("/api/announcements").then(r=>r.json()).then(d=>{ if(d.announcement) setAnnouncement(d.announcement); }).catch(()=>{});
   }, []);
 
+  // ── Notification bell ──
+  const [bellOpen, setBellOpen] = useState(false);
+  const [seenNotifs, setSeenNotifs] = useState<Set<string>>(new Set());
+  const [placedBanner, setPlacedBanner] = useState(false);
+  useEffect(()=>{ try{ const raw = localStorage.getItem("snapect_seen_notifs"); if(raw) setSeenNotifs(new Set(JSON.parse(raw))); }catch{} },[]);
+  useEffect(()=>{ if(searchParams.get("placed")==="1"){ setPlacedBanner(true); const t=setTimeout(()=>setPlacedBanner(false),8000); return ()=>clearTimeout(t); } },[searchParams]);
+  const notifications = orders.flatMap(o=>{
+    const items: {key:string;orderId:string;title:string;detail:string;ts:string}[] = [];
+    const pend = (o.bids??[]).filter(b=>b.status==="pending");
+    if (o.status==="pending" && !o.acceptedBidId && pend.length>0) {
+      const latest = pend.reduce((a,b)=>new Date(a.placedAt)>new Date(b.placedAt)?a:b);
+      items.push({ key:`bid-${o.id}-${pend.length}`, orderId:o.id, title:`${pend.length} new offer${pend.length!==1?"s":""} received`, detail:o.address, ts:latest.placedAt });
+    }
+    (o.statusHistory??[]).forEach((ev,i)=>{
+      if (ev.note && Date.now()-new Date(ev.timestamp).getTime() < 48*3600000)
+        items.push({ key:`ev-${o.id}-${i}`, orderId:o.id, title:ev.note, detail:o.address, ts:ev.timestamp });
+    });
+    return items;
+  }).sort((a,b)=>new Date(b.ts).getTime()-new Date(a.ts).getTime()).slice(0,15);
+  const unreadCount = notifications.filter(n=>!seenNotifs.has(n.key)).length;
+  function markAllSeen() {
+    const next = new Set(notifications.map(n=>n.key));
+    setSeenNotifs(next);
+    try{ localStorage.setItem("snapect_seen_notifs", JSON.stringify([...next])); }catch{}
+  }
+
   const selectedSvc = catalog.flatMap(c=>c.services).find(s=>s.id===selectedServiceId);
   const price = calcPrice(selectedSvc, tier, selectedSvc?.isCustom ? Number(customPrice) : undefined);
 
@@ -199,69 +225,18 @@ function ClientPageInner() {
     } finally { setValidatingAddress(false); }
   }
 
-  async function submitOrder() {
-    if (!address.trim()) { setFormError("Address is required"); return; }
-    if (!selectedSvc) { setFormError("Select a service"); return; }
-    if (selectedSvc.isCustom && !customPrice) { setFormError("Enter your offered price for this custom order"); return; }
-    setFormError(""); setSubmitting(true);
-
-    const orderData = {
-      address, serviceId: selectedServiceId, turnaroundTier: tier,
-      notes, dateStamp,
-      ...(selectedSvc.isCustom ? { customShotList, customClientPrice: Number(customPrice) } : {}),
-      lat: addrLat, lng: addrLng,
-    };
-
-    // Try Whop checkout if configured
-    if (!selectedSvc.isCustom) {
-      const whopRes = await fetch("/api/whop", {
-        method:"POST", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({ orderData, totalPrice: price, description: `${selectedSvc.name} — ${address}` }),
-      });
-      const whopData = await whopRes.json();
-      if (whopData.url) {
-        window.location.href = whopData.url;
-        return;
-      }
-      // skip=true means Whop not configured, fall through
-    }
-
-    const r = await fetch("/api/orders", {
-      method:"POST", headers:{"Content-Type":"application/json"},
-      body: JSON.stringify(orderData),
-    });
-    const d = await r.json();
-    if (!r.ok) { setFormError(d.error ?? "Failed to submit"); setSubmitting(false); return; }
-    setShowNewOrder(false); resetForm(); setSubmitting(false);
-    // Show payment links modal if any active
-    if (paymentLinks.length > 0) {
-      setShowPaymentLinks(d.order?.id ?? "new");
-    }
-  }
-
-  async function submitBulk() {
-    const valid = bulkRows.filter(r=>r.address.trim());
-    if (!valid.length) { setFormError("Add at least one address"); return; }
-    setSubmitting(true); setFormError("");
-    const r = await fetch("/api/orders", {
-      method:"POST", headers:{"Content-Type":"application/json"},
-      body: JSON.stringify({ orders: valid.map(row=>({ address:row.address, serviceId:row.serviceId, turnaroundTier:row.tier })) }),
-    });
-    if (!r.ok) { const d=await r.json(); setFormError(d.error??"Failed"); setSubmitting(false); return; }
-    setShowNewOrder(false); resetForm(); setSubmitting(false);
-  }
-
-  function resetForm() {
-    setAddress(""); setTier("standard"); setNotes(""); setDateStamp(false);
-    setCustomShotList(""); setCustomPrice(""); setAddressValid(null);
-    setAddressSuggestion(""); setCoverageStatus(null); setBulkMode(false);
-    setBulkRows([{address:"",serviceId:"re_main6",tier:"standard"}]);
-    setSelectedServiceId("re_main6"); setExpandedCategory("real_estate");
-  }
-
   async function respondToBid(orderId: string, bidId: string, action: "accept"|"reject") {
     setActingBid(bidId);
-    await fetch(`/api/orders/${orderId}/bids`, { method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify({bidId,action}) });
+    const r = await fetch(`/api/orders/${orderId}/bids`, { method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify({bidId,action}) });
+    if (!r.ok) {
+      const d = await r.json().catch(()=>({}));
+      if (d.error === "insufficient_funds") {
+        setActingBid(null);
+        if (confirm(`${d.message ?? "Insufficient wallet balance."}\n\nGo to your wallet to add funds now?`)) router.push("/client/wallet");
+        return;
+      }
+      alert(d.message ?? d.error ?? "Failed to update bid");
+    }
     await fetchBids(orderId); setActingBid(null);
   }
 
@@ -343,35 +318,35 @@ function ClientPageInner() {
   }
 
   return (
-    <div className="min-h-screen bg-[#eef1f6]">
+    <div className="min-h-screen bg-white">
       {/* ── Top nav — navy bar with dropdown menus (Velocity structure) ── */}
-      <header className="bg-[#0f1f3d] sticky top-0 z-30 shadow-md" onMouseLeave={()=>setNavMenu(null)}>
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm" onMouseLeave={()=>setNavMenu(null)}>
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
           <div className="flex items-center gap-2.5 flex-shrink-0">
             <img src="/snapect-logo.png" alt="Snapect" className="h-8 w-auto object-contain" onError={e=>{(e.target as HTMLImageElement).style.display="none";}}/>
-            <span className="font-extrabold text-white tracking-tight hidden sm:inline">Snapect</span>
+            <span className="font-extrabold text-[#0f1f3d] tracking-tight hidden sm:inline">Snapect</span>
             <span className="text-[10px] bg-[#c8991a] text-[#0f1f3d] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">Vendor Portal</span>
           </div>
 
           <nav className="flex items-center gap-0.5 text-sm">
             <button onClick={()=>{setTab("orders");window.scrollTo({top:0,behavior:"smooth"});}}
-              className="flex items-center gap-1.5 text-slate-200 hover:text-white hover:bg-white/10 px-3 py-2 rounded-lg font-medium transition-colors">
+              className="flex items-center gap-1.5 text-slate-700 hover:text-[#0f1f3d] hover:bg-slate-100 px-3 py-2 rounded-lg font-medium transition-colors">
               <HomeIcon className="w-4 h-4"/><span className="hidden md:inline">Home</span>
             </button>
 
             {/* Orders dropdown */}
             <div className="relative">
               <button onClick={()=>setNavMenu(navMenu==="orders"?null:"orders")} onMouseEnter={()=>setNavMenu("orders")}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg font-medium transition-colors ${navMenu==="orders"?"bg-white/10 text-white":"text-slate-200 hover:text-white hover:bg-white/10"}`}>
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg font-medium transition-colors ${navMenu==="orders"?"bg-slate-100 text-[#0f1f3d]":"text-slate-700 hover:text-[#0f1f3d] hover:bg-slate-100"}`}>
                 <List className="w-4 h-4"/><span className="hidden md:inline">Orders</span><ChevronDown className="w-3.5 h-3.5"/>
               </button>
               {navMenu==="orders"&&(
-                <div className="absolute left-0 top-full mt-1 w-56 bg-[#16294f] border border-white/10 rounded-xl shadow-2xl overflow-hidden py-1">
-                  <Link href="/client/order" className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-200 hover:bg-white/10 hover:text-white"><Plus className="w-4 h-4"/>Place An Order</Link>
-                  <Link href="/client/multi-order" className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-200 hover:bg-white/10 hover:text-white"><Package className="w-4 h-4"/>Place Multi Orders</Link>
-                  <button onClick={()=>{setTab("orders");setNavMenu(null);document.getElementById("order-ledger")?.scrollIntoView({behavior:"smooth"});}} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-200 hover:bg-white/10 hover:text-white text-left"><List className="w-4 h-4"/>View Orders</button>
-                  <Link href="/coverage" className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-200 hover:bg-white/10 hover:text-white"><MapPin className="w-4 h-4"/>View Coverage Map</Link>
-                  <Link href="/contact" className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-200 hover:bg-white/10 hover:text-white"><DollarSign className="w-4 h-4"/>Request a Quote</Link>
+                <div className="absolute left-0 top-full mt-1 w-56 bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden py-1">
+                  <Link href="/client/order" className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 hover:text-[#0f1f3d]"><Plus className="w-4 h-4"/>Place An Order</Link>
+                  <Link href="/client/multi-order" className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 hover:text-[#0f1f3d]"><Package className="w-4 h-4"/>Place Multi Orders</Link>
+                  <button onClick={()=>{setTab("orders");setNavMenu(null);document.getElementById("order-ledger")?.scrollIntoView({behavior:"smooth"});}} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 hover:text-[#0f1f3d] text-left"><List className="w-4 h-4"/>View Orders</button>
+                  <Link href="/coverage" className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 hover:text-[#0f1f3d]"><MapPin className="w-4 h-4"/>View Coverage Map</Link>
+                  <Link href="/contact" className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 hover:text-[#0f1f3d]"><DollarSign className="w-4 h-4"/>Request a Quote</Link>
                 </div>
               )}
             </div>
@@ -379,32 +354,62 @@ function ClientPageInner() {
             {/* Settings dropdown */}
             <div className="relative">
               <button onClick={()=>setNavMenu(navMenu==="settings"?null:"settings")} onMouseEnter={()=>setNavMenu("settings")}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg font-medium transition-colors ${navMenu==="settings"?"bg-white/10 text-white":"text-slate-200 hover:text-white hover:bg-white/10"}`}>
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg font-medium transition-colors ${navMenu==="settings"?"bg-slate-100 text-[#0f1f3d]":"text-slate-700 hover:text-[#0f1f3d] hover:bg-slate-100"}`}>
                 <Users className="w-4 h-4"/><span className="hidden md:inline">Settings</span><ChevronDown className="w-3.5 h-3.5"/>
               </button>
               {navMenu==="settings"&&(
-                <div className="absolute left-0 top-full mt-1 w-56 bg-[#16294f] border border-white/10 rounded-xl shadow-2xl overflow-hidden py-1">
-                  <button onClick={()=>{setTab("subaccounts");setNavMenu(null);}} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-200 hover:bg-white/10 hover:text-white text-left">
+                <div className="absolute left-0 top-full mt-1 w-56 bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden py-1">
+                  <button onClick={()=>{setTab("subaccounts");setNavMenu(null);}} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 hover:text-[#0f1f3d] text-left">
                     <Users className="w-4 h-4"/>Manage Employees
                   </button>
-                  <Link href="/client/wallet" className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-200 hover:bg-white/10 hover:text-white"><CreditCard className="w-4 h-4"/>Wallet &amp; Billing</Link>
-                  <Link href="/refund-policy" className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-200 hover:bg-white/10 hover:text-white"><Shield className="w-4 h-4"/>Refund Policy</Link>
+                  <Link href="/client/wallet" className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 hover:text-[#0f1f3d]"><CreditCard className="w-4 h-4"/>Wallet &amp; Billing</Link>
+                  <Link href="/refund-policy" className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 hover:text-[#0f1f3d]"><Shield className="w-4 h-4"/>Refund Policy</Link>
                 </div>
               )}
             </div>
 
-            <Link href="/client/wallet" className="flex items-center gap-1.5 text-slate-200 hover:text-white hover:bg-white/10 px-3 py-2 rounded-lg font-medium transition-colors">
+            <Link href="/client/wallet" className="flex items-center gap-1.5 text-slate-700 hover:text-[#0f1f3d] hover:bg-slate-100 px-3 py-2 rounded-lg font-medium transition-colors">
               <DollarSign className="w-4 h-4"/><span className="hidden md:inline">Invoices</span>
             </Link>
-            <Link href="/faq" className="flex items-center gap-1.5 text-slate-200 hover:text-white hover:bg-white/10 px-3 py-2 rounded-lg font-medium transition-colors">
+            <Link href="/faq" className="flex items-center gap-1.5 text-slate-700 hover:text-[#0f1f3d] hover:bg-slate-100 px-3 py-2 rounded-lg font-medium transition-colors">
               <Info className="w-4 h-4"/><span className="hidden md:inline">FAQ</span>
             </Link>
-            <button onClick={logout} className="flex items-center gap-1.5 text-slate-300 hover:text-red-300 hover:bg-white/10 px-3 py-2 rounded-lg font-medium transition-colors">
+            <button onClick={logout} className="flex items-center gap-1.5 text-slate-600 hover:text-red-300 hover:bg-slate-100 px-3 py-2 rounded-lg font-medium transition-colors">
               <LogOut className="w-4 h-4"/><span className="hidden md:inline">Logout</span>
             </button>
           </nav>
 
-          <div className={`hidden lg:flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-full border flex-shrink-0 ${liveConnected?"border-emerald-400/40 text-emerald-300":"border-white/20 text-slate-400"}`}>
+          <div className="relative flex-shrink-0">
+            <button onClick={()=>{ setBellOpen(!bellOpen); if(!bellOpen) markAllSeen(); }}
+              className="relative p-2 rounded-lg text-slate-500 hover:text-[#0f1f3d] hover:bg-slate-100 transition-colors" title="Notifications">
+              <Bell className="w-5 h-5"/>
+              {unreadCount>0&&(
+                <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-[#c8991a] text-[#0f1f3d] text-[10px] font-extrabold rounded-full flex items-center justify-center border-2 border-white">{unreadCount>9?"9+":unreadCount}</span>
+              )}
+            </button>
+            {bellOpen&&(
+              <div className="absolute right-0 top-full mt-2 w-80 bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden z-40">
+                <div className="px-4 py-2.5 border-b border-slate-100 flex items-center justify-between">
+                  <span className="text-sm font-bold text-[#0f1f3d]">Notifications</span>
+                  <button onClick={()=>setBellOpen(false)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4"/></button>
+                </div>
+                <div className="max-h-80 overflow-y-auto divide-y divide-slate-50">
+                  {notifications.length===0 ? (
+                    <p className="px-4 py-8 text-center text-xs text-slate-400">No new notifications</p>
+                  ) : notifications.map(n=>(
+                    <Link key={n.key} href={`/client/orders/${n.orderId}`} onClick={()=>setBellOpen(false)}
+                      className="block px-4 py-3 hover:bg-slate-50">
+                      <p className="text-xs font-semibold text-[#0f1f3d]">{n.title}</p>
+                      <p className="text-[11px] text-slate-500 truncate mt-0.5">{n.detail}</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5" suppressHydrationWarning>{new Date(n.ts).toLocaleString()}</p>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className={`hidden lg:flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-full border flex-shrink-0 ${liveConnected?"border-emerald-400/40 text-emerald-600":"border-slate-300 text-slate-400"}`}>
             {liveConnected?<Wifi className="w-3 h-3"/>:<WifiOff className="w-3 h-3"/>}{liveConnected?"Live":"Connecting…"}
           </div>
         </div>
@@ -430,6 +435,20 @@ function ClientPageInner() {
           </div>
         )}
 
+        {/* Order placed banner */}
+        {placedBanner && (
+          <div className="mb-5 p-4 bg-amber-50 border border-[#c8991a]/50 rounded-xl flex items-center gap-3">
+            <span className="relative flex w-4 h-4 flex-shrink-0">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#c8991a] opacity-50"/>
+              <span className="relative inline-flex rounded-full h-4 w-4 border-2 border-[#c8991a] border-t-transparent animate-spin"/>
+            </span>
+            <div>
+              <p className="font-semibold text-[#0f1f3d]">Order placed — waiting for offers!</p>
+              <p className="text-sm text-slate-600">Field agents are being notified. You&apos;ll see offers appear on your order shortly.</p>
+            </div>
+          </div>
+        )}
+
         {/* Payment success banner */}
         {paymentSuccess && (
           <div className="mb-5 p-4 bg-green-50 border border-green-200 rounded-xl flex items-center gap-3">
@@ -445,10 +464,10 @@ function ClientPageInner() {
           {/* ── Left rail ── */}
           <aside className="space-y-4">
             {/* Brand panel */}
-            <div className="bg-[#0f1f3d] rounded-2xl p-5 text-center shadow-lg overflow-hidden relative">
+            <div className="bg-white border border-slate-200 rounded-2xl p-5 text-center shadow-sm overflow-hidden relative">
               <div className="absolute inset-x-0 top-0 h-1 bg-[#c8991a]"/>
               <img src="/snapect-logo.png" alt="Snapect" className="h-12 w-auto object-contain mx-auto mb-3" onError={e=>{(e.target as HTMLImageElement).style.display="none";}}/>
-              <p className="text-white font-extrabold text-lg leading-tight">Nationwide Field Photos</p>
+              <p className="text-[#0f1f3d] font-extrabold text-lg leading-tight">Nationwide Field Photos</p>
               <p className="text-[#c8991a] text-[11px] font-bold uppercase tracking-[0.25em] mt-1.5">Verified Agents · 35 States</p>
             </div>
 
@@ -471,13 +490,13 @@ function ClientPageInner() {
             </div>
 
             {/* Customer support card */}
-            <a href="mailto:info@snapect.com" className="block bg-[#16294f] rounded-2xl p-4 hover:bg-[#1a3260] transition-colors group">
+            <a href="mailto:info@snapect.com" className="block bg-white border border-slate-200 rounded-2xl p-4 hover:bg-slate-50 transition-colors group">
               <div className="flex items-center gap-3">
                 <div className="w-11 h-11 bg-[#c8991a] rounded-full flex items-center justify-center flex-shrink-0">
                   <Headset className="w-5 h-5 text-[#0f1f3d]"/>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-white font-bold text-sm">Customer Support</p>
+                  <p className="text-[#0f1f3d] font-bold text-sm">Customer Support</p>
                   <p className="text-slate-400 text-[11px] truncate">info@snapect.com</p>
                 </div>
                 <ChevronRight className="w-4 h-4 text-[#c8991a] group-hover:translate-x-0.5 transition-transform"/>
@@ -533,7 +552,7 @@ function ClientPageInner() {
                   </div>
                 )}
                 {subAccounts.length===0 ? (
-                  <div className="text-center py-12 text-slate-400"><Users className="w-8 h-8 mx-auto mb-2 text-slate-300"/><p>No employee accounts yet</p></div>
+                  <div className="text-center py-12 text-slate-400"><Users className="w-8 h-8 mx-auto mb-2 text-slate-600"/><p>No employee accounts yet</p></div>
                 ) : subAccounts.map(s=>(
                   <div key={s.id} className="px-6 py-4 border-b border-slate-100 last:border-0 flex items-center justify-between">
                     <div><p className="font-medium text-slate-800">{s.name}</p><p className="text-xs text-slate-500">{s.email}</p></div>
@@ -583,7 +602,7 @@ function ClientPageInner() {
                       {latestComments.map(c=>(
                         <div key={c.key} className="px-4 py-2.5 flex items-start gap-3">
                           <button onClick={()=>setDismissedComments(prev=>new Set(prev).add(c.key))}
-                            className="w-6 h-6 rounded bg-[#0f1f3d] text-white text-xs font-bold flex items-center justify-center flex-shrink-0 hover:bg-red-500 transition-colors" title="Dismiss">×</button>
+                            className="w-6 h-6 rounded bg-white text-white text-xs font-bold flex items-center justify-center flex-shrink-0 hover:bg-red-500 transition-colors" title="Dismiss">×</button>
                           <div className="min-w-0 flex-1">
                             <p className="text-[11px] text-slate-400" suppressHydrationWarning>{new Date(c.timestamp).toLocaleDateString("en-US",{month:"2-digit",day:"2-digit",year:"numeric"})} · {c.serviceType}{c.photoCount>0?` (${c.photoCount} photos)`:""}</p>
                             <Link href={`/client/orders/${c.orderId}`} className="text-xs font-bold text-[#0f1f3d] hover:text-[#c8991a] uppercase truncate block">{c.address}</Link>
@@ -599,7 +618,7 @@ function ClientPageInner() {
                 <div id="order-ledger" className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
                   <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between gap-3 flex-wrap">
                     <div className="relative flex-1 min-w-[200px] max-w-sm">
-                      <Search className="w-4 h-4 text-slate-300 absolute left-3 top-1/2 -translate-y-1/2"/>
+                      <Search className="w-4 h-4 text-slate-600 absolute left-3 top-1/2 -translate-y-1/2"/>
                       <input value={search} onChange={e=>{setSearch(e.target.value);setVisibleCount(10);}} placeholder="Search for an address"
                         className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#c8991a]"/>
                     </div>
@@ -619,7 +638,7 @@ function ClientPageInner() {
 
                   {loading ? <div className="text-center py-20 text-slate-400 text-sm">Connecting…</div>
                   : filteredOrders.length===0 ? (
-                    <div className="p-12 text-center"><Camera className="w-10 h-10 text-slate-300 mx-auto mb-3"/><p className="text-slate-500 font-medium">{orders.length===0?"No orders yet — place your first order to get started":"No orders match your search"}</p></div>
+                    <div className="p-12 text-center"><Camera className="w-10 h-10 text-slate-600 mx-auto mb-3"/><p className="text-slate-500 font-medium">{orders.length===0?"No orders yet — place your first order to get started":"No orders match your search"}</p></div>
                   ) : (
                     <div>
                       {visibleOrders.map((order,rowIdx)=>{
@@ -632,9 +651,11 @@ function ClientPageInner() {
                         const isQuick = quickView===order.id;
                         const placedByEmployee = order.clientId && userId && order.clientId !== userId ? subAccounts.find(s=>s.id===order.clientId) : null;
                         const acceptedTime = order.offerAcceptedAt ? new Date(order.offerAcceptedAt).toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"}) : null;
+                        const pendingBidCount = (order.bids ?? []).filter(b=>b.status==="pending").length;
+                        const awaitingOffers = order.status==="pending" && !order.acceptedBidId;
 
                         return (
-                          <div key={order.id} className={`border-b border-slate-100 last:border-0 ${rowIdx%2?"bg-slate-50/60":"bg-white"}`}>
+                          <div key={order.id} className={`border-b border-slate-100 last:border-0 ${awaitingOffers&&pendingBidCount>0?"bg-amber-50/70 border-l-4 border-l-[#c8991a]":rowIdx%2?"bg-slate-50/60":"bg-white"}`}>
                             {/* Ledger row */}
                             <div className="px-5 py-3 grid grid-cols-[auto_1fr_auto_auto] sm:grid-cols-[90px_1fr_150px_170px] gap-x-3 gap-y-1 items-center">
                               <span className="text-xs text-slate-400 whitespace-nowrap" suppressHydrationWarning>{new Date(order.createdAt).toLocaleDateString("en-US",{month:"2-digit",day:"2-digit",year:"numeric"})}</span>
@@ -643,7 +664,7 @@ function ClientPageInner() {
                                   <Link href={`/client/orders/${order.id}`} className="font-bold text-[#0f1f3d] hover:text-[#c8991a] transition-colors truncate text-sm uppercase">{addr.line}</Link>
                                   <button onClick={()=>setQuickView(isQuick?null:order.id)} className="text-[11px] text-[#c8991a] hover:underline font-medium whitespace-nowrap">({isQuick?"Close":"Quick View"})</button>
                                 </div>
-                                <p className="text-[11px] text-slate-500 truncate">{order.serviceType} · {order.photos.length>0?`${order.photos.length} photos`:TIER_LABELS[order.turnaroundTier]}{order.agent?` · ${order.agent.name}`:""}{placedByEmployee?` · Placed by ${placedByEmployee.name}`:""} · <span className="font-semibold text-slate-600">${order.totalPrice}</span></p>
+                                <p className="text-[11px] text-slate-500 truncate">{order.serviceType} · {order.photos.length>0?`${order.photos.length} photos`:TIER_LABELS[order.turnaroundTier]}{order.agent?` · ${order.agent.name}`:""}{placedByEmployee?` · Placed by ${placedByEmployee.name}`:""}{order.acceptedBidId?<> · <span className="font-semibold text-slate-600">${order.compensationAmount}</span></>:null}</p>
                               </div>
                               <span className="text-xs text-slate-500 text-right hidden sm:block truncate">{addr.area||"—"}</span>
                               <div className="flex items-center justify-end gap-1.5 text-right">
@@ -656,8 +677,20 @@ function ClientPageInner() {
                                   <span className="flex items-center gap-1.5 text-red-500 text-xs italic"><XCircle className="w-4 h-4"/>Cancelled.</span>
                                 ) : order.agent||order.status==="in_progress" ? (
                                   <span className="flex items-center gap-1.5 text-slate-600 text-xs italic"><Car className="w-4 h-4 text-[#c8991a]"/>Accepted{acceptedTime?` ${acceptedTime}`:""}</span>
+                                ) : pendingBidCount>0 ? (
+                                  <button onClick={e=>{e.preventDefault();setQuickView(order.id);fetchBids(order.id);setBidsFor(order.id);}}
+                                    className="flex items-center gap-1.5 text-[#0f1f3d] text-xs font-bold bg-[#c8991a]/15 border border-[#c8991a] px-2.5 py-1 rounded-full hover:bg-[#c8991a]/25 transition-colors">
+                                    <Gavel className="w-3.5 h-3.5 text-[#c8991a]"/>{pendingBidCount} Offer{pendingBidCount!==1?"s":""} received
+                                    <span className="w-2 h-2 rounded-full bg-[#c8991a] animate-pulse"/>
+                                  </button>
                                 ) : (
-                                  <span className="flex items-center gap-1.5 text-amber-600 text-xs italic"><User className="w-4 h-4"/>Rep notified.</span>
+                                  <span className="flex items-center gap-2 text-amber-600 text-xs italic">
+                                    <span className="relative flex w-3.5 h-3.5">
+                                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-60"/>
+                                      <span className="relative inline-flex rounded-full h-3.5 w-3.5 border-2 border-amber-500 border-t-transparent animate-spin"/>
+                                    </span>
+                                    Waiting for offers…
+                                  </span>
                                 )}
                               </div>
                             </div>
@@ -749,7 +782,7 @@ function ClientPageInner() {
                                               className={`relative aspect-video rounded-xl overflow-hidden border-2 transition-all ${isSel?"border-[#c8991a]":"border-slate-200 hover:border-slate-300"}`}>
                                               {ph.url?.startsWith("data:") ? <img src={ph.url} alt={ph.description} className="w-full h-full object-cover"/>
                                               : <div className="w-full h-full bg-slate-100 flex items-center justify-center"><Camera className="w-5 h-5 text-slate-400"/></div>}
-                                              <div className={`absolute top-1.5 right-1.5 ${isSel?"text-[#c8991a]":"text-white/70"}`}>
+                                              <div className={`absolute top-1.5 right-1.5 ${isSel?"text-[#c8991a]":"text-[#0f1f3d]/70"}`}>
                                                 {isSel?<CheckSquare className="w-4 h-4 drop-shadow"/>:<Square className="w-4 h-4 drop-shadow"/>}
                                               </div>
                                             </button>
@@ -783,259 +816,6 @@ function ClientPageInner() {
         </div>
       </div>
 
-      {/* Payment Links Modal — shown after order placed */}
-      {showPaymentLinks && paymentLinks.length > 0 && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
-            <div className="bg-[#0f1f3d] rounded-t-2xl p-6 text-white text-center">
-              <div className="w-14 h-14 bg-[#c8991a] rounded-full flex items-center justify-center mx-auto mb-3">
-                <DollarSign className="w-7 h-7 text-white"/>
-              </div>
-              <h2 className="text-xl font-bold mb-1">Order Submitted!</h2>
-              <p className="text-slate-300 text-sm">Your order is being processed. Complete payment to activate it.</p>
-            </div>
-            <div className="p-6">
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-5 text-sm text-amber-800">
-                <p className="font-bold mb-1">⏳ Order Under Review</p>
-                <p>Your order has been placed and is being processed. Once we confirm your payment, your order will be activated and an agent will be dispatched.</p>
-              </div>
-              <p className="text-sm font-semibold text-slate-700 mb-3">Choose a payment method:</p>
-              <div className="space-y-3">
-                {paymentLinks.map(link => (
-                  <a key={link.id} href={link.url} target="_blank" rel="noopener noreferrer"
-                    className="flex items-center justify-between gap-3 p-4 border-2 border-[#c8991a] rounded-xl hover:bg-[#c8991a]/5 transition-colors group">
-                    <div>
-                      <p className="font-bold text-[#0f1f3d]">{link.label}</p>
-                      {link.description && <p className="text-xs text-slate-500">{link.description}</p>}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {link.amount && <span className="font-bold text-[#c8991a]">${link.amount}</span>}
-                      <span className="text-xs bg-[#c8991a] text-white font-bold px-3 py-1.5 rounded-lg group-hover:bg-[#f0b429] transition-colors">Pay Now →</span>
-                    </div>
-                  </a>
-                ))}
-              </div>
-              <p className="text-xs text-slate-400 text-center mt-4">After paying, your order status will update to "Active" within a few hours once we verify your payment.</p>
-              <button onClick={() => setShowPaymentLinks(null)}
-                className="w-full mt-4 border border-slate-300 text-slate-600 font-medium py-2.5 rounded-xl hover:bg-slate-50 text-sm">
-                I've completed payment — close this window
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* New Order Modal */}
-      {showNewOrder&&(
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[92vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b border-slate-100 sticky top-0 bg-white z-10">
-              <div><h2 className="text-xl font-bold text-slate-900">Request Inspection</h2><p className="text-sm text-slate-400 mt-0.5">45+ services available · Secure payment via Whop at checkout</p></div>
-              <button onClick={()=>{setShowNewOrder(false);resetForm();}} className="p-2 rounded-xl hover:bg-slate-100 text-slate-400"><X className="w-5 h-5"/></button>
-            </div>
-
-            <div className="p-6 space-y-5">
-              {formError&&<div className="p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl">{formError}</div>}
-
-              {/* Single / Bulk toggle */}
-              <div className="flex gap-2">
-                <button onClick={()=>setBulkMode(false)} className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border ${!bulkMode?"bg-blue-600 text-white border-blue-600":"bg-white text-slate-600 border-slate-200"}`}><FileText className="w-4 h-4"/>Single Order</button>
-                <button onClick={()=>setBulkMode(true)} className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border ${bulkMode?"bg-blue-600 text-white border-blue-600":"bg-white text-slate-600 border-slate-200"}`}><List className="w-4 h-4"/>Bulk (up to 50)</button>
-              </div>
-
-              {!bulkMode ? (
-                <>
-                  {/* Address */}
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Property Address *</label>
-                    <div className="relative">
-                      <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"/>
-                      <input value={address} onChange={e=>{ setAddress(e.target.value); setAddressValid(null); setCoverageStatus(null); }}
-                        onBlur={()=>validateAddress(address)}
-                        placeholder="123 Main St, Chicago, IL 60601"
-                        className="w-full pl-9 pr-10 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
-                      {validatingAddress&&<div className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"/>}
-                      {!validatingAddress&&addressValid===true&&<CheckCircle className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-green-500"/>}
-                      {!validatingAddress&&addressValid===false&&<AlertCircle className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-red-500"/>}
-                    </div>
-                    {addressSuggestion&&addressValid&&<p className="text-xs text-green-600 mt-1">✓ Verified: {addressSuggestion}</p>}
-                    {addressValid===false&&<p className="text-xs text-red-600 mt-1">Address not found — check spelling or add ZIP code</p>}
-                    {coverageStatus&&(
-                      <div className={`mt-2 flex items-center gap-2 text-xs font-medium px-3 py-2 rounded-lg ${coverageStatus.covered?"bg-green-50 text-green-700":"bg-amber-50 text-amber-700"}`}>
-                        {coverageStatus.covered ? <><CheckCircle className="w-3.5 h-3.5"/>Coverage available — {coverageStatus.agentCount} agent{coverageStatus.agentCount!==1?"s":""} in this area</>
-                        : <><AlertTriangle className="w-3.5 h-3.5"/>No agents in this ZIP yet — your order will be queued</>}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Service catalog */}
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">Service *</label>
-                    <div className="border border-slate-200 rounded-xl overflow-hidden divide-y divide-slate-100">
-                      {catalog.map(cat=>(
-                        <div key={cat.id}>
-                          <button onClick={()=>setExpandedCategory(expandedCategory===cat.id?null:cat.id)}
-                            className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 hover:bg-slate-100 text-sm font-semibold text-slate-700">
-                            {cat.label}
-                            {expandedCategory===cat.id?<ChevronUp className="w-4 h-4"/>:<ChevronDown className="w-4 h-4"/>}
-                          </button>
-                          {expandedCategory===cat.id&&(
-                            <div className="divide-y divide-slate-50">
-                              {cat.services.map(svc=>{
-                                const p = svc.isCustom ? 0 : Math.round(svc.basePrice*(TIER_MULS[tier]??1));
-                                const isSelected = selectedServiceId===svc.id;
-                                return (
-                                  <button key={svc.id} onClick={()=>setSelectedServiceId(svc.id)}
-                                    className={`w-full flex items-start justify-between gap-3 px-4 py-3 text-left transition-colors ${isSelected?"bg-blue-50":"hover:bg-slate-50"}`}>
-                                    <div className="flex-1 min-w-0">
-                                      <div className="flex items-center gap-2">
-                                        {isSelected&&<div className="w-2 h-2 rounded-full bg-blue-600 flex-shrink-0"/>}
-                                        <span className="text-sm font-medium text-slate-800">{svc.name}</span>
-                                        {svc.photoCount&&<span className="text-xs text-slate-400">{svc.photoCount} photos</span>}
-                                        {svc.requiresInterior&&<span className="text-xs bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded">Interior access</span>}
-                                        {svc.isCustom&&<span className="text-xs bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded">Custom</span>}
-                                      </div>
-                                      <p className="text-xs text-slate-500 mt-0.5 ml-4">{svc.description}</p>
-                                      {svc.shotList&&isSelected&&(
-                                        <div className="mt-2 ml-4">
-                                          <p className="text-xs font-medium text-slate-600 mb-1">Required shots:</p>
-                                          <div className="flex flex-wrap gap-1">
-                                            {svc.shotList.map((shot,i)=><span key={i} className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">{shot}</span>)}
-                                          </div>
-                                        </div>
-                                      )}
-                                    </div>
-                                    <div className="flex-shrink-0 text-right">
-                                      {svc.isCustom ? <span className="text-xs text-slate-400">You set price</span>
-                                      : <span className="font-bold text-blue-700">${p}</span>}
-                                    </div>
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Custom order fields */}
-                  {selectedSvc?.isCustom&&(
-                    <div className="space-y-3 p-4 bg-purple-50 rounded-xl border border-purple-200">
-                      <p className="text-sm font-semibold text-purple-800">Custom Order Details</p>
-                      <div>
-                        <label className="text-xs font-medium text-slate-600 block mb-1">Shot List — describe exactly what you need</label>
-                        <textarea value={customShotList} onChange={e=>setCustomShotList(e.target.value)} rows={4}
-                          placeholder="E.g. Front of house, all 4 sides, interior living room, kitchen, master bedroom, basement, HVAC unit…"
-                          className="w-full border border-purple-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 resize-none"/>
-                      </div>
-                      <div>
-                        <label className="text-xs font-medium text-slate-600 block mb-1">Your Offered Price ($) *</label>
-                        <div className="relative w-32">
-                          <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"/>
-                          <input type="number" min="1" value={customPrice} onChange={e=>setCustomPrice(e.target.value)} placeholder="150"
-                            className="w-full pl-8 pr-3 py-2 border border-purple-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"/>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Turnaround */}
-                  {!selectedSvc?.isCustom&&(
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">Turnaround *</label>
-                      <div className="grid grid-cols-3 gap-3">
-                        {Object.entries(TIER_LABELS).map(([k,label])=>{
-                          const p = selectedSvc ? Math.round(selectedSvc.basePrice*(TIER_MULS[k]??1)) : 0;
-                          return (
-                            <button key={k} type="button" onClick={()=>setTier(k)}
-                              className={`p-3 rounded-xl border-2 text-left transition-all ${tier===k?"border-blue-500 bg-blue-50":"border-slate-200 bg-white hover:border-slate-300"}`}>
-                              <div className="text-sm font-semibold text-slate-800">{label}</div>
-                              <div className="text-lg font-bold text-blue-700 mt-1">${p}</div>
-                            </button>
-                          );
-                        })}
-                      </div>
-                      <p className="text-xs text-slate-400 mt-1.5 flex items-center gap-1"><Info className="w-3 h-3"/>{cutoffMsg}</p>
-                    </div>
-                  )}
-
-                  {/* Notes + date stamp */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Notes</label>
-                      <input value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Any special instructions…"
-                        className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
-                    </div>
-                    <div className="flex items-end">
-                      <label className="flex items-center gap-2 cursor-pointer p-3 rounded-xl border border-slate-200 hover:bg-slate-50 w-full">
-                        <input type="checkbox" checked={dateStamp} onChange={e=>setDateStamp(e.target.checked)} className="w-4 h-4 rounded border-slate-300"/>
-                        <div>
-                          <p className="text-sm font-medium text-slate-700">Date Stamp</p>
-                          <p className="text-xs text-slate-400">Burn date into photos</p>
-                        </div>
-                      </label>
-                    </div>
-                  </div>
-
-                  {/* Price summary */}
-                  {!selectedSvc?.isCustom&&(
-                    <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-blue-700">{selectedSvc?.name}</p>
-                        <p className="text-xs text-blue-500 mt-0.5 flex items-center gap-1"><CreditCard className="w-3 h-3"/>Paid securely via Whop at checkout</p>
-                      </div>
-                      <div className="text-3xl font-bold text-blue-700">${price}</div>
-                    </div>
-                  )}
-
-                  <button onClick={submitOrder} disabled={submitting}
-                    className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2">
-                    {submitting ? "…" : selectedSvc?.isCustom
-                      ? <><FileText className="w-4 h-4"/>Submit Custom Order — ${customPrice||"0"}</>
-                      : <><CreditCard className="w-4 h-4"/>Pay & Submit — ${price}</>}
-                  </button>
-                </>
-              ) : (
-                /* Bulk mode */
-                <>
-                  <div className="space-y-3">
-                    {bulkRows.map((row,i)=>(
-                      <div key={i} className="flex gap-2 items-start p-3 bg-slate-50 rounded-xl">
-                        <div className="flex-1 space-y-2">
-                          <input value={row.address} onChange={e=>setBulkRows(rows=>rows.map((r,j)=>j===i?{...r,address:e.target.value}:r))}
-                            placeholder={`Address ${i+1}`} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
-                          <div className="flex gap-2">
-                            <select value={row.serviceId} onChange={e=>setBulkRows(rows=>rows.map((r,j)=>j===i?{...r,serviceId:e.target.value}:r))}
-                              className="flex-1 px-2 py-1.5 border border-slate-200 rounded-lg text-xs">
-                              {catalog.flatMap(c=>c.services).filter(s=>!s.isCustom).map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
-                            </select>
-                            <select value={row.tier} onChange={e=>setBulkRows(rows=>rows.map((r,j)=>j===i?{...r,tier:e.target.value}:r))}
-                              className="flex-1 px-2 py-1.5 border border-slate-200 rounded-lg text-xs">
-                              <option value="standard">Standard</option>
-                              <option value="rush_24hr">Rush 24hr</option>
-                              <option value="rush_6hr">Rush 6hr</option>
-                            </select>
-                          </div>
-                        </div>
-                        {bulkRows.length>1&&<button onClick={()=>setBulkRows(rows=>rows.filter((_,j)=>j!==i))} className="p-1.5 text-slate-400 hover:text-red-500 mt-1"><Trash2 className="w-4 h-4"/></button>}
-                      </div>
-                    ))}
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <button onClick={()=>setBulkRows(rows=>[...rows,{address:"",serviceId:"re_main6",tier:"standard"}])} disabled={bulkRows.length>=50}
-                      className="flex items-center gap-1.5 text-sm text-blue-600 font-medium disabled:opacity-40"><Plus className="w-4 h-4"/>Add Address ({bulkRows.length}/50)</button>
-                  </div>
-                  <button onClick={submitBulk} disabled={submitting}
-                    className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2">
-                    {submitting?"Submitting…":<><Package className="w-4 h-4"/>Submit {bulkRows.filter(r=>r.address).length} Orders</>}
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -6,11 +6,11 @@ export default function RefundPolicyPage() {
   return (
     <div className="min-h-screen bg-white">
       <PublicNav />
-      <section className="bg-[#0f1f3d] text-white py-16 px-4">
+      <section className="bg-white text-[#0f1f3d] py-16 px-4">
         <div className="max-w-3xl mx-auto text-center">
           <ShieldCheck className="w-12 h-12 text-[#c8991a] mx-auto mb-4"/>
           <h1 className="text-4xl font-extrabold mb-3">Refund Policy</h1>
-          <p className="text-slate-300">Last updated: July 2026</p>
+          <p className="text-slate-600">Last updated: July 2026</p>
         </div>
       </section>
 

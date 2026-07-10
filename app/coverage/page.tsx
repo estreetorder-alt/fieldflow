@@ -59,12 +59,12 @@ export default function CoveragePage() {
     <div className="min-h-screen bg-white">
       <PublicNav />
 
-      <section className="bg-[#0f1f3d] text-white py-20 px-4">
+      <section className="bg-white text-[#0f1f3d] py-20 px-4">
         <div className="max-w-3xl mx-auto text-center">
           <p className="text-[#c8991a] font-bold text-sm uppercase tracking-wider mb-3">35 States · 8,500+ Cities</p>
           <h1 className="text-4xl sm:text-5xl font-extrabold mb-5 leading-tight">Coverage Area</h1>
-          <p className="text-xl text-slate-300 max-w-xl mx-auto mb-8">We're growing fast. Check if your ZIP code is covered right now.</p>
-          <div className="max-w-lg mx-auto bg-white/10 border border-white/20 rounded-2xl p-5 backdrop-blur-sm">
+          <p className="text-xl text-slate-600 max-w-xl mx-auto mb-8">We're growing fast. Check if your ZIP code is covered right now.</p>
+          <div className="max-w-lg mx-auto bg-slate-100 border border-slate-300 rounded-2xl p-5 backdrop-blur-sm">
             <ZipChecker />
           </div>
         </div>
@@ -98,15 +98,15 @@ export default function CoveragePage() {
         </div>
       </section>
 
-      <section className="py-16 px-4 bg-[#0f1f3d]">
+      <section className="py-16 px-4 bg-white">
         <div className="max-w-4xl mx-auto grid sm:grid-cols-2 gap-8 items-center">
-          <div className="text-white">
+          <div className="text-[#0f1f3d]">
             <p className="text-[#c8991a] font-bold text-sm uppercase tracking-wider mb-3">Expand Our Network</p>
             <h2 className="text-2xl font-bold mb-4">Become the First Agent in Your Area</h2>
-            <p className="text-slate-300 mb-6 leading-relaxed">If we don't have coverage in your ZIP, you could be the first Snapect agent there. Early agents in new areas get priority on all orders.</p>
+            <p className="text-slate-600 mb-6 leading-relaxed">If we don't have coverage in your ZIP, you could be the first Snapect agent there. Early agents in new areas get priority on all orders.</p>
             <ul className="space-y-2 mb-6">
               {["Earn $40–$300+ per job","First-in-area priority routing","Flexible hours — work when you want","Paid every Friday via PayPal"].map(b=>(
-                <li key={b} className="flex items-center gap-2 text-sm text-slate-300"><CheckCircle className="w-4 h-4 text-[#c8991a]"/>{b}</li>
+                <li key={b} className="flex items-center gap-2 text-sm text-slate-600"><CheckCircle className="w-4 h-4 text-[#c8991a]"/>{b}</li>
               ))}
             </ul>
             <Link href="/register/agent" className="inline-flex items-center gap-2 bg-[#c8991a] hover:bg-[#f0b429] text-[#0f1f3d] font-bold px-6 py-3 rounded-xl transition-colors">
@@ -120,9 +120,9 @@ export default function CoveragePage() {
               { icon:<Users className="w-6 h-6"/>, title:"Rotation System", desc:"Multiple agents in same ZIP share orders fairly — higher grade = more orders" },
               { icon:<CheckCircle className="w-6 h-6"/>, title:"Weekly Payout", desc:"Get paid every Friday via PayPal for all completed & approved orders" },
             ].map(c=>(
-              <div key={c.title} className="bg-[#1a3260] rounded-xl p-4">
+              <div key={c.title} className="bg-slate-50 rounded-xl p-4">
                 <div className="text-[#c8991a] mb-2">{c.icon}</div>
-                <h3 className="font-bold text-white text-sm mb-1">{c.title}</h3>
+                <h3 className="font-bold text-[#0f1f3d] text-sm mb-1">{c.title}</h3>
                 <p className="text-slate-400 text-xs">{c.desc}</p>
               </div>
             ))}

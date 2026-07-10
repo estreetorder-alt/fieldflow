@@ -6,11 +6,11 @@ export default function TermsPage() {
   return (
     <div className="min-h-screen bg-white">
       <PublicNav />
-      <section className="bg-[#0f1f3d] text-white py-16 px-4">
+      <section className="bg-white text-[#0f1f3d] py-16 px-4">
         <div className="max-w-3xl mx-auto text-center">
           <FileText className="w-12 h-12 text-[#c8991a] mx-auto mb-4"/>
           <h1 className="text-4xl font-extrabold mb-3">Terms of Service</h1>
-          <p className="text-slate-300">Last updated: January 1, 2025 · Snapect is a Florida corporation.</p>
+          <p className="text-slate-600">Last updated: January 1, 2025 · Snapect is a Florida corporation.</p>
         </div>
       </section>
       <section className="py-16 px-4">

@@ -64,13 +64,13 @@ export default function WorkPage() {
       <PublicNav />
 
       {/* Hero */}
-      <section className="bg-[#0f1f3d] text-white py-20 px-4">
+      <section className="bg-white text-[#0f1f3d] py-20 px-4">
         <div className="max-w-3xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 bg-[#c8991a]/20 border border-[#c8991a]/40 text-[#f0b429] text-sm font-semibold px-4 py-1.5 rounded-full mb-6">
+          <div className="inline-flex items-center gap-2 bg-[#c8991a]/20 border border-[#c8991a]/40 text-[#c8991a] text-sm font-semibold px-4 py-1.5 rounded-full mb-6">
             <Star className="w-3.5 h-3.5 fill-current"/>Always Hiring · 150+ Active Agents
           </div>
           <h1 className="text-4xl sm:text-5xl font-extrabold mb-5 leading-tight">Join Our Field Agent Network</h1>
-          <p className="text-xl text-slate-300 max-w-2xl mx-auto leading-relaxed mb-8">
+          <p className="text-xl text-slate-600 max-w-2xl mx-auto leading-relaxed mb-8">
             Earn $40–$300+ per job conducting property and vehicle inspections in your area. No real estate license required. Get paid every Friday via PayPal.
           </p>
           <a href="#apply" className="inline-flex items-center gap-2 bg-[#c8991a] hover:bg-[#f0b429] text-[#0f1f3d] font-bold px-8 py-4 rounded-xl text-lg transition-colors shadow-lg">
@@ -109,7 +109,7 @@ export default function WorkPage() {
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {PERKS.map(p=>(
               <div key={p.title} className="bg-white border border-slate-200 rounded-2xl p-6 hover:border-[#c8991a] transition-colors">
-                <div className="w-12 h-12 bg-[#0f1f3d] text-[#c8991a] rounded-xl flex items-center justify-center mb-4">{p.icon}</div>
+                <div className="w-12 h-12 bg-white text-[#c8991a] rounded-xl flex items-center justify-center mb-4">{p.icon}</div>
                 <h3 className="font-bold text-[#0f1f3d] mb-2">{p.title}</h3>
                 <p className="text-slate-500 text-sm leading-relaxed">{p.desc}</p>
               </div>
@@ -128,7 +128,7 @@ export default function WorkPage() {
           <div className="space-y-4">
             {STEPS.map(s=>(
               <div key={s.n} className="flex gap-5 items-start bg-[#faf8f3] border border-slate-200 rounded-2xl p-5">
-                <div className="w-12 h-12 bg-[#0f1f3d] text-[#c8991a] rounded-xl flex items-center justify-center text-lg font-black flex-shrink-0">{s.n}</div>
+                <div className="w-12 h-12 bg-white text-[#c8991a] rounded-xl flex items-center justify-center text-lg font-black flex-shrink-0">{s.n}</div>
                 <div>
                   <h3 className="font-bold text-[#0f1f3d] mb-1">{s.title}</h3>
                   <p className="text-slate-500 text-sm leading-relaxed">{s.desc}</p>
@@ -151,9 +151,9 @@ export default function WorkPage() {
                 ))}
               </ul>
             </div>
-            <div className="bg-[#0f1f3d] border border-[#1a3260] rounded-2xl p-5 text-white">
-              <h3 className="font-bold text-[#f0b429] mb-3">How Orders Work</h3>
-              <ul className="space-y-2 text-sm text-slate-300">
+            <div className="bg-white border border-[#1a3260] rounded-2xl p-5 text-[#0f1f3d]">
+              <h3 className="font-bold text-[#c8991a] mb-3">How Orders Work</h3>
+              <ul className="space-y-2 text-sm text-slate-600">
                 {["Set your available ZIP codes in your profile","When available, you receive email notifications for nearby orders","Review the offer — compensation shown upfront","Accept or decline within 3 hours (9 AM–6 PM local)","If no response, order is reassigned to next agent","Multiple agents in same ZIP = rotating priority by grade","Higher grade = more orders & higher-value jobs","Images reviewed by our team before payment approved","Payment released every Friday via PayPal"].map(r=>(
                   <li key={r} className="flex items-start gap-2"><span className="text-[#c8991a] font-bold mt-0.5">→</span>{r}</li>
                 ))}
@@ -164,18 +164,18 @@ export default function WorkPage() {
       </section>
 
       {/* Testimonials */}
-      <section className="py-16 px-4 bg-[#0f1f3d]">
+      <section className="py-16 px-4 bg-white">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-10">
             <p className="text-[#c8991a] font-bold text-sm uppercase tracking-wider mb-2">Agent Stories</p>
-            <h2 className="text-2xl font-bold text-white">What Our Agents Say</h2>
+            <h2 className="text-2xl font-bold text-[#0f1f3d]">What Our Agents Say</h2>
           </div>
           <div className="grid sm:grid-cols-3 gap-5">
             {TESTIMONIALS.map(t=>(
-              <div key={t.name} className="bg-[#1a3260] rounded-2xl p-5">
+              <div key={t.name} className="bg-slate-50 rounded-2xl p-5">
                 <div className="flex mb-3">{[1,2,3,4,5].map(i=><Star key={i} className="w-4 h-4 text-[#c8991a] fill-current"/>)}</div>
-                <p className="text-slate-300 text-sm leading-relaxed mb-4">"{t.text}"</p>
-                <p className="text-white font-semibold text-sm">{t.name}</p>
+                <p className="text-slate-600 text-sm leading-relaxed mb-4">"{t.text}"</p>
+                <p className="text-[#0f1f3d] font-semibold text-sm">{t.name}</p>
                 <p className="text-slate-500 text-xs">{t.city}</p>
               </div>
             ))}
@@ -201,12 +201,12 @@ export default function WorkPage() {
           ) : (
             <form onSubmit={handleSubmit} className="bg-white border border-slate-200 rounded-2xl p-8 shadow-sm space-y-5">
               {/* Free signup notice */}
-              <div className="p-4 bg-[#0f1f3d] rounded-xl flex items-center justify-between">
+              <div className="p-4 bg-white rounded-xl flex items-center justify-between">
                 <div>
-                  <p className="font-bold text-white text-sm">Application Fee</p>
+                  <p className="font-bold text-[#0f1f3d] text-sm">Application Fee</p>
                   <p className="text-xs text-slate-400 mt-0.5">Free — no cost to apply or join</p>
                 </div>
-                <span className="text-2xl font-black text-[#f0b429]">$0</span>
+                <span className="text-2xl font-black text-[#c8991a]">$0</span>
               </div>
 
               <div className="grid sm:grid-cols-2 gap-5">

@@ -15,7 +15,6 @@ export default function ClientRegisterPage() {
   const [error, setError] = useState("");
   const [step, setStep] = useState<"form"|"payment">("form");
   const [agreed, setAgreed] = useState(false);
-  const [paymentLinks, setPaymentLinks] = useState<{id:string;label:string;url:string;amount?:number;description:string}[]>([]);
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) => setForm(f=>({...f,[k]:e.target.value}));
   const inp = "w-full pl-9 pr-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#c8991a] focus:border-transparent";
 
@@ -30,10 +29,6 @@ export default function ClientRegisterPage() {
     });
     const data = await res.json();
     if (!res.ok) { setError(data.error ?? "Registration failed"); setLoading(false); return; }
-    // Fetch payment links and show payment step
-    const pl = await fetch("/api/payment-links");
-    const pld = await pl.json();
-    setPaymentLinks(pld.links?.filter((l: {active:boolean}) => l.active) ?? []);
     setStep("payment");
     setLoading(false);
   }
@@ -45,44 +40,17 @@ export default function ClientRegisterPage() {
         <div className="min-h-[80vh] flex items-center justify-center px-4 py-16">
           <div className="w-full max-w-lg">
             <div className="bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden">
-              <div className="bg-[#0f1f3d] p-8 text-center">
+              <div className="bg-white border-b border-slate-100 p-8 text-center">
                 <div className="w-16 h-16 bg-[#c8991a] rounded-full flex items-center justify-center mx-auto mb-4">
                   <CheckCircle className="w-8 h-8 text-white"/>
                 </div>
-                <h1 className="text-2xl font-bold text-white mb-2">Account Created!</h1>
-                <p className="text-slate-300 text-sm">One last step — complete your $30 account activation fee to access your dashboard.</p>
+                <h1 className="text-2xl font-bold text-[#0f1f3d] mb-2">Account Created!</h1>
+                <p className="text-slate-500 text-sm">Free signup — your account is active. Log in now to start placing orders.</p>
               </div>
               <div className="p-8">
-                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
-                  <p className="font-bold text-amber-900 text-sm mb-1">⚠️ Account Pending Activation</p>
-                  <p className="text-amber-800 text-xs leading-relaxed">Your account has been created but is not yet active. Pay the $30 one-time activation fee to unlock your vendor dashboard and start placing orders. You will receive a confirmation email once we verify your payment.</p>
-                </div>
-                <p className="text-sm font-semibold text-slate-700 mb-4">Select payment method:</p>
-                {paymentLinks.length === 0 ? (
-                  <div className="text-center py-8 text-slate-400">
-                    <p className="text-sm">Payment links are being set up. Please contact <a href="mailto:info@snapect.com" className="text-[#c8991a] underline">info@snapect.com</a> to complete your activation.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {paymentLinks.map(link => (
-                      <a key={link.id} href={link.url} target="_blank" rel="noopener noreferrer"
-                        className="flex items-center justify-between gap-3 p-4 border-2 border-[#c8991a] rounded-xl hover:bg-[#c8991a]/5 transition-colors group">
-                        <div>
-                          <p className="font-bold text-[#0f1f3d]">{link.label}</p>
-                          {link.description && <p className="text-xs text-slate-500">{link.description}</p>}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-[#c8991a]">$30</span>
-                          <span className="text-xs bg-[#c8991a] text-white font-bold px-3 py-1.5 rounded-lg">Pay Now →</span>
-                        </div>
-                      </a>
-                    ))}
-                  </div>
-                )}
-                <p className="text-xs text-slate-400 text-center mt-5">After payment, your account will be activated within a few hours. You will receive a confirmation email.</p>
-                <div className="mt-4 pt-4 border-t border-slate-100 text-center">
-                  <Link href="/login" className="text-sm text-[#c8991a] font-semibold hover:underline">Already paid? Sign in here</Link>
-                </div>
+                <Link href="/login" className="block w-full text-center bg-[#c8991a] hover:bg-[#f0b429] text-[#0f1f3d] font-bold py-3 rounded-xl transition-colors">
+                  Sign In to Your Dashboard
+                </Link>
               </div>
             </div>
           </div>
@@ -95,30 +63,30 @@ export default function ClientRegisterPage() {
   return (
     <div className="min-h-screen bg-white">
       <PublicNav />
-      <div className="bg-[#0f1f3d] py-12 px-4">
+      <div className="bg-white py-12 px-4">
         <div className="max-w-5xl mx-auto grid md:grid-cols-2 gap-12 items-center">
-          <div className="text-white">
+          <div className="text-[#0f1f3d]">
             <p className="text-[#c8991a] font-bold text-sm uppercase tracking-wider mb-3">Join Snapect</p>
             <h1 className="text-3xl sm:text-4xl font-extrabold mb-5 leading-tight">Create Your Vendor Account</h1>
-            <p className="text-slate-300 text-lg mb-8 leading-relaxed">Order field inspections from verified agents nationwide. Most orders dispatched within seconds.</p>
+            <p className="text-slate-600 text-lg mb-8 leading-relaxed">Order field inspections from verified agents nationwide. Most orders dispatched within seconds.</p>
             <ul className="space-y-4 mb-8">
               {[
-                { icon:<Zap className="w-5 h-5 text-[#f0b429]"/>, text:"Orders dispatched to agents within seconds of submission" },
-                { icon:<Shield className="w-5 h-5 text-[#f0b429]"/>, text:"Your data is stored securely and never sold or shared with anyone" },
-                { icon:<Star className="w-5 h-5 text-[#f0b429]"/>, text:"87% of standard orders completed within 24 hours" },
-                { icon:<CheckCircle className="w-5 h-5 text-[#f0b429]"/>, text:"30-day photo storage — download or email photos anytime" },
-                { icon:<Building2 className="w-5 h-5 text-[#f0b429]"/>, text:"Sub-accounts for employees — ideal for BPO companies" },
+                { icon:<Zap className="w-5 h-5 text-[#c8991a]"/>, text:"Orders dispatched to agents within seconds of submission" },
+                { icon:<Shield className="w-5 h-5 text-[#c8991a]"/>, text:"Your data is stored securely and never sold or shared with anyone" },
+                { icon:<Star className="w-5 h-5 text-[#c8991a]"/>, text:"87% of standard orders completed within 24 hours" },
+                { icon:<CheckCircle className="w-5 h-5 text-[#c8991a]"/>, text:"30-day photo storage — download or email photos anytime" },
+                { icon:<Building2 className="w-5 h-5 text-[#c8991a]"/>, text:"Sub-accounts for employees — ideal for BPO companies" },
               ].map(({icon,text})=>(
-                <li key={text} className="flex items-start gap-3"><span className="flex-shrink-0 mt-0.5">{icon}</span><span className="text-slate-300 text-sm leading-relaxed">{text}</span></li>
+                <li key={text} className="flex items-start gap-3"><span className="flex-shrink-0 mt-0.5">{icon}</span><span className="text-slate-600 text-sm leading-relaxed">{text}</span></li>
               ))}
             </ul>
-            <div className="p-4 bg-[#1a3260] rounded-xl border border-[#c8991a]/30">
+            <div className="p-4 bg-slate-50 rounded-xl border border-[#c8991a]/30">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-[#f0b429] font-bold text-sm">One-Time Account Activation</p>
-                  <p className="text-slate-400 text-xs mt-0.5">Non-refundable · Required to access your dashboard</p>
+                  <p className="text-[#c8991a] font-bold text-sm">Free Vendor Signup</p>
+                  <p className="text-slate-400 text-xs mt-0.5">No activation fee — your dashboard unlocks instantly</p>
                 </div>
-                <span className="text-3xl font-black text-white">$30</span>
+                <span className="text-3xl font-black text-[#0f1f3d]">$0</span>
               </div>
             </div>
           </div>
@@ -164,18 +132,18 @@ export default function ClientRegisterPage() {
                       <input required type={showPw?"text":"password"} value={form.confirm} onChange={set("confirm")} placeholder="Repeat password" className={inp}/></div>
                   </div>
                 </div>
-                <div className="bg-[#0f1f3d] rounded-xl px-4 py-3 flex items-center justify-between">
-                  <div><p className="font-bold text-white text-sm">Activation Fee Required</p>
-                    <p className="text-xs text-slate-400 mt-0.5">Paid after account creation</p></div>
-                  <span className="text-2xl font-black text-[#f0b429]">$30</span>
+                <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 flex items-center justify-between">
+                  <div><p className="font-bold text-[#0f1f3d] text-sm">No Activation Fee</p>
+                    <p className="text-xs text-slate-400 mt-0.5">Signup is completely free</p></div>
+                  <span className="text-2xl font-black text-[#c8991a]">$0</span>
                 </div>
                 <label className="flex items-start gap-2 cursor-pointer">
                   <input type="checkbox" checked={agreed} onChange={e=>setAgreed(e.target.checked)} className="mt-0.5 w-4 h-4 accent-[#c8991a]"/>
-                  <span className="text-xs text-slate-600">I agree to the <Link href="/terms" target="_blank" className="text-[#c8991a] hover:underline font-semibold">Terms of Service</Link> and <Link href="/privacy" target="_blank" className="text-[#c8991a] hover:underline font-semibold">Privacy Policy</Link>, and I understand a $30 non-refundable activation fee is required.</span>
+                  <span className="text-xs text-slate-600">I agree to the <Link href="/terms" target="_blank" className="text-[#c8991a] hover:underline font-semibold">Terms of Service</Link> and <Link href="/privacy" target="_blank" className="text-[#c8991a] hover:underline font-semibold">Privacy Policy</Link>.</span>
                 </label>
                 <button type="submit" disabled={loading || !agreed}
                   className="w-full flex items-center justify-center gap-2 bg-[#c8991a] hover:bg-[#f0b429] disabled:opacity-50 text-[#0f1f3d] font-bold py-3 rounded-xl transition-colors">
-                  {loading?"Creating account…":<><span>Create Account & Pay $30</span><ArrowRight className="w-4 h-4"/></>}
+                  {loading?"Creating account…":<><span>Create Free Account</span><ArrowRight className="w-4 h-4"/></>}
                 </button>
 
               </form>

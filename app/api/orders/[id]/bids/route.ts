@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getOrderById, getBidsByOrderId, createBid, updateBidStatus, rejectOtherBids, updateOrder, addStatusHistory, getUserById } from "@/lib/db";
+import { getOrderById, getBidsByOrderId, createBid, updateBidStatus, rejectOtherBids, updateOrder, addStatusHistory, getUserById, anonUserId } from "@/lib/db";
 import { sendBidPlacedEmail, sendBidAcceptedEmail, sendBidRejectedEmail } from "@/lib/email";
 import { sendNtfyNotification } from "@/lib/notify";
 
@@ -12,6 +12,7 @@ export async function GET(request: NextRequest, { params }: Params) {
   const { id } = await params;
   let bids = await getBidsByOrderId(id);
   if (userRole === "agent") bids = bids.filter(b => b.agentId === userId);
+  if (userRole === "client") bids = bids.map(b => ({ ...b, agentName: anonUserId(b.agentId) }));
   return NextResponse.json({ bids });
 }
 
@@ -52,15 +53,15 @@ export async function POST(request: NextRequest, { params }: Params) {
   });
 
   const agent = await getUserById(bidderAgentId);
-  // Status shows agent name only — no admin mention
-  await addStatusHistory(id, order.status, `${agent?.name ?? "Agent"} placed a bid of $${amount}`);
+  // Status shows an anonymized user id only — no real agent name, no admin mention
+  await addStatusHistory(id, order.status, `${anonUserId(bidderAgentId)} placed a bid of $${amount} on ${order.address}`);
 
   // Email client about new bid
   const client = await getUserById(order.clientId);
   if (client?.email) {
     await sendBidPlacedEmail({
       clientEmail: client.email, clientName: client.name,
-      address: order.address, agentName: agent?.name ?? "Agent",
+      address: order.address, agentName: anonUserId(bidderAgentId),
       bidAmount: Number(amount), orderId: id,
     });
   }
@@ -115,7 +116,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       offerAcceptedAt: new Date().toISOString(),
     });
     const agent = await getUserById(bid.agentId);
-    await addStatusHistory(id, "in_progress", `Bid accepted — ${agent?.name ?? "Agent"} assigned at $${bid.amount}. $${bid.amount} held from client wallet.`);
+    await addStatusHistory(id, "in_progress", `Bid accepted — ${anonUserId(bid.agentId)} assigned at $${bid.amount}. $${bid.amount} deducted from wallet.`);
 
     // Email agent about acceptance
     if (agent?.email) {

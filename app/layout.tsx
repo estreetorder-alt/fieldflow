@@ -41,9 +41,9 @@ export const metadata: Metadata = {
   },
   alternates: { canonical: BASE_URL },
   icons: {
-    icon: "/favicon.svg",
-    shortcut: "/favicon.svg",
-    apple: "/favicon.svg",
+    icon: [{ url: "/favicon-32.png", sizes: "32x32", type: "image/png" }, { url: "/favicon.png", sizes: "512x512", type: "image/png" }],
+    shortcut: "/favicon.png",
+    apple: "/favicon.png",
   },
   verification: {
     google: process.env.GOOGLE_SITE_VERIFICATION || "",
@@ -64,7 +64,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               "@type": "Organization",
               "name": "Snapect",
               "url": BASE_URL,
-              "logo": `${BASE_URL}/favicon.svg`,
+              "logo": `${BASE_URL}/snapect-logo.png`,
               "description": "America's trusted BPO and REO field inspection photography platform.",
               "contactPoint": {
                 "@type": "ContactPoint",

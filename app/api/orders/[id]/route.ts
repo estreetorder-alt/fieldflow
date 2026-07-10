@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getOrderById, updateOrder, addStatusHistory, getUserById, updatePhotoSelection, logAdminAction } from "@/lib/db";
+import { getOrderById, updateOrder, addStatusHistory, getUserById, updatePhotoSelection, logAdminAction, anonUserId } from "@/lib/db";
 import { sendOrderCompletionEmail, sendOrderActivatedEmail, sendOrderStatusEmail, sendPaymentReceivedAdminEmail } from "@/lib/email";
 import { supabase } from "@/lib/supabase";
 
@@ -29,6 +29,14 @@ export async function GET(request: NextRequest, { params }: Params) {
   if (!order) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (!(await canAccessOrder(order, userId, userRole)))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (userRole === "client") {
+    const masked = {
+      ...order,
+      agent: order.agent ? { name: anonUserId(order.assignedAgentId), email: "", phone: "" } : null,
+      bids: (order.bids ?? []).map(b => ({ ...b, agentName: anonUserId(b.agentId) })),
+    };
+    return NextResponse.json({ order: masked });
+  }
   return NextResponse.json({ order });
 }
 
@@ -48,8 +56,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     if (order.status !== "pending" || order.assignedAgentId)
       return NextResponse.json({ error: "Order not available" }, { status: 409 });
     await updateOrder(id, { status: "in_progress", assignedAgentId: userId, offerAcceptedAt: new Date().toISOString() });
-    const agent = await getUserById(userId);
-    await addStatusHistory(id, "in_progress", `${agent?.name ?? "Agent"} accepted the order`);
+    await addStatusHistory(id, "in_progress", `${anonUserId(userId)} accepted the order`);
     return NextResponse.json({ ok: true });
   }
 

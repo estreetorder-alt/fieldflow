@@ -68,9 +68,9 @@ function LoginForm() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0f1f3d] flex flex-col">
+    <div className="min-h-screen bg-white flex flex-col">
       <div className="p-4">
-        <Link href="/" className="inline-flex items-center gap-1.5 text-sm text-slate-400 hover:text-white transition-colors">
+        <Link href="/" className="inline-flex items-center gap-1.5 text-sm text-slate-400 hover:text-[#0f1f3d] transition-colors">
           <ArrowLeft className="w-3.5 h-3.5"/>Back to home
         </Link>
       </div>
@@ -78,9 +78,9 @@ function LoginForm() {
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
             <div className="mb-5 flex justify-center">
-              <img src="/snapect-logo.png" alt="Snapect" className="h-14 w-auto object-contain brightness-0 invert"/>
+              <img src="/snapect-logo.png" alt="Snapect" className="h-14 w-auto object-contain"/>
             </div>
-            <h1 className="text-2xl font-bold text-white">Sign in to your account</h1>
+            <h1 className="text-2xl font-bold text-[#0f1f3d]">Sign in to your account</h1>
             <p className="text-slate-400 mt-1 text-sm">Enter your credentials to access your dashboard</p>
           </div>
 
@@ -131,7 +131,7 @@ function LoginForm() {
                 </button>
               </div>
               <div className="flex items-center gap-3">
-                <div className="bg-[#0f1f3d] text-[#f0b429] font-bold text-lg px-4 py-2 rounded-lg font-mono tracking-widest select-none">
+                <div className="bg-white text-[#c8991a] font-bold text-lg px-4 py-2 rounded-lg font-mono tracking-widest select-none">
                   {captcha.question}
                 </div>
                 <input
@@ -173,9 +173,9 @@ function LoginForm() {
           <div className="mt-5 text-center space-y-2">
             <p className="text-sm text-slate-400">
               New here?{" "}
-              <Link href="/register/client" className="text-[#f0b429] font-semibold hover:underline">Sign up as a client</Link>
+              <Link href="/register/client" className="text-[#c8991a] font-semibold hover:underline">Sign up as a client</Link>
               {" · "}
-              <Link href="/register/agent" className="text-[#f0b429] font-semibold hover:underline">Become a field agent</Link>
+              <Link href="/register/agent" className="text-[#c8991a] font-semibold hover:underline">Become a field agent</Link>
             </p>
           </div>
         </div>
