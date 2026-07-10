@@ -1,4 +1,5 @@
 "use client";
+import { etDate, etDateTime, etTime } from "@/lib/est";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -120,6 +121,30 @@ function ClientPageInner() {
   const [navMenu, setNavMenu] = useState<"orders"|"settings"|null>(null);
   const [announcement, setAnnouncement] = useState<{id:number;message:string}|null>(null);
   const [quickView, setQuickView] = useState<string|null>(null);
+
+  // ── My Profile (vendor) ──
+  const [clientProfileOpen, setClientProfileOpen] = useState(false);
+  const [clientProfile, setClientProfile] = useState({ name:"", email:"", phone:"", company:"", currentPassword:"", newPassword:"" });
+  const [clientProfileSaving, setClientProfileSaving] = useState(false);
+  const [clientProfileMsg, setClientProfileMsg] = useState<{ok:boolean;text:string}|null>(null);
+
+  async function openClientProfile() {
+    const r = await fetch("/api/profile").then(x=>x.json()).catch(()=>null);
+    if (r?.profile) setClientProfile({ name:r.profile.name??"", email:r.profile.email??"", phone:r.profile.phone??"", company:r.profile.company??"", currentPassword:"", newPassword:"" });
+    setClientProfileMsg(null);
+    setClientProfileOpen(true);
+  }
+  async function saveClientProfile() {
+    setClientProfileSaving(true); setClientProfileMsg(null);
+    const body: Record<string,string> = { name: clientProfile.name, phone: clientProfile.phone, company: clientProfile.company };
+    if (clientProfile.newPassword) { body.newPassword = clientProfile.newPassword; body.currentPassword = clientProfile.currentPassword; }
+    const r = await fetch("/api/profile", { method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body) });
+    const d = await r.json().catch(()=>({} as {error?:string}));
+    setClientProfileSaving(false);
+    if (!r.ok) { setClientProfileMsg({ok:false, text:d.error ?? "Failed to save"}); return; }
+    setClientProfileMsg({ok:true, text:"Profile saved ✓"});
+    setClientProfile(f=>({...f, currentPassword:"", newPassword:""}));
+  }
 
   useEffect(() => {
     fetch("/api/announcements").then(r=>r.json()).then(d=>{ if(d.announcement) setAnnouncement(d.announcement); }).catch(()=>{});
@@ -372,6 +397,9 @@ function ClientPageInner() {
               </button>
               {navMenu==="settings"&&(
                 <div className="absolute left-0 top-full mt-1 w-56 bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden py-1">
+                  <button onClick={()=>{openClientProfile();setNavMenu(null);}} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 hover:text-[#0f1f3d] text-left">
+                    <User className="w-4 h-4"/>My Profile
+                  </button>
                   <button onClick={()=>{setTab("subaccounts");setNavMenu(null);}} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 hover:text-[#0f1f3d] text-left">
                     <Users className="w-4 h-4"/>Manage Employees
                   </button>
@@ -414,7 +442,7 @@ function ClientPageInner() {
                       className="block px-4 py-3 hover:bg-slate-50">
                       <p className="text-xs font-semibold text-[#0f1f3d]">{n.title}</p>
                       <p className="text-[11px] text-slate-500 truncate mt-0.5">{n.detail}</p>
-                      <p className="text-[10px] text-slate-400 mt-0.5" suppressHydrationWarning>{new Date(n.ts).toLocaleString()}</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5" suppressHydrationWarning>{etDateTime(n.ts)}</p>
                     </Link>
                   ))}
                 </div>
@@ -578,7 +606,7 @@ function ClientPageInner() {
                 ) : subAccounts.map(s=>(
                   <div key={s.id} className="px-6 py-4 border-b border-slate-100 last:border-0 flex items-center justify-between">
                     <div><p className="font-medium text-slate-800">{s.name}</p><p className="text-xs text-slate-500">{s.email}</p></div>
-                    <span className="text-xs text-slate-400" suppressHydrationWarning>{new Date(s.createdAt).toLocaleDateString()}</span>
+                    <span className="text-xs text-slate-400" suppressHydrationWarning>{etDate(s.createdAt)}</span>
                   </div>
                 ))}
               </div>
@@ -626,7 +654,7 @@ function ClientPageInner() {
                           <button onClick={()=>setDismissedComments(prev=>new Set(prev).add(c.key))}
                             className="w-6 h-6 rounded bg-white text-white text-xs font-bold flex items-center justify-center flex-shrink-0 hover:bg-red-500 transition-colors" title="Dismiss">×</button>
                           <div className="min-w-0 flex-1">
-                            <p className="text-[11px] text-slate-400" suppressHydrationWarning>{new Date(c.timestamp).toLocaleDateString("en-US",{month:"2-digit",day:"2-digit",year:"numeric"})} · {c.serviceType}{c.photoCount>0?` (${c.photoCount} photos)`:""}</p>
+                            <p className="text-[11px] text-slate-400" suppressHydrationWarning>{etDate(c.timestamp,{month:"2-digit",day:"2-digit",year:"numeric"})} · {c.serviceType}{c.photoCount>0?` (${c.photoCount} photos)`:""}</p>
                             <Link href={`/client/orders/${c.orderId}`} className="text-xs font-bold text-[#0f1f3d] hover:text-[#c8991a] uppercase truncate block">{c.address}</Link>
                             <p className="text-xs text-slate-600 mt-0.5">{c.note}</p>
                           </div>
@@ -672,7 +700,7 @@ function ClientPageInner() {
                         const addr = splitAddress(order.address);
                         const isQuick = quickView===order.id;
                         const placedByEmployee = order.clientId && userId && order.clientId !== userId ? subAccounts.find(s=>s.id===order.clientId) : null;
-                        const acceptedTime = order.offerAcceptedAt ? new Date(order.offerAcceptedAt).toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"}) : null;
+                        const acceptedTime = order.offerAcceptedAt ? etTime(order.offerAcceptedAt,{hour:"numeric",minute:"2-digit"}) : null;
                         const pendingBidCount = (order.bids ?? []).filter(b=>b.status==="pending").length;
                         const awaitingOffers = order.status==="pending" && !order.acceptedBidId;
 
@@ -680,7 +708,7 @@ function ClientPageInner() {
                           <div key={order.id} className={`border-b border-slate-100 last:border-0 ${awaitingOffers&&pendingBidCount>0?"bg-amber-50/70 border-l-4 border-l-[#c8991a]":rowIdx%2?"bg-slate-50/60":"bg-white"}`}>
                             {/* Ledger row */}
                             <div className="px-5 py-3 grid grid-cols-[auto_1fr_auto_auto] sm:grid-cols-[90px_1fr_150px_170px] gap-x-3 gap-y-1 items-center">
-                              <span className="text-xs text-slate-400 whitespace-nowrap" suppressHydrationWarning>{new Date(order.createdAt).toLocaleDateString("en-US",{month:"2-digit",day:"2-digit",year:"numeric"})}</span>
+                              <span className="text-xs text-slate-400 whitespace-nowrap" suppressHydrationWarning>{etDate(order.createdAt,{month:"2-digit",day:"2-digit",year:"numeric"})}</span>
                               <div className="min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap">
                                   <Link href={`/client/orders/${order.id}`} className="font-bold text-[#0f1f3d] hover:text-[#c8991a] transition-colors truncate text-sm uppercase">{addr.line}</Link>
@@ -845,6 +873,57 @@ function ClientPageInner() {
           </main>
         </div>
       </div>
+
+      {/* ── My Profile modal (vendor) ── */}
+      {clientProfileOpen && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={()=>setClientProfileOpen(false)}>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl" onClick={e=>e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-[#0f1f3d] flex items-center gap-2"><User className="w-5 h-5 text-[#c8991a]"/>My Profile</h3>
+              <button onClick={()=>setClientProfileOpen(false)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5"/></button>
+            </div>
+            {clientProfileMsg && (
+              <div className={`mb-3 px-3 py-2 rounded-xl text-sm ${clientProfileMsg.ok?"bg-green-50 border border-green-200 text-green-700":"bg-red-50 border border-red-200 text-red-700"}`}>{clientProfileMsg.text}</div>
+            )}
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-medium text-slate-600 block mb-1">Name</label>
+                <input value={clientProfile.name} onChange={e=>setClientProfile(f=>({...f,name:e.target.value}))}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#c8991a]"/>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-slate-600 block mb-1">Email <span className="text-slate-400">(contact support to change)</span></label>
+                <input value={clientProfile.email} disabled className="w-full border border-slate-100 bg-slate-50 rounded-xl px-3 py-2 text-sm text-slate-400"/>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs font-medium text-slate-600 block mb-1">Phone</label>
+                  <input value={clientProfile.phone} onChange={e=>setClientProfile(f=>({...f,phone:e.target.value}))}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#c8991a]"/>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-slate-600 block mb-1">Company</label>
+                  <input value={clientProfile.company} onChange={e=>setClientProfile(f=>({...f,company:e.target.value}))}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#c8991a]"/>
+                </div>
+              </div>
+              <div className="border-t border-slate-100 pt-3">
+                <p className="text-xs font-bold text-slate-700 mb-2">Change Password <span className="font-normal text-slate-400">(optional)</span></p>
+                <div className="space-y-2">
+                  <input type="password" placeholder="Current password" value={clientProfile.currentPassword} onChange={e=>setClientProfile(f=>({...f,currentPassword:e.target.value}))}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#c8991a]"/>
+                  <input type="password" placeholder="New password (min 6 characters)" value={clientProfile.newPassword} onChange={e=>setClientProfile(f=>({...f,newPassword:e.target.value}))}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#c8991a]"/>
+                </div>
+              </div>
+              <button onClick={saveClientProfile} disabled={clientProfileSaving}
+                className="w-full bg-[#c8991a] hover:bg-[#f0b429] disabled:opacity-50 text-[#0f1f3d] font-bold py-2.5 rounded-xl text-sm">
+                {clientProfileSaving?"Saving…":"Save Profile"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

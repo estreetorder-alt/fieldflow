@@ -1,20 +1,53 @@
 import { NextRequest, NextResponse } from "next/server";
-import { addPhoto, uploadPhotoToStorage, getOrderById } from "@/lib/db";
+import { addPhoto, uploadPhotoToStorage, getOrderById, addStatusHistory, anonUserId } from "@/lib/db";
 
 type Params = { params: Promise<{ id: string }> };
 
 export async function POST(request: NextRequest, { params }: Params) {
   const userId = request.cookies.get("user_id")?.value;
   const userRole = request.cookies.get("user_role")?.value;
-  if (!userId || userRole !== "agent") return NextResponse.json({ error: "Agents only" }, { status: 403 });
+  if (!userId || !["agent", "admin"].includes(userRole ?? ""))
+    return NextResponse.json({ error: "Agents or admin only" }, { status: 403 });
 
   const { id } = await params;
   const order = await getOrderById(id);
   if (!order) return NextResponse.json({ error: "Order not found" }, { status: 404 });
-  if (order.assignedAgentId !== userId)
+  if (userRole === "agent" && order.assignedAgentId !== userId)
     return NextResponse.json({ error: "You are not assigned to this order" }, { status: 403 });
 
-  const { filename, url, description } = await request.json();
+  const body = await request.json();
+
+  // Admin: batch upload on behalf of the assigned agent — the vendor sees it as
+  // the anonymized agent ("User 1234567"), never as admin.
+  if (userRole === "admin") {
+    if (!order.assignedAgentId)
+      return NextResponse.json({ error: "This order has no assigned agent — assign one before uploading on their behalf" }, { status: 400 });
+
+    const items: { filename: string; url: string; description?: string }[] =
+      Array.isArray(body.photos) ? body.photos
+      : body.filename && body.url ? [{ filename: body.filename, url: body.url, description: body.description }]
+      : [];
+    if (items.length === 0) return NextResponse.json({ error: "photos array or filename+url required" }, { status: 400 });
+
+    const release = body.release !== false; // default: released straight to the vendor
+    const photos = [];
+    for (const item of items) {
+      let photoUrl = item.url;
+      if (item.url.startsWith("data:")) {
+        try { photoUrl = await uploadPhotoToStorage(id, item.filename, item.url); } catch { photoUrl = item.url; }
+      }
+      photos.push(await addPhoto({
+        orderId: id, filename: item.filename, url: photoUrl,
+        description: item.description ?? "", approved: release,
+      }));
+    }
+    // Timeline entry attributed to the anonymized agent, not admin
+    await addStatusHistory(id, order.status,
+      `${anonUserId(order.assignedAgentId)} uploaded ${photos.length} photo${photos.length !== 1 ? "s" : ""}`);
+    return NextResponse.json({ photos }, { status: 201 });
+  }
+
+  const { filename, url, description } = body;
   if (!filename || !url) return NextResponse.json({ error: "filename and url required" }, { status: 400 });
 
   // Try to upload to Supabase Storage (falls back to base64 if not configured)

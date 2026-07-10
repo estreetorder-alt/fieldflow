@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
             address: orderData.address as string,
             serviceType: svc?.name ?? serviceId,
             compensationAmount: compensation,
-            deadline: deadline.toLocaleString(),
+            deadline: deadline.toLocaleString("en-US", { timeZone: "America/New_York" }) + " ET",
             orderId: order.id,
             baseUrl: process.env.NEXT_PUBLIC_BASE_URL ?? "https://snapect.com",
           });
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
           await sendSms({
             to: agent.phone, toName: agent.name, smsOptIn: agent.smsOptIn,
             type: "job_dispatch",
-            message: `Snapect: New job at ${orderData.address} — $${compensation} comp. Accept by ${deadline.toLocaleString()}. Log in to accept: ${process.env.NEXT_PUBLIC_BASE_URL ?? "https://snapect.com"}/agent`,
+            message: `Snapect: New job at ${orderData.address} — $${compensation} comp. Accept by ${deadline.toLocaleString("en-US", { timeZone: "America/New_York" })} ET. Log in to accept: ${process.env.NEXT_PUBLIC_BASE_URL ?? "https://snapect.com"}/agent`,
           });
         }
       }

@@ -31,7 +31,7 @@ export async function GET(request: NextRequest, { params }: Params) {
     order.assignedAgentId ? getUserById(order.assignedAgentId) : Promise.resolve(null),
   ]);
 
-  const fmt = (d: string) => new Date(d).toLocaleDateString("en-US", { year:"numeric", month:"long", day:"numeric" });
+  const fmt = (d: string) => new Date(d).toLocaleDateString("en-US", { timeZone: "America/New_York", year:"numeric", month:"long", day:"numeric" });
   const BASE = process.env.NEXT_PUBLIC_BASE_URL ?? "https://snapect.com";
 
   const html = `<!DOCTYPE html>

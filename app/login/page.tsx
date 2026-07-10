@@ -1,17 +1,19 @@
 "use client";
-import { useState, Suspense, useEffect } from "react";
+import { useState, Suspense, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Eye, EyeOff, ArrowLeft, Lock, Mail, RefreshCw } from "lucide-react";
+import { Eye, EyeOff, ArrowLeft, Lock, Mail } from "lucide-react";
 import Link from "next/link";
 
-function generateCaptcha() {
-  const ops = ["+", "-", "×"];
-  const op = ops[Math.floor(Math.random() * ops.length)];
-  let a = Math.floor(Math.random() * 9) + 1;
-  let b = Math.floor(Math.random() * 9) + 1;
-  if (op === "-" && b > a) [a, b] = [b, a];
-  const answer = op === "+" ? a + b : op === "-" ? a - b : a * b;
-  return { question: `${a} ${op} ${b} = ?`, answer: String(answer) };
+const RECAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY ?? "";
+
+declare global {
+  interface Window {
+    grecaptcha?: {
+      render: (el: HTMLElement, opts: { sitekey: string; callback: (t: string) => void; "expired-callback": () => void }) => number;
+      reset: (id?: number) => void;
+    };
+    onRecaptchaLoad?: () => void;
+  }
 }
 
 function LoginForm() {
@@ -23,30 +25,53 @@ function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [captcha, setCaptcha] = useState(generateCaptcha());
   const [pendingActivation, setPendingActivation] = useState(false);
   const [paymentLinks, setPaymentLinks] = useState<{id:string;label:string;url:string;amount?:number;description:string}[]>([]);
-  const [captchaInput, setCaptchaInput] = useState("");
+  const [recaptchaToken, setRecaptchaToken] = useState("");
   const [captchaError, setCaptchaError] = useState(false);
+  const recaptchaRef = useRef<HTMLDivElement>(null);
+  const widgetId = useRef<number | null>(null);
+
+  // Load the standard Google reCAPTCHA v2 checkbox (only if a site key is configured)
+  useEffect(() => {
+    if (!RECAPTCHA_SITE_KEY) return;
+    const renderWidget = () => {
+      if (recaptchaRef.current && window.grecaptcha && widgetId.current === null) {
+        widgetId.current = window.grecaptcha.render(recaptchaRef.current, {
+          sitekey: RECAPTCHA_SITE_KEY,
+          callback: (token: string) => { setRecaptchaToken(token); setCaptchaError(false); },
+          "expired-callback": () => setRecaptchaToken(""),
+        });
+      }
+    };
+    if (window.grecaptcha?.render) { renderWidget(); return; }
+    window.onRecaptchaLoad = renderWidget;
+    if (!document.querySelector("script[src*='recaptcha/api.js']")) {
+      const s = document.createElement("script");
+      s.src = "https://www.google.com/recaptcha/api.js?onload=onRecaptchaLoad&render=explicit";
+      s.async = true; s.defer = true;
+      document.head.appendChild(s);
+    }
+  }, []);
 
   function refreshCaptcha() {
-    setCaptcha(generateCaptcha());
-    setCaptchaInput("");
-    setCaptchaError(false);
+    if (RECAPTCHA_SITE_KEY && window.grecaptcha && widgetId.current !== null) {
+      window.grecaptcha.reset(widgetId.current);
+      setRecaptchaToken("");
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (captchaInput.trim() !== captcha.answer) {
+    if (RECAPTCHA_SITE_KEY && !recaptchaToken) {
       setCaptchaError(true);
-      refreshCaptcha();
       return;
     }
     setError(""); setLoading(true);
     try {
       const res = await fetch("/api/auth/login", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, recaptchaToken }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -90,7 +115,7 @@ function LoginForm() {
             )}
             {captchaError && (
               <div className="bg-amber-50 border border-amber-200 text-amber-700 text-sm px-4 py-3 rounded-xl">
-                Incorrect answer — please try again
+                Please check the &quot;I&apos;m not a robot&quot; box to continue
               </div>
             )}
 
@@ -121,27 +146,12 @@ function LoginForm() {
               </div>
             </div>
 
-            {/* Math CAPTCHA */}
-            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-sm font-medium text-slate-700">Security Check</label>
-                <button type="button" onClick={refreshCaptcha}
-                  className="text-xs text-slate-400 hover:text-slate-600 flex items-center gap-1">
-                  <RefreshCw className="w-3 h-3"/>New question
-                </button>
+            {/* Google reCAPTCHA v2 checkbox — hidden entirely if no site key is configured */}
+            {RECAPTCHA_SITE_KEY && (
+              <div className="flex justify-center">
+                <div ref={recaptchaRef}/>
               </div>
-              <div className="flex items-center gap-3">
-                <div className="bg-white text-[#c8991a] font-bold text-lg px-4 py-2 rounded-lg font-mono tracking-widest select-none">
-                  {captcha.question}
-                </div>
-                <input
-                  type="text" inputMode="numeric" value={captchaInput}
-                  onChange={e=>{ setCaptchaInput(e.target.value); setCaptchaError(false); }}
-                  placeholder="Answer" maxLength={3}
-                  className={`w-24 border rounded-xl px-3 py-2 text-sm text-center font-bold focus:outline-none focus:ring-2 focus:ring-[#c8991a] ${captchaError ? "border-red-400 bg-red-50" : "border-slate-300"}`}/>
-              </div>
-              <p className="text-xs text-slate-400 mt-2">Solve the math problem to verify you&apos;re human</p>
-            </div>
+            )}
 
             <button type="submit" disabled={loading}
               className="w-full bg-[#c8991a] hover:bg-[#f0b429] disabled:opacity-60 text-[#0f1f3d] font-bold py-3 rounded-xl transition-colors text-sm">

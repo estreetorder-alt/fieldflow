@@ -1,4 +1,6 @@
 "use client";
+import { uploadImageFile } from "@/lib/uploadClient";
+import { etDate, etDateTime, etTime } from "@/lib/est";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -6,7 +8,7 @@ import {
   CheckCircle, Clock, XCircle, Wifi, WifiOff, Star, ToggleLeft, ToggleRight,
   Mail, MapPin, Car, Download, Package, Gavel, UserPlus, Eye, EyeOff, X,
   ShieldCheck, CreditCard, AlertCircle, ZapIcon, ChevronDown, ChevronUp, Link as LinkIcon, Plus as PlusIcon, Trash as TrashIcon,
-  AlertTriangle, History, Camera as CameraIcon, Wallet as WalletIcon,
+  AlertTriangle, History, Camera as CameraIcon, Wallet as WalletIcon, Upload, BarChart3, User as UserIcon,
 } from "lucide-react";
 
 interface Order { id: string; address: string; status: string; clientId: string; assignedAgentId: string | null; totalPrice: number; compensationAmount: number; serviceType: string; turnaroundTier: string; notes: string; createdAt: string; client?: { name: string; email: string } | null; agent?: { name: string; rating?: number } | null; bids?: Bid[]; acceptedBidId?: string | null; photos?: { id: string; filename: string; url: string; description: string; approved?: boolean }[]; }
@@ -124,17 +126,18 @@ export default function AdminPage() {
   const [processingPayout, setProcessingPayout] = useState(false);
 
   const fetchAll = useCallback(async () => {
-    const [agentsRes, pricingRes, meRes, emailsRes] = await Promise.all([
-      fetch("/api/agents?all=1"), fetch("/api/pricing"), fetch("/api/auth/me"), fetch("/api/email-log"),
+    const [agentsRes, pricingRes, meRes, emailsRes, linksRes] = await Promise.all([
+      fetch("/api/agents?all=1"), fetch("/api/pricing"), fetch("/api/auth/me"), fetch("/api/email-log"), fetch("/api/payment-links"),
     ]);
-    const [agentsData, pricingData, meData, emailsData] = await Promise.all([
-      agentsRes.json(), pricingRes.json(), meRes.json(), emailsRes.json(),
+    const [agentsData, pricingData, meData, emailsData, linksData] = await Promise.all([
+      agentsRes.json(), pricingRes.json(), meRes.json(), emailsRes.json(), linksRes.json(),
     ]);
     setAgents(agentsData.agents ?? []);
     setPricing(pricingData.pricing ?? []);
     setPricingCatalog(pricingData.catalog ?? []);
     setEmails(emailsData.emails ?? []);
     setAllUsers(agentsData.allUsers ?? []);
+    setPaymentLinks(linksData.links ?? []);
     if (meData.user) { setUserName(meData.user.name); setAdminId(meData.user.id); }
   }, []);
 
@@ -232,8 +235,23 @@ export default function AdminPage() {
   }
 
   async function updateBackgroundCheck(agentId: string, status: string) {
-    await fetch(`/api/agents/${agentId}`, { method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ backgroundCheckStatus: status }) });
-    setAgents(prev => prev.map(a => a.id===agentId ? {...a, backgroundCheckStatus: status} : a));
+    const prev = agents.find(a => a.id === agentId)?.backgroundCheckStatus;
+    // Optimistic UI, but verified below
+    setAgents(p => p.map(a => a.id===agentId ? {...a, backgroundCheckStatus: status} : a));
+    const r = await fetch(`/api/agents/${agentId}`, { method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ backgroundCheckStatus: status }) })
+      .catch(() => null);
+    if (!r || !r.ok) {
+      const d = r ? await r.json().catch(()=>({} as {error?:string})) : {} as {error?:string};
+      alert(`Background check status did NOT save: ${d.error ?? "network error"}.\n\nIf this mentions a missing column, run supabase/migrations_v6.sql in the Supabase SQL editor.`);
+      setAgents(p => p.map(a => a.id===agentId ? {...a, backgroundCheckStatus: prev} : a));
+      return;
+    }
+    // Double-check it actually persisted
+    const check = await fetch(`/api/agents/${agentId}`).then(x=>x.json()).catch(()=>null);
+    if (check?.agent && check.agent.backgroundCheckStatus !== status) {
+      alert("Background check status did not persist in the database. Run supabase/migrations_v6.sql to add the missing columns, then try again.");
+      setAgents(p => p.map(a => a.id===agentId ? {...a, backgroundCheckStatus: check.agent.backgroundCheckStatus} : a));
+    }
   }
 
   async function saveAgentRating(agentId: string) {
@@ -410,6 +428,88 @@ export default function AdminPage() {
     fetchSubmissions();
   }
 
+  // ── Admin uploads photos on behalf of the assigned agent (vendor sees "User XXXXXXX uploaded") ──
+  const [oboOrderId, setOboOrderId] = useState("");
+  const [oboFiles, setOboFiles] = useState<{filename:string;url:string}[]>([]);
+  const [oboRelease, setOboRelease] = useState(true);
+  const [oboUploading, setOboUploading] = useState(false);
+  const oboFileRef = useRef<HTMLInputElement>(null);
+
+  function oboPickFiles(files: FileList | null) {
+    if (!files || !oboOrderId) return;
+    setOboUploading(true);
+    // Direct-to-storage — any image type, any size, no file-count limit
+    Promise.all(Array.from(files).map(f => uploadImageFile(f, `orders/${oboOrderId}`)))
+      .then(newOnes => setOboFiles(prev => [...prev, ...newOnes]))
+      .catch(() => alert("Some files failed to upload — please try again"))
+      .finally(() => setOboUploading(false));
+  }
+
+  async function uploadOnBehalf() {
+    if (!oboOrderId || oboFiles.length === 0) return;
+    setOboUploading(true);
+    const r = await fetch(`/api/orders/${oboOrderId}/photos`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ photos: oboFiles.map(f => ({ filename: f.filename, url: f.url, description: f.filename })), release: oboRelease }),
+    });
+    setOboUploading(false);
+    if (!r.ok) { const d = await r.json().catch(()=>({} as {error?:string})); alert(d.error ?? "Upload failed"); return; }
+    setOboFiles([]); setOboOrderId("");
+    alert(`✓ ${oboRelease ? "Uploaded and released to the vendor" : "Uploaded (held for review)"} — the vendor sees it as the agent's upload, not admin.`);
+  }
+
+  // ── Per-user order/bid stats (admin only) ──
+  interface UserStats {
+    role: string;
+    ordersAccepted?: number; ordersPending?: number; ordersCompleted?: number; ordersCancelled?: number;
+    bidsPlaced?: number; bidsAccepted?: number;
+    bids?: { id:string; orderId:string; address:string; amount:number; status:string; placedByAdmin:boolean; placedAt:string }[];
+    ordersPlaced?: number;
+    recentOrders?: { id:string; address:string; status:string; createdAt:string }[];
+  }
+  const [statsOpenFor, setStatsOpenFor] = useState<string|null>(null);
+  const [userStats, setUserStats] = useState<Record<string, UserStats>>({});
+  const [statsLoading, setStatsLoading] = useState<string|null>(null);
+
+  async function toggleUserStats(userId: string) {
+    if (statsOpenFor === userId) { setStatsOpenFor(null); return; }
+    setStatsOpenFor(userId);
+    if (!userStats[userId]) {
+      setStatsLoading(userId);
+      const r = await fetch(`/api/users/${userId}/stats`).catch(()=>null);
+      if (r?.ok) {
+        const d = await r.json();
+        setUserStats(prev => ({ ...prev, [userId]: d }));
+      }
+      setStatsLoading(null);
+    }
+  }
+
+  // ── Admin profile management ──
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [profileForm, setProfileForm] = useState({ name:"", phone:"", currentPassword:"", newPassword:"" });
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileMsg, setProfileMsg] = useState<{ok:boolean;text:string}|null>(null);
+
+  async function openProfile() {
+    const r = await fetch("/api/profile").then(x=>x.json()).catch(()=>null);
+    if (r?.profile) setProfileForm({ name:r.profile.name??"", phone:r.profile.phone??"", currentPassword:"", newPassword:"" });
+    setProfileMsg(null);
+    setProfileOpen(true);
+  }
+  async function saveOwnProfile() {
+    setProfileSaving(true); setProfileMsg(null);
+    const body: Record<string,string> = { name: profileForm.name, phone: profileForm.phone };
+    if (profileForm.newPassword) { body.newPassword = profileForm.newPassword; body.currentPassword = profileForm.currentPassword; }
+    const r = await fetch("/api/profile", { method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body) });
+    const d = await r.json().catch(()=>({} as {error?:string}));
+    setProfileSaving(false);
+    if (!r.ok) { setProfileMsg({ok:false, text:d.error ?? "Failed to save"}); return; }
+    setProfileMsg({ok:true, text:"Profile saved"});
+    setUserName(profileForm.name);
+    setProfileForm(f=>({...f, currentPassword:"", newPassword:""}));
+  }
+
   const TABS = [
     ["orders","Orders",<ClipboardList key="o" className="w-4 h-4"/>],
     ["agents","Agents",<Users key="a" className="w-4 h-4"/>],
@@ -437,11 +537,53 @@ export default function AdminPage() {
             <div className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${liveConnected?"bg-green-50 text-green-700":"bg-slate-100 text-slate-500"}`}>
               {liveConnected?<Wifi className="w-3.5 h-3.5"/>:<WifiOff className="w-3.5 h-3.5"/>}{liveConnected?"Live":"Offline"}
             </div>
-            <span className="text-sm text-slate-500">Welcome, <span className="font-medium text-slate-700">{userName}</span></span>
+            <button onClick={openProfile} className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-[#0f1f3d]" title="My profile">
+              <UserIcon className="w-4 h-4"/>Welcome, <span className="font-medium text-slate-700 underline decoration-dotted">{userName}</span>
+            </button>
             <button onClick={handleLogout} className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-red-600"><LogOut className="w-4 h-4"/>Logout</button>
           </div>
         </div>
       </header>
+
+      {/* ── My Profile modal (admin) ── */}
+      {profileOpen && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={()=>setProfileOpen(false)}>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl" onClick={e=>e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-slate-900 flex items-center gap-2"><UserIcon className="w-5 h-5 text-purple-600"/>My Profile</h3>
+              <button onClick={()=>setProfileOpen(false)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5"/></button>
+            </div>
+            {profileMsg && (
+              <div className={`mb-3 px-3 py-2 rounded-xl text-sm ${profileMsg.ok?"bg-green-50 border border-green-200 text-green-700":"bg-red-50 border border-red-200 text-red-700"}`}>{profileMsg.text}</div>
+            )}
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-medium text-slate-600 block mb-1">Name</label>
+                <input value={profileForm.name} onChange={e=>setProfileForm(f=>({...f,name:e.target.value}))}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"/>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-slate-600 block mb-1">Phone</label>
+                <input value={profileForm.phone} onChange={e=>setProfileForm(f=>({...f,phone:e.target.value}))}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"/>
+              </div>
+              <div className="border-t border-slate-100 pt-3">
+                <p className="text-xs font-bold text-slate-700 mb-2">Change Password <span className="font-normal text-slate-400">(optional)</span></p>
+                <div className="space-y-2">
+                  <input type="password" placeholder="Current password" value={profileForm.currentPassword} onChange={e=>setProfileForm(f=>({...f,currentPassword:e.target.value}))}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"/>
+                  <input type="password" placeholder="New password (min 6 characters)" value={profileForm.newPassword} onChange={e=>setProfileForm(f=>({...f,newPassword:e.target.value}))}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"/>
+                </div>
+              </div>
+              <button onClick={saveOwnProfile} disabled={profileSaving}
+                className="w-full bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl text-sm">
+                {profileSaving?"Saving…":"Save Profile"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="max-w-7xl mx-auto px-6 py-6">
         {/* Site announcement banner control */}
@@ -693,6 +835,47 @@ export default function AdminPage() {
 
         ) : tab==="photos" ? (
           <div className="space-y-6">
+            {/* ── Upload on behalf of an agent ── */}
+            <div className="bg-white border-2 border-blue-200 rounded-2xl p-6">
+              <h2 className="font-semibold text-slate-900 flex items-center gap-2"><Upload className="w-5 h-5 text-blue-600"/>Upload Photos on Behalf of an Agent</h2>
+              <p className="text-xs text-slate-400 mt-0.5 mb-4">Pick an order with an assigned agent. The vendor will see the photos as uploaded by the agent (e.g. &quot;User 1234567 uploaded 3 photos&quot;) — never as admin.</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                <select value={oboOrderId} onChange={e=>setOboOrderId(e.target.value)}
+                  className="border border-slate-200 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400">
+                  <option value="">Choose an order (must have an assigned agent)…</option>
+                  {orders.filter(o=>o.assignedAgentId).map(o=>(
+                    <option key={o.id} value={o.id}>{o.address} — Agent: {o.agent?.name ?? o.assignedAgentId}</option>
+                  ))}
+                </select>
+                <div className="flex items-center gap-3">
+                  <input ref={oboFileRef} type="file" accept="image/*" multiple className="hidden" onChange={e=>{oboPickFiles(e.target.files); if(oboFileRef.current) oboFileRef.current.value="";}}/>
+                  <button onClick={()=>oboFileRef.current?.click()} disabled={!oboOrderId}
+                    className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 disabled:opacity-40 text-slate-700 text-sm font-medium px-4 py-2.5 rounded-xl">
+                    <CameraIcon className="w-4 h-4"/>Choose Photos ({oboFiles.length})
+                  </button>
+                  <label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer select-none">
+                    <input type="checkbox" checked={oboRelease} onChange={e=>setOboRelease(e.target.checked)} className="rounded"/>
+                    Release to vendor immediately
+                  </label>
+                </div>
+              </div>
+              {oboFiles.length>0&&(
+                <div className="grid grid-cols-4 sm:grid-cols-8 gap-2 mb-3">
+                  {oboFiles.map((f,i)=>(
+                    <div key={i} className="relative aspect-video rounded-lg overflow-hidden bg-slate-100 border border-slate-200 group">
+                      <img src={f.url} alt={f.filename} className="w-full h-full object-cover"/>
+                      <button onClick={()=>setOboFiles(prev=>prev.filter((_,j)=>j!==i))}
+                        className="absolute top-0.5 right-0.5 bg-red-600 text-white rounded-full w-4 h-4 text-[10px] leading-none opacity-0 group-hover:opacity-100">✕</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <button onClick={uploadOnBehalf} disabled={oboUploading||!oboOrderId||oboFiles.length===0}
+                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-semibold px-5 py-2.5 rounded-xl">
+                <Upload className="w-4 h-4"/>{oboUploading?"Uploading…":`Upload ${oboFiles.length||""} Photo${oboFiles.length!==1?"s":""} as Agent`}
+              </button>
+            </div>
+
             {/* ── Pending order photos (from agent job uploads) ── */}
             <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
               <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
@@ -758,7 +941,7 @@ export default function AdminPage() {
                   <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
                     <div>
                       <p className="text-sm font-bold text-slate-800">{su.serviceName||"Photo submission"} <span className="text-xs font-normal text-slate-400">· {su.photos.length} photos</span></p>
-                      <p className="text-xs text-slate-400">Agent: {su.agentName??su.agentId} · {new Date(su.createdAt).toLocaleString()} {su.orderId?`· Linked order: ${su.orderId}`:"· No order linked"}</p>
+                      <p className="text-xs text-slate-400">Agent: {su.agentName??su.agentId} · {etDateTime(su.createdAt)} {su.orderId?`· Linked order: ${su.orderId}`:"· No order linked"}</p>
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
                       {!su.orderId&&(
@@ -912,7 +1095,7 @@ export default function AdminPage() {
                           <span>📧 {u.email}</span>
                           {u.phone && <span>📞 {u.phone}</span>}
                           {u.company && <span>🏢 {u.company}</span>}
-                          <span suppressHydrationWarning>Registered: {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : ""}</span>
+                          <span suppressHydrationWarning>Registered: {u.createdAt ? etDate(u.createdAt) : ""}</span>
                         </div>
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
@@ -958,7 +1141,7 @@ export default function AdminPage() {
                         <div className="text-xs text-slate-600 flex items-center gap-3">
                           <span>Client: {order.client?.name ?? order.clientId}</span>
                           <span>Amount: <strong>${order.totalPrice}</strong></span>
-                          <span suppressHydrationWarning>{new Date(order.createdAt).toLocaleDateString()}</span>
+                          <span suppressHydrationWarning>{etDate(order.createdAt)}</span>
                         </div>
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
@@ -1062,7 +1245,8 @@ export default function AdminPage() {
               <div className="px-6 py-4 border-b border-slate-100"><h2 className="font-semibold text-slate-900">All Users ({allUsers.length})</h2></div>
               <div className="divide-y divide-slate-100">
                 {allUsers.map(u=>(
-                  <div key={u.id} className="px-6 py-4 flex items-center justify-between gap-4">
+                  <div key={u.id} className="px-6 py-4">
+                    <div className="flex items-center justify-between gap-4">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-medium text-slate-800">{u.name}</span>
@@ -1076,7 +1260,13 @@ export default function AdminPage() {
                       <div className="text-xs text-slate-500 mt-0.5">{u.email}{u.phone&&` · ${u.phone}`}{u.company&&` · ${u.company}`}</div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-slate-400" suppressHydrationWarning>{u.createdAt?new Date(u.createdAt).toLocaleDateString():""}</span>
+                      <span className="text-xs text-slate-400" suppressHydrationWarning>{u.createdAt?etDate(u.createdAt):""}</span>
+                      {u.role !== "admin" && (
+                        <button onClick={()=>toggleUserStats(u.id)}
+                          className={`text-xs font-semibold px-3 py-1.5 rounded-lg border flex items-center gap-1 ${statsOpenFor===u.id?"bg-indigo-600 text-white border-indigo-600":"border-indigo-200 text-indigo-600 hover:bg-indigo-50"}`}>
+                          <BarChart3 className="w-3.5 h-3.5"/>{statsOpenFor===u.id?"Hide Stats":"Stats"}
+                        </button>
+                      )}
                       {u.role !== "admin" && (
                         <>
                           {!u.accountActive && !u.suspended && (
@@ -1100,6 +1290,68 @@ export default function AdminPage() {
                         </>
                       )}
                     </div>
+                    </div>
+
+                    {/* ── Expanded stats panel ── */}
+                    {statsOpenFor===u.id && (
+                      <div className="mt-3 bg-indigo-50/50 border border-indigo-100 rounded-xl p-4">
+                        {statsLoading===u.id ? (
+                          <p className="text-xs text-slate-400">Loading stats…</p>
+                        ) : userStats[u.id] ? (
+                          <>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
+                              {(userStats[u.id].role==="agent" ? [
+                                {label:"Orders Accepted", val:userStats[u.id].ordersAccepted, color:"text-blue-700"},
+                                {label:"Pending / Active", val:userStats[u.id].ordersPending, color:"text-amber-700"},
+                                {label:"Completed", val:userStats[u.id].ordersCompleted, color:"text-green-700"},
+                                {label:"Bids Placed", val:userStats[u.id].bidsPlaced, color:"text-indigo-700"},
+                              ] : [
+                                {label:"Orders Placed", val:userStats[u.id].ordersPlaced, color:"text-blue-700"},
+                                {label:"Pending / Active", val:userStats[u.id].ordersPending, color:"text-amber-700"},
+                                {label:"Completed", val:userStats[u.id].ordersCompleted, color:"text-green-700"},
+                                {label:"Cancelled", val:userStats[u.id].ordersCancelled, color:"text-red-600"},
+                              ]).map(s=>(
+                                <div key={s.label} className="bg-white border border-slate-200 rounded-lg px-3 py-2 text-center">
+                                  <p className={`text-xl font-black ${s.color}`}>{s.val ?? 0}</p>
+                                  <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wide">{s.label}</p>
+                                </div>
+                              ))}
+                            </div>
+                            {userStats[u.id].role==="agent" && (userStats[u.id].bids?.length??0)>0 && (
+                              <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+                                <p className="text-xs font-bold text-slate-700 px-3 py-2 border-b border-slate-100">
+                                  Bid History — use these times as reminders ({userStats[u.id].bidsAccepted ?? 0} accepted)
+                                </p>
+                                <div className="max-h-48 overflow-y-auto divide-y divide-slate-50">
+                                  {userStats[u.id].bids!.map(b=>(
+                                    <div key={b.id} className="px-3 py-1.5 flex items-center justify-between gap-2 text-xs">
+                                      <span className="text-slate-600 truncate flex-1">{b.address}</span>
+                                      <span className="font-bold text-slate-800">${b.amount}</span>
+                                      <span className={`px-1.5 py-0.5 rounded-full font-medium ${b.status==="accepted"?"bg-green-50 text-green-700":b.status==="rejected"?"bg-red-50 text-red-600":"bg-amber-50 text-amber-700"}`}>{b.status}</span>
+                                      <span className="text-slate-400 whitespace-nowrap" suppressHydrationWarning>{etDateTime(b.placedAt)}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            {userStats[u.id].role==="client" && (userStats[u.id].recentOrders?.length??0)>0 && (
+                              <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+                                <p className="text-xs font-bold text-slate-700 px-3 py-2 border-b border-slate-100">Recent Orders</p>
+                                <div className="max-h-48 overflow-y-auto divide-y divide-slate-50">
+                                  {userStats[u.id].recentOrders!.map(o=>(
+                                    <div key={o.id} className="px-3 py-1.5 flex items-center justify-between gap-2 text-xs">
+                                      <span className="text-slate-600 truncate flex-1">{o.address}</span>
+                                      <span className={`px-1.5 py-0.5 rounded-full font-medium ${o.status==="completed"?"bg-green-50 text-green-700":o.status==="cancelled"?"bg-red-50 text-red-600":"bg-amber-50 text-amber-700"}`}>{o.status}</span>
+                                      <span className="text-slate-400 whitespace-nowrap" suppressHydrationWarning>{etDate(o.createdAt)}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        ) : <p className="text-xs text-red-500">Could not load stats</p>}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -1134,7 +1386,7 @@ export default function AdminPage() {
                       <span className="text-xs text-slate-500">{tx.userEmail}</span>
                     </div>
                     <p className="text-xs text-slate-500">{tx.description}</p>
-                    <p className="text-xs text-slate-400" suppressHydrationWarning>{new Date(tx.createdAt).toLocaleString()}</p>
+                    <p className="text-xs text-slate-400" suppressHydrationWarning>{etDateTime(tx.createdAt)}</p>
                   </div>
                   <div className="flex items-center gap-3 flex-shrink-0">
                     <span className="text-2xl font-black text-emerald-600">${tx.amount}</span>
@@ -1206,7 +1458,7 @@ export default function AdminPage() {
                     <span className="ml-2 text-xs text-slate-500">{s.agentEmail}</span>
                     <span className="ml-2 text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">Pending Review</span>
                   </div>
-                  <span className="text-xs text-slate-400" suppressHydrationWarning>{new Date(s.createdAt).toLocaleDateString()}</span>
+                  <span className="text-xs text-slate-400" suppressHydrationWarning>{etDate(s.createdAt)}</span>
                 </div>
                 <div className="grid grid-cols-4 sm:grid-cols-7 gap-2 mb-4">
                   {(s.photos??[]).map((src,i)=>(
@@ -1273,7 +1525,7 @@ export default function AdminPage() {
                       <div className="flex items-center gap-3">
                         <span className="font-bold text-slate-700">${p.amount}</span>
                         <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${p.status==="paid"?"bg-green-100 text-green-700":"bg-amber-100 text-amber-700"}`}>{p.status}</span>
-                        <span className="text-xs text-slate-400" suppressHydrationWarning>{new Date(p.created_at).toLocaleDateString()}</span>
+                        <span className="text-xs text-slate-400" suppressHydrationWarning>{etDate(p.created_at)}</span>
                       </div>
                     </div>
                   ))}
@@ -1552,7 +1804,7 @@ export default function AdminPage() {
                         <p className="font-medium text-slate-800 text-sm">{e.subject}</p>
                         {e.body&&<p className="text-xs text-slate-400 mt-0.5 line-clamp-2">{e.body}</p>}
                       </div>
-                      <span className="text-xs text-slate-400 whitespace-nowrap" suppressHydrationWarning>{new Date(e.timestamp).toLocaleTimeString()}</span>
+                      <span className="text-xs text-slate-400 whitespace-nowrap" suppressHydrationWarning>{etTime(e.timestamp)}</span>
                     </div>
                   </div>
                 ))}
@@ -1592,7 +1844,7 @@ export default function AdminPage() {
                     <p className="font-medium text-slate-800 text-sm">{d.clientName} <span className="text-slate-400 font-normal">— {d.clientEmail}</span></p>
                     <p className="text-xs text-slate-500 mt-0.5">Order: {d.orderAddress ?? d.orderId}</p>
                   </div>
-                  <span className="text-xs text-slate-400" suppressHydrationWarning>{new Date(d.createdAt).toLocaleDateString()}</span>
+                  <span className="text-xs text-slate-400" suppressHydrationWarning>{etDate(d.createdAt)}</span>
                 </div>
                 <p className="text-sm text-slate-600 mb-3">{d.description}</p>
                 {d.resolution ? (
@@ -1632,7 +1884,7 @@ export default function AdminPage() {
                         <p className="text-xs text-slate-400 mt-0.5">{Object.entries(entry.details).map(([k,v])=>`${k}: ${v}`).join(" · ")}</p>
                       )}
                     </div>
-                    <span className="text-xs text-slate-400 whitespace-nowrap" suppressHydrationWarning>{new Date(entry.created_at).toLocaleString()}</span>
+                    <span className="text-xs text-slate-400 whitespace-nowrap" suppressHydrationWarning>{etDateTime(entry.created_at)}</span>
                   </div>
                 ))}
               </div>

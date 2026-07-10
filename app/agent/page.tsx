@@ -1,4 +1,6 @@
 "use client";
+import { uploadImageFile } from "@/lib/uploadClient";
+import { etDate, etDateTime, etTime } from "@/lib/est";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -82,8 +84,12 @@ export default function AgentPage() {
 
   // Profile edit
   const [editingProfile, setEditingProfile] = useState(false);
-  const [profileForm, setProfileForm] = useState({bio:"",coverageZone:"",vehicle:"",phone:""});
+  const [profileForm, setProfileForm] = useState({name:"",bio:"",coverageZone:"",vehicle:"",phone:""});
   const [savingProfile, setSavingProfile] = useState(false);
+  const [pwForm, setPwForm] = useState({currentPassword:"",newPassword:""});
+  const [pwSaving, setPwSaving] = useState(false);
+  const [pwMsg, setPwMsg] = useState<{ok:boolean;text:string}|null>(null);
+  const [myReviews, setMyReviews] = useState<{id:string;orderId:string;rating:number;comment:string;createdAt:string}[]>([]);
   const [togglingAvail, setTogglingAvail] = useState(false);
 
 
@@ -103,7 +109,7 @@ export default function AgentPage() {
     const d = await r.json();
     if (d.agent) {
       setProfile(d.agent);
-      setProfileForm({bio:d.agent.bio,coverageZone:d.agent.coverageZone,vehicle:d.agent.vehicle,phone:d.agent.phone});
+      setProfileForm({name:d.agent.name??"",bio:d.agent.bio,coverageZone:d.agent.coverageZone,vehicle:d.agent.vehicle,phone:d.agent.phone});
     }
   }, []);
 
@@ -141,6 +147,10 @@ export default function AgentPage() {
   }, [fetchProfile, fetchMyBids]);
 
   useEffect(()=>{ if(tab==="coverage") fetchZips(); }, [tab, fetchZips]);
+  useEffect(()=>{
+    if(tab!=="profile") return;
+    fetch("/api/reviews").then(r=>r.json()).then(d=>setMyReviews(d.reviews ?? [])).catch(()=>{});
+  }, [tab]);
 
   async function toggleAvailability() {
     if (!profile) return;
@@ -181,9 +191,22 @@ export default function AgentPage() {
   async function saveProfile() {
     if (!profile) return;
     setSavingProfile(true);
-    await fetch(`/api/agents/${profile.id}`, { method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify(profileForm) });
+    const r = await fetch("/api/profile", { method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify(profileForm) });
+    if (!r.ok) { const d = await r.json().catch(()=>({} as {error?:string})); alert(d.error ?? "Failed to save profile"); setSavingProfile(false); return; }
     setProfile(p=>p?{...p,...profileForm}:p);
     setEditingProfile(false); setSavingProfile(false);
+  }
+
+  async function changePassword() {
+    if (!pwForm.currentPassword || !pwForm.newPassword) { setPwMsg({ok:false,text:"Fill in both password fields"}); return; }
+    setPwSaving(true); setPwMsg(null);
+    const r = await fetch("/api/profile", { method:"PATCH", headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({ currentPassword: pwForm.currentPassword, newPassword: pwForm.newPassword }) });
+    const d = await r.json().catch(()=>({} as {error?:string}));
+    setPwSaving(false);
+    if (!r.ok) { setPwMsg({ok:false,text:d.error ?? "Failed to change password"}); return; }
+    setPwMsg({ok:true,text:"Password changed ✓"});
+    setPwForm({currentPassword:"",newPassword:""});
   }
 
   // Resolve the required shot list for an order
@@ -212,12 +235,13 @@ export default function AgentPage() {
     const target = pendingShot.current;
     if (!target) return;
     setUploading(target.label);
-    const reader = new FileReader();
-    reader.onload = async ()=>{
-      await fetch(`/api/orders/${target.orderId}/photos`, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({filename:file.name,url:reader.result,description:target.label}) });
-      setUploading(null); pendingShot.current = null; setExtraDesc("");
-    };
-    reader.readAsDataURL(file);
+    try {
+      // Direct-to-storage upload — any image type, any size (no serverless body limit)
+      const { filename, url } = await uploadImageFile(file, `orders/${target.orderId}`);
+      const r = await fetch(`/api/orders/${target.orderId}/photos`, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({filename, url, description:target.label}) });
+      if (!r.ok) { const d = await r.json().catch(()=>({} as {error?:string})); alert(d.error ?? "Upload failed — please try again"); }
+    } catch { alert("Upload failed — please try again"); }
+    setUploading(null); pendingShot.current = null; setExtraDesc("");
   }
 
   async function saveZips() {
@@ -476,9 +500,9 @@ export default function AgentPage() {
               onChange={e=>{
                 const f = e.target.files?.[0]; const label = pendingFormShot.current;
                 if (f && label) {
-                  const r = new FileReader();
-                  r.onload = ()=>setFormPhotos(prev=>({...prev,[label]:{filename:f.name,url:r.result as string}}));
-                  r.readAsDataURL(f);
+                  uploadImageFile(f, "submissions")
+                    .then(({filename,url})=>setFormPhotos(prev=>({...prev,[label]:{filename,url}})))
+                    .catch(()=>alert("Upload failed — please try again"));
                 }
                 pendingFormShot.current = null; e.target.value="";
               }}/>
@@ -609,10 +633,10 @@ export default function AgentPage() {
                 <input ref={sampleRef} type="file" accept="image/*" multiple className="hidden"
                   onChange={e=>{
                     if (!e.target.files) return;
-                    const readers = Array.from(e.target.files).slice(0,7).map(f=>new Promise<string>(res=>{
-                      const r=new FileReader(); r.onload=()=>res(r.result as string); r.readAsDataURL(f);
-                    }));
-                    Promise.all(readers).then(setSampleFiles);
+                    const files = Array.from(e.target.files).slice(0,7);
+                    Promise.all(files.map(f=>uploadImageFile(f, "samples").then(r=>r.url)))
+                      .then(setSampleFiles)
+                      .catch(()=>alert("Upload failed — please try again"));
                   }}/>
                 <button onClick={()=>sampleRef.current?.click()} className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium px-4 py-2.5 rounded-xl mb-4">
                   <ImageIcon className="w-4 h-4"/>Choose 7 Photos ({sampleFiles.length}/7)
@@ -652,7 +676,7 @@ export default function AgentPage() {
                 </div>
                 {editingProfile ? (
                   <div className="space-y-3">
-                    {[{label:"Phone",key:"phone",ph:"555-0101"},{label:"Coverage Zone",key:"coverageZone",ph:"Chicago, IL"},{label:"Vehicle",key:"vehicle",ph:"2022 Honda CR-V"}].map(({label,key,ph})=>(
+                    {[{label:"Name",key:"name",ph:"Your full name"},{label:"Phone",key:"phone",ph:"555-0101"},{label:"Coverage Zone",key:"coverageZone",ph:"Chicago, IL"},{label:"Vehicle",key:"vehicle",ph:"2022 Honda CR-V"}].map(({label,key,ph})=>(
                       <div key={key}>
                         <label className="text-xs font-medium text-slate-600 block mb-1">{label}</label>
                         <input value={profileForm[key as keyof typeof profileForm]} onChange={e=>setProfileForm(f=>({...f,[key]:e.target.value}))}
@@ -686,6 +710,46 @@ export default function AgentPage() {
                     </button>
                   </div>
                 )}
+
+                {/* ── Change password ── */}
+                <div className="mt-6 pt-5 border-t border-slate-100">
+                  <h3 className="text-sm font-bold text-slate-800 mb-2">Change Password</h3>
+                  {pwMsg && (
+                    <div className={`mb-2 px-3 py-2 rounded-xl text-xs ${pwMsg.ok?"bg-green-50 border border-green-200 text-green-700":"bg-red-50 border border-red-200 text-red-700"}`}>{pwMsg.text}</div>
+                  )}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
+                    <input type="password" placeholder="Current password" value={pwForm.currentPassword} onChange={e=>setPwForm(f=>({...f,currentPassword:e.target.value}))}
+                      className="border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"/>
+                    <input type="password" placeholder="New password (min 6 chars)" value={pwForm.newPassword} onChange={e=>setPwForm(f=>({...f,newPassword:e.target.value}))}
+                      className="border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"/>
+                  </div>
+                  <button onClick={changePassword} disabled={pwSaving}
+                    className="text-sm bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-white font-semibold px-4 py-2 rounded-xl">
+                    {pwSaving?"Saving…":"Update Password"}
+                  </button>
+                </div>
+
+                {/* ── Vendor feedback on completed orders ── */}
+                <div className="mt-6 pt-5 border-t border-slate-100">
+                  <h3 className="text-sm font-bold text-slate-800 mb-2 flex items-center gap-1.5">
+                    <Star className="w-4 h-4 text-amber-400 fill-amber-400"/>Vendor Feedback ({myReviews.length})
+                  </h3>
+                  {myReviews.length===0 ? (
+                    <p className="text-xs text-slate-400">No feedback yet — vendors can rate your work after each completed order.</p>
+                  ) : (
+                    <div className="space-y-2 max-h-64 overflow-y-auto">
+                      {myReviews.map(rv=>(
+                        <div key={rv.id} className="bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5">
+                          <div className="flex items-center gap-2">
+                            <span className="flex">{[1,2,3,4,5].map(n=><Star key={n} className={`w-3.5 h-3.5 ${n<=rv.rating?"fill-amber-400 text-amber-400":"text-slate-300"}`}/>)}</span>
+                            <span className="text-[10px] text-slate-400" suppressHydrationWarning>{etDate(rv.createdAt)}</span>
+                          </div>
+                          {rv.comment&&<p className="text-xs text-slate-600 mt-1 italic">&quot;{rv.comment}&quot;</p>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </>
             )}
           </div>

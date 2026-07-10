@@ -8,8 +8,27 @@ const MAX_ATTEMPTS_PER_IP = 20;     // per 15 min, across all emails (credential
 const WINDOW_MINUTES = 15;
 
 export async function POST(request: NextRequest) {
-  const { email, password } = await request.json();
+  const { email, password, recaptchaToken } = await request.json();
   const ip = getClientIp(request);
+
+  // Google reCAPTCHA v2 verification — only enforced when a secret key is configured
+  const recaptchaSecret = process.env.RECAPTCHA_SECRET_KEY;
+  if (recaptchaSecret) {
+    if (!recaptchaToken)
+      return NextResponse.json({ error: "Please complete the CAPTCHA verification" }, { status: 400 });
+    try {
+      const verify = await fetch("https://www.google.com/recaptcha/api/siteverify", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: `secret=${encodeURIComponent(recaptchaSecret)}&response=${encodeURIComponent(recaptchaToken)}&remoteip=${encodeURIComponent(ip)}`,
+      });
+      const result = await verify.json();
+      if (!result.success)
+        return NextResponse.json({ error: "CAPTCHA verification failed. Please try again." }, { status: 400 });
+    } catch {
+      // If Google is unreachable, fall through — rate limiting still protects login
+    }
+  }
   const emailKey = `login:${String(email ?? "").toLowerCase()}`;
   const ipKey = `login-ip:${ip}`;
 

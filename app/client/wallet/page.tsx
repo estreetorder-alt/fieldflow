@@ -1,4 +1,5 @@
 "use client";
+import { etDate, etDateTime, etTime } from "@/lib/est";
 import { useState, useEffect, useCallback, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, DollarSign, Plus, Clock, CheckCircle, ArrowDownCircle, ArrowUpCircle, RefreshCw, Wallet, AlertTriangle } from "lucide-react";
@@ -37,6 +38,8 @@ function WalletPageInner() {
   const [loading, setLoading] = useState(true);
   const [showTopup, setShowTopup] = useState(false);
   const [paidPending, setPaidPending] = useState(false);
+  const [linkOpened, setLinkOpened] = useState(false);
+  const [submittingClaim, setSubmittingClaim] = useState(false);
   const [selectedLinkId, setSelectedLinkId] = useState<string | null>(null);
   const [userName, setUserName] = useState("Vendor");
 
@@ -60,17 +63,28 @@ function WalletPageInner() {
 
   const selectedLink = paymentLinks.find(l => l.id === selectedLinkId) ?? null;
 
-  // Pay Now: open the invoice link for the selected amount and silently record a pending top-up
-  async function payNow() {
+  // Step 1 — just open the payment link. Nothing is recorded: clicking is NOT paying.
+  function openPaymentLink() {
     if (!selectedLink) return;
     window.open(selectedLink.url, "_blank", "noopener,noreferrer");
-    if (selectedLink.amount && selectedLink.amount > 0) {
-      await fetch("/api/wallet", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: selectedLink.amount, description: `Wallet top-up — $${selectedLink.amount}` }),
-      }).catch(()=>{});
-    }
+    setLinkOpened(true);
+  }
+
+  // Step 2 — the user explicitly claims they completed the payment.
+  // This only creates an UNVERIFIED pending request that admin must confirm.
+  async function confirmPaymentMade() {
+    if (!selectedLink) return;
+    setSubmittingClaim(true);
+    const amt = selectedLink.amount ?? (Number(selectedLink.label.replace(/\D/g, "")) || 0);
+    await fetch("/api/wallet", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ amount: amt, description: `Wallet top-up $${amt} — user reports payment sent (UNVERIFIED — confirm funds received before crediting)` }),
+    }).catch(()=>{});
+    setSubmittingClaim(false);
+    setLinkOpened(false);
     setPaidPending(true);
+    setShowTopup(false);
+    setSelectedLinkId(null);
     fetchWallet();
   }
 
@@ -113,14 +127,14 @@ function WalletPageInner() {
           </div>
         )}
 
-        {/* Paid confirmation */}
+        {/* Claim submitted — awaiting admin verification */}
         {paidPending && (
-          <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-start gap-3">
-            <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5"/>
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+            <Clock className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5"/>
             <div>
-              <p className="font-bold text-green-900 text-sm">Payment in progress</p>
-              <p className="text-green-800 text-xs mt-0.5">Complete your payment in the tab that opened. Your balance will update automatically once the payment is processed.</p>
-              <button onClick={() => setPaidPending(false)} className="text-xs text-green-700 underline mt-1">Dismiss</button>
+              <p className="font-bold text-amber-900 text-sm">Payment pending verification</p>
+              <p className="text-amber-800 text-xs mt-0.5">We&apos;ve recorded that you reported a payment. Your balance will be credited only after our team verifies the payment was received.</p>
+              <button onClick={() => setPaidPending(false)} className="text-xs text-amber-700 underline mt-1">Dismiss</button>
             </div>
           </div>
         )}
@@ -154,12 +168,27 @@ function WalletPageInner() {
                   })}
                 </div>
 
-                {/* Pay Now — only appears once an amount is selected */}
-                {selectedLink && (
-                  <button onClick={payNow}
+                {/* Step 1: open the payment link · Step 2: confirm payment was actually made */}
+                {selectedLink && !linkOpened && (
+                  <button onClick={openPaymentLink}
                     className="w-full flex items-center justify-center gap-2 bg-[#c8991a] hover:bg-[#f0b429] text-[#0f1f3d] font-extrabold py-3.5 rounded-xl text-base transition-colors shadow-sm">
-                    Pay Now — ${selectedLink.amount ?? selectedLink.label.replace(/\D/g, "")} →
+                    Open Payment Page — ${selectedLink.amount ?? selectedLink.label.replace(/\D/g, "")} →
                   </button>
+                )}
+                {selectedLink && linkOpened && (
+                  <div className="space-y-2">
+                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-800">
+                      Complete the payment in the tab that opened. Opening the page does <strong>not</strong> add funds — only click below <strong>after</strong> you&apos;ve actually paid.
+                    </div>
+                    <button onClick={confirmPaymentMade} disabled={submittingClaim}
+                      className="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-extrabold py-3.5 rounded-xl text-base transition-colors shadow-sm">
+                      <CheckCircle className="w-4 h-4"/>{submittingClaim ? "Submitting…" : "✓ I've completed the payment"}
+                    </button>
+                    <div className="flex items-center justify-center gap-4">
+                      <button onClick={openPaymentLink} className="text-xs text-slate-500 underline">Reopen payment page</button>
+                      <button onClick={()=>{setLinkOpened(false);setSelectedLinkId(null);}} className="text-xs text-slate-400 underline">Cancel</button>
+                    </div>
+                  </div>
                 )}
                 {!selectedLink && (
                   <p className="text-xs text-slate-400 text-center">Select an amount above to continue</p>
@@ -209,7 +238,7 @@ function WalletPageInner() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-slate-800">{tx.description}</p>
-                  <p className="text-xs text-slate-400" suppressHydrationWarning>{new Date(tx.createdAt).toLocaleString()}</p>
+                  <p className="text-xs text-slate-400" suppressHydrationWarning>{etDateTime(tx.createdAt)}</p>
                 </div>
               </div>
               <div className="text-right flex-shrink-0">

@@ -1,5 +1,6 @@
 "use client";
 
+import { etDate, etDateTime } from "@/lib/est";
 import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -213,7 +214,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
             </h1>
             <div className="flex items-center gap-1.5 text-xs text-slate-400 mt-1.5">
               <Calendar className="w-3.5 h-3.5" />
-              Submitted {new Date(order.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
+              Submitted {etDate(order.createdAt, { year: "numeric", month: "long", day: "numeric" })}
             </div>
           </div>
           <div className="text-right flex-shrink-0">
@@ -252,7 +253,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                             {ev.status.replace("_", " ")}
                           </span>
                           <span className="text-xs text-slate-400">
-                            {new Date(ev.timestamp).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                            {etDateTime(ev.timestamp, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
                           </span>
                         </div>
                         <p className="text-sm text-slate-600 mt-1.5">{ev.note}</p>

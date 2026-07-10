@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
     photos?: { label: string; filename: string; url: string }[];
   };
   if (!photos?.length) return NextResponse.json({ error: "At least one photo required" }, { status: 400 });
-  if (photos.length > 30) return NextResponse.json({ error: "Maximum 30 photos per submission" }, { status: 400 });
+  if (photos.length > 200) return NextResponse.json({ error: "Maximum 200 photos per submission" }, { status: 400 });
 
   // If linked to an order, the agent must be assigned to it
   if (orderId) {

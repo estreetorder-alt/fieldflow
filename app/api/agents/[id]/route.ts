@@ -50,6 +50,10 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     if (body.backgroundCheckNotes !== undefined) allowed.backgroundCheckNotes = body.backgroundCheckNotes;
   }
 
-  if (Object.keys(allowed).length > 0) await updateUser(id, allowed);
+  try {
+    if (Object.keys(allowed).length > 0) await updateUser(id, allowed);
+  } catch (e) {
+    return NextResponse.json({ error: e instanceof Error ? e.message : "Update failed" }, { status: 500 });
+  }
   return NextResponse.json({ ok: true });
 }

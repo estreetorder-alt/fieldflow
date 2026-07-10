@@ -206,6 +206,8 @@ export async function createUser(user: Omit<User, "createdAt">): Promise<User> {
 
 export async function updateUser(id: string, fields: Partial<User>): Promise<void> {
   const patch: Record<string, unknown> = {};
+  if (fields.name !== undefined) patch.name = fields.name;
+  if (fields.company !== undefined) patch.company = fields.company;
   if (fields.available !== undefined) patch.available = fields.available;
   if (fields.rating !== undefined) patch.rating = fields.rating;
   if (fields.bio !== undefined) patch.bio = fields.bio;
@@ -219,7 +221,8 @@ export async function updateUser(id: string, fields: Partial<User>): Promise<voi
   if (fields.backgroundCheckNotes !== undefined) patch.background_check_notes = fields.backgroundCheckNotes;
   if (fields.smsOptIn !== undefined) patch.sms_opt_in = fields.smsOptIn;
   if (fields.suspended !== undefined) patch.suspended = fields.suspended;
-  await supabase.from("users").update(patch).eq("id", id);
+  const { error } = await supabase.from("users").update(patch).eq("id", id);
+  if (error) throw new Error(error.message);
 }
 
 // Anonymized display id for a user — vendors never see real agent names.
@@ -512,7 +515,7 @@ export async function autoDispatch(orderId: string, zip: string): Promise<string
     dispatched_at: new Date().toISOString(),
     response_deadline: deadline,
   }).eq("id", orderId);
-  await addStatusHistory(orderId, "pending", `Auto-dispatched to ${best.name} — must respond by ${new Date(deadline).toLocaleTimeString()}`);
+  await addStatusHistory(orderId, "pending", `Auto-dispatched to ${best.name} — must respond by ${new Date(deadline).toLocaleTimeString("en-US", { timeZone: "America/New_York" })} ET`);
   return best.id;
 }
 
