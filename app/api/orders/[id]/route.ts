@@ -34,6 +34,7 @@ export async function GET(request: NextRequest, { params }: Params) {
       ...order,
       agent: order.agent ? { name: anonUserId(order.assignedAgentId), email: "", phone: "" } : null,
       bids: (order.bids ?? []).map(b => ({ ...b, agentName: anonUserId(b.agentId) })),
+      photos: (order.photos ?? []).filter(p => p.approved !== false),
     };
     return NextResponse.json({ order: masked });
   }

@@ -11,10 +11,13 @@ interface Bid { id: string; orderId: string; agentId: string; amount: number; me
 interface Order {
   id: string; address: string; status: string; totalPrice: number; compensationAmount: number;
   serviceType: string; turnaroundTier: string; notes: string; customizeNotes: string;
-  photos: { id: string; filename: string; url: string; description: string }[];
+  photos: { id: string; filename: string; url: string; description: string; approved?: boolean }[];
   createdAt: string; offerAcceptedAt: string | null; assignedAgentId: string | null;
+  serviceId?: string | null; customShotList?: string | null;
   bids?: Bid[]; acceptedBidId?: string | null; responseDeadline?: string | null;
 }
+interface CatalogService { id: string; name: string; description: string; category: string; photoCount?: number; shotList?: string[]; isCustom?: boolean; }
+interface CatalogCategory { id: string; label: string; services: CatalogService[]; }
 interface AgentProfile {
   id: string; name: string; email: string; phone: string; bio: string;
   coverageZone: string; vehicle: string; available: boolean; rating: number;
@@ -43,7 +46,7 @@ export default function AgentPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [profile, setProfile] = useState<AgentProfile|null>(null);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<"mine"|"offers"|"coverage"|"sample"|"profile">("mine");
+  const [tab, setTab] = useState<"mine"|"offers"|"upload"|"coverage"|"sample"|"profile">("mine");
   const [liveConnected, setLiveConnected] = useState(false);
   const [acting, setActing] = useState<string|null>(null);
   const [declining, setDeclining] = useState<string|null>(null);
@@ -57,11 +60,25 @@ export default function AgentPage() {
   const [bidError, setBidError] = useState("");
   const [myBids, setMyBids] = useState<Record<string,Bid>>({});
 
-  // Photo upload
+  // Photo upload (shot-list form)
   const [uploadingFor, setUploadingFor] = useState<string|null>(null);
-  const [uploadDesc, setUploadDesc] = useState("");
-  const [uploading, setUploading] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState<string|null>(null); // shot label currently uploading
+  const [extraDesc, setExtraDesc] = useState("");
+  const shotFileRef = useRef<HTMLInputElement>(null);
+  const pendingShot = useRef<{orderId:string;label:string}|null>(null);
+
+  // Service catalog (for shot lists)
+  const [catalog, setCatalog] = useState<CatalogCategory[]>([]);
+
+  // Open upload form (→ admin inbox)
+  const [formServiceId, setFormServiceId] = useState("");
+  const [formOrderId, setFormOrderId] = useState("");
+  const [formPhotos, setFormPhotos] = useState<Record<string,{filename:string;url:string}>>({});
+  const [formSubmitting, setFormSubmitting] = useState(false);
+  const [formDone, setFormDone] = useState(false);
+  const [formError, setFormError] = useState("");
+  const formFileRef = useRef<HTMLInputElement>(null);
+  const pendingFormShot = useRef<string|null>(null);
 
   // Profile edit
   const [editingProfile, setEditingProfile] = useState(false);
@@ -108,6 +125,7 @@ export default function AgentPage() {
   }, []);
 
   useEffect(() => {
+    fetch("/api/services").then(r=>r.json()).then(d=>{ if(d.catalog) setCatalog(d.catalog); });
     fetch("/api/auth/me").then(r=>r.json()).then(d=>{ if(d.user) fetchProfile(d.user.id); });
     const es = new EventSource("/api/events");
     esRef.current = es;
@@ -168,12 +186,36 @@ export default function AgentPage() {
     setEditingProfile(false); setSavingProfile(false);
   }
 
-  async function uploadPhoto(orderId: string, file: File) {
-    setUploading(true);
+  // Resolve the required shot list for an order
+  function getShotList(order: Order): string[] {
+    if (order.customShotList) {
+      const lines = order.customShotList.split(/\n|\||;/).map(l=>l.trim()).filter(Boolean);
+      if (lines.length) return lines;
+    }
+    const all = catalog.flatMap(c=>c.services);
+    const svc = all.find(s=>s.id===order.serviceId) ?? all.find(s=>s.name===order.serviceType);
+    if (svc?.shotList?.length) return svc.shotList;
+    if (svc?.photoCount) return Array.from({length: svc.photoCount}, (_,i)=>`Photo ${i+1}`);
+    return [];
+  }
+
+  function shotDone(order: Order, label: string) {
+    return order.photos.find(p=>p.description===label);
+  }
+
+  function pickShotFile(orderId: string, label: string) {
+    pendingShot.current = { orderId, label };
+    shotFileRef.current?.click();
+  }
+
+  async function uploadShotFile(file: File) {
+    const target = pendingShot.current;
+    if (!target) return;
+    setUploading(target.label);
     const reader = new FileReader();
     reader.onload = async ()=>{
-      await fetch(`/api/orders/${orderId}/photos`, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({filename:file.name,url:reader.result,description:uploadDesc}) });
-      setUploadingFor(null); setUploadDesc(""); setUploading(false);
+      await fetch(`/api/orders/${target.orderId}/photos`, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({filename:file.name,url:reader.result,description:target.label}) });
+      setUploading(null); pendingShot.current = null; setExtraDesc("");
     };
     reader.readAsDataURL(file);
   }
@@ -196,6 +238,8 @@ export default function AgentPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
+      <input ref={shotFileRef} type="file" accept="image/*" capture="environment" className="hidden"
+        onChange={e=>{ if(e.target.files?.[0]) uploadShotFile(e.target.files[0]); e.target.value=""; }}/>
       <header className="bg-white border-b border-slate-100 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
         <div className="flex items-center gap-3">
           <img src="/snapect-logo.png" alt="Snapect" className="h-8 w-auto object-contain" onError={e=>{(e.target as HTMLImageElement).style.display="none";}}/>
@@ -253,7 +297,7 @@ export default function AgentPage() {
         {/* Tabs */}
         <div className="flex gap-1 bg-slate-100 p-1 rounded-xl mb-5 flex-wrap">
           {([
-            ["mine","My Jobs"],["offers","Available"],            ["coverage","ZIP Codes"],["sample","Sample"],["profile","Profile"]
+            ["mine","My Jobs"],["offers","Available"],["upload","Upload Form"],["coverage","ZIP Codes"],["sample","Sample"],["profile","Profile"]
           ] as const).map(([t,label])=>(
             <button key={t} onClick={()=>setTab(t)}
               className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${tab===t?"bg-white text-slate-900 shadow-sm":"text-slate-500 hover:text-slate-700"}`}>
@@ -292,32 +336,63 @@ export default function AgentPage() {
                   <div className="mb-3"><Countdown from={order.offerAcceptedAt} hours={TIER_HOURS[order.turnaroundTier]} label="Deadline"/></div>
                 )}
                 {order.notes&&<div className="text-xs text-slate-500 bg-slate-50 rounded-lg px-3 py-2 mb-3">{order.notes}</div>}
-                {order.status==="in_progress"&&(
-                  <div className="flex gap-2 flex-wrap">
-                    <button onClick={()=>setUploadingFor(uploadingFor===order.id?null:order.id)}
-                      className="flex items-center gap-1.5 text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium px-3 py-2 rounded-lg">
-                      <Upload className="w-3.5 h-3.5"/>Upload Photo
-                    </button>
-                    <button onClick={()=>updateStatus(order.id,"completed")} disabled={acting===order.id}
-                      className="flex items-center gap-1.5 text-xs bg-green-600 hover:bg-green-700 text-white font-medium px-3 py-2 rounded-lg disabled:opacity-50">
-                      <CheckCircle className="w-3.5 h-3.5"/>{acting===order.id?"…":"Mark Complete"}
-                    </button>
-                  </div>
-                )}
-                {uploadingFor===order.id&&(
-                  <div className="mt-3 p-3 bg-blue-50 rounded-xl border border-blue-100">
-                    <input type="text" placeholder="Photo description" value={uploadDesc} onChange={e=>setUploadDesc(e.target.value)}
-                      className="w-full text-sm border border-blue-200 rounded-lg px-3 py-2 mb-2 focus:outline-none focus:ring-2 focus:ring-blue-400"/>
-                    <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={e=>{if(e.target.files?.[0])uploadPhoto(order.id,e.target.files[0]);}}/>
-                    <div className="flex gap-2">
-                      <button onClick={()=>fileRef.current?.click()} disabled={uploading}
-                        className="flex items-center gap-1.5 text-xs bg-blue-600 text-white font-medium px-3 py-2 rounded-lg disabled:opacity-50">
-                        {uploading?"Uploading…":<><ImageIcon className="w-3.5 h-3.5"/>Choose File</>}
-                      </button>
-                      <button onClick={()=>setUploadingFor(null)} className="text-xs text-slate-500 px-2">Cancel</button>
-                    </div>
-                  </div>
-                )}
+                {order.status==="in_progress"&&(()=>{
+                  const shots = getShotList(order);
+                  const doneCount = shots.filter(sh=>shotDone(order,sh)).length;
+                  const open = uploadingFor===order.id;
+                  return (
+                    <>
+                      <div className="flex gap-2 flex-wrap items-center">
+                        <button onClick={()=>setUploadingFor(open?null:order.id)}
+                          className="flex items-center gap-1.5 text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium px-3 py-2 rounded-lg">
+                          <Upload className="w-3.5 h-3.5"/>{open?"Hide Upload Form":"Upload Photos"}
+                          {shots.length>0&&<span className={`ml-1 font-bold ${doneCount===shots.length?"text-green-600":"text-blue-700"}`}>{doneCount}/{shots.length}</span>}
+                        </button>
+                        <button onClick={()=>updateStatus(order.id,"completed")} disabled={acting===order.id||(shots.length>0&&doneCount<shots.length)}
+                          title={shots.length>0&&doneCount<shots.length?"Upload all required photos first":""}
+                          className="flex items-center gap-1.5 text-xs bg-green-600 hover:bg-green-700 text-white font-medium px-3 py-2 rounded-lg disabled:opacity-50">
+                          <CheckCircle className="w-3.5 h-3.5"/>{acting===order.id?"…":"Mark Complete"}
+                        </button>
+                        {order.photos.length>0&&<span className="text-[11px] text-slate-400">{order.photos.length} uploaded — pending admin review</span>}
+                      </div>
+                      {open&&(
+                        <div className="mt-3 p-4 bg-blue-50 rounded-xl border border-blue-100">
+                          <p className="text-xs font-bold text-slate-700 mb-3">Required photos for this Work Order:</p>
+                          <div className="grid sm:grid-cols-2 gap-2">
+                            {shots.map((label,idx)=>{
+                              const ph = shotDone(order,label);
+                              const isUploading = uploading===label;
+                              return (
+                                <button key={idx} onClick={()=>!ph&&pickShotFile(order.id,label)} disabled={!!ph||isUploading}
+                                  className={`flex items-center gap-3 p-2.5 rounded-xl border-2 text-left transition-all ${
+                                    ph?"border-green-300 bg-green-50":"border-dashed border-blue-300 bg-white hover:border-blue-500"
+                                  }`}>
+                                  <div className="w-14 h-11 rounded-lg overflow-hidden bg-slate-100 flex items-center justify-center flex-shrink-0">
+                                    {ph?.url?<img src={ph.url} alt={label} className="w-full h-full object-cover"/>
+                                    : isUploading?<div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"/>
+                                    : <ImageIcon className="w-4 h-4 text-slate-300"/>}
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <p className="text-xs font-semibold text-slate-700 leading-snug">{idx+1}. {label}</p>
+                                    <p className={`text-[10px] mt-0.5 ${ph?"text-green-600 font-bold":"text-slate-400"}`}>{ph?"✓ Uploaded":isUploading?"Uploading…":"Tap to add photo"}</p>
+                                  </div>
+                                </button>
+                              );
+                            })}
+                            {/* Extra photo slot */}
+                            <div className="flex items-center gap-2 p-2.5 rounded-xl border-2 border-dashed border-slate-200 bg-white">
+                              <input value={extraDesc} onChange={e=>setExtraDesc(e.target.value)} placeholder="Extra photo — describe it"
+                                className="flex-1 text-xs border border-slate-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-300 min-w-0"/>
+                              <button onClick={()=>{ if(extraDesc.trim()) pickShotFile(order.id, extraDesc.trim()); }} disabled={!extraDesc.trim()}
+                                className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 font-medium px-2.5 py-1.5 rounded-lg disabled:opacity-40 whitespace-nowrap">+ Add</button>
+                            </div>
+                          </div>
+                          <p className="text-[10px] text-slate-400 mt-3">Photos are sent to Snapect for quality review, then released to the vendor.</p>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
             ))}
           </div>
@@ -393,6 +468,101 @@ export default function AgentPage() {
                 </div>
               );
             })}
+          </div>
+
+        ) : tab==="upload" ? (
+          <div className="bg-white rounded-2xl border border-slate-200 p-6">
+            <input ref={formFileRef} type="file" accept="image/*" capture="environment" className="hidden"
+              onChange={e=>{
+                const f = e.target.files?.[0]; const label = pendingFormShot.current;
+                if (f && label) {
+                  const r = new FileReader();
+                  r.onload = ()=>setFormPhotos(prev=>({...prev,[label]:{filename:f.name,url:r.result as string}}));
+                  r.readAsDataURL(f);
+                }
+                pendingFormShot.current = null; e.target.value="";
+              }}/>
+            <h2 className="font-semibold text-slate-900 mb-1 flex items-center gap-2"><Upload className="w-5 h-5 text-blue-600"/>Photo Upload Form</h2>
+            <p className="text-sm text-slate-500 mb-4">Pick the service you performed — the required photo boxes appear below. Your submission goes directly to Snapect for review.</p>
+
+            {formDone ? (
+              <div className="p-4 bg-green-50 border border-green-200 rounded-xl text-green-800 font-medium">
+                ✓ Photos submitted! Snapect will review them and release them to the vendor.
+                <button onClick={()=>{setFormDone(false);setFormServiceId("");setFormOrderId("");setFormPhotos({});}} className="block text-xs text-green-700 underline mt-1">Submit another form</button>
+              </div>
+            ) : (
+              <>
+                {formError&&<div className="mb-3 p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl">{formError}</div>}
+
+                {/* Service picker — all services listed */}
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1.5">1. Select the service</label>
+                <select value={formServiceId} onChange={e=>{setFormServiceId(e.target.value);setFormPhotos({});}}
+                  className="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 mb-4">
+                  <option value="">— Choose a service —</option>
+                  {catalog.map(cat=>(
+                    <optgroup key={cat.id} label={cat.label}>
+                      {cat.services.map(sv=><option key={sv.id} value={sv.id}>{sv.name}</option>)}
+                    </optgroup>
+                  ))}
+                </select>
+
+                {/* Optional order link */}
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1.5">2. Link to one of your jobs (optional)</label>
+                <select value={formOrderId} onChange={e=>setFormOrderId(e.target.value)}
+                  className="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 mb-4">
+                  <option value="">No order — send to Snapect only</option>
+                  {myOrders.filter(o=>o.status==="in_progress").map(o=><option key={o.id} value={o.id}>{o.address}</option>)}
+                </select>
+
+                {/* Shot boxes for the chosen service */}
+                {(()=>{
+                  const svc = catalog.flatMap(c=>c.services).find(sv=>sv.id===formServiceId);
+                  if (!svc) return <p className="text-xs text-slate-400">Select a service to see its photo requirements.</p>;
+                  const shots: string[] = svc.shotList?.length ? svc.shotList
+                    : svc.photoCount ? Array.from({length: svc.photoCount},(_,i)=>`Photo ${i+1}`)
+                    : ["Photo 1","Photo 2","Photo 3"];
+                  const doneCount = shots.filter(sh=>formPhotos[sh]).length;
+                  return (
+                    <>
+                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1.5">3. Upload each required photo <span className={doneCount===shots.length?"text-green-600":"text-blue-600"}>({doneCount}/{shots.length})</span></label>
+                      <div className="grid sm:grid-cols-2 gap-2 mb-5">
+                        {shots.map((label,idx)=>{
+                          const ph = formPhotos[label];
+                          return (
+                            <button key={idx} onClick={()=>{pendingFormShot.current=label;formFileRef.current?.click();}}
+                              className={`flex items-center gap-3 p-2.5 rounded-xl border-2 text-left transition-all ${
+                                ph?"border-green-300 bg-green-50":"border-dashed border-blue-300 bg-white hover:border-blue-500"
+                              }`}>
+                              <div className="w-14 h-11 rounded-lg overflow-hidden bg-slate-100 flex items-center justify-center flex-shrink-0">
+                                {ph?<img src={ph.url} alt={label} className="w-full h-full object-cover"/>:<ImageIcon className="w-4 h-4 text-slate-300"/>}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-xs font-semibold text-slate-700 leading-snug">{idx+1}. {label}</p>
+                                <p className={`text-[10px] mt-0.5 ${ph?"text-green-600 font-bold":"text-slate-400"}`}>{ph?"✓ Ready — tap to replace":"Tap to add photo"}</p>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <button onClick={async()=>{
+                          const entries = Object.entries(formPhotos);
+                          if (!entries.length){setFormError("Upload at least one photo");return;}
+                          setFormSubmitting(true); setFormError("");
+                          const r = await fetch("/api/submissions", { method:"POST", headers:{"Content-Type":"application/json"},
+                            body: JSON.stringify({ serviceName: svc.name, orderId: formOrderId||null,
+                              photos: entries.map(([label,ph])=>({label,filename:ph.filename,url:ph.url})) }) });
+                          setFormSubmitting(false);
+                          if (!r.ok){ const d=await r.json().catch(()=>({})); setFormError(d.error??"Failed to submit"); return; }
+                          setFormDone(true);
+                        }} disabled={formSubmitting}
+                        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-semibold px-5 py-2.5 rounded-xl">
+                        <Upload className="w-4 h-4"/>{formSubmitting?"Submitting…":"Submit to Snapect"}
+                      </button>
+                    </>
+                  );
+                })()}
+              </>
+            )}
           </div>
 
         ) : tab==="coverage" ? (

@@ -9,7 +9,8 @@ import {
   AlertTriangle, History, Camera as CameraIcon, Wallet as WalletIcon,
 } from "lucide-react";
 
-interface Order { id: string; address: string; status: string; clientId: string; assignedAgentId: string | null; totalPrice: number; compensationAmount: number; serviceType: string; turnaroundTier: string; notes: string; createdAt: string; client?: { name: string; email: string } | null; agent?: { name: string; rating?: number } | null; bids?: Bid[]; acceptedBidId?: string | null; }
+interface Order { id: string; address: string; status: string; clientId: string; assignedAgentId: string | null; totalPrice: number; compensationAmount: number; serviceType: string; turnaroundTier: string; notes: string; createdAt: string; client?: { name: string; email: string } | null; agent?: { name: string; rating?: number } | null; bids?: Bid[]; acceptedBidId?: string | null; photos?: { id: string; filename: string; url: string; description: string; approved?: boolean }[]; }
+interface PhotoSub { id: string; agentId: string; agentName?: string; orderId: string | null; serviceName: string; photos: { label: string; filename: string; url: string }[]; status: string; createdAt: string; }
 interface Bid { id: string; agentId: string; agentName: string; agentRating: number | null; amount: number; message: string; placedAt: string; status: string; placedByAdmin?: boolean; }
 interface Agent { id: string; name: string; email: string; phone: string; coverageZone: string; vehicle: string; available: boolean; rating: number; totalEarnings: number; pendingPayout: number; completedJobs: number; grade?: number; approved?: boolean; state?: string; backgroundCheckStatus?: string; smsOptIn?: boolean; }
 interface AUser { id: string; name: string; email: string; role: string; phone: string; company?: string; createdAt?: string; accountActive?: boolean; suspended?: boolean; }
@@ -28,7 +29,7 @@ const TIER_BADGES: Record<string,string> = { standard:"bg-slate-50 text-slate-50
 
 export default function AdminPage() {
   const router = useRouter();
-  const [tab, setTab] = useState<"orders"|"agents"|"users"|"wallet"|"samples"|"payouts"|"payment-links"|"pricing"|"emails"|"disputes"|"audit">("orders");
+  const [tab, setTab] = useState<"orders"|"agents"|"users"|"wallet"|"samples"|"payouts"|"payment-links"|"pricing"|"emails"|"disputes"|"audit"|"photos">("orders");
   const [orders, setOrders] = useState<Order[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
   // Agents grouped by resolved state, states sorted alphabetically, agents sorted by name within each state
@@ -373,11 +374,48 @@ export default function AdminPage() {
     fetchDisputes(disputeFilter);
   }
 
+  // ── Photo Inbox ──
+  const [submissions, setSubmissions] = useState<PhotoSub[]>([]);
+  const [subSendTarget, setSubSendTarget] = useState<Record<string,string>>({});
+  const [photoActing, setPhotoActing] = useState<string|null>(null);
+  const fetchSubmissions = useCallback(async () => {
+    const r = await fetch("/api/submissions");
+    const d = await r.json();
+    setSubmissions(d.submissions ?? []);
+  }, []);
+  useEffect(()=>{ fetchSubmissions(); }, [fetchSubmissions]);
+  useEffect(()=>{ if(tab==="photos") fetchSubmissions(); }, [tab, fetchSubmissions]);
+
+  async function releasePhoto(orderId: string, photoId: string) {
+    setPhotoActing(photoId);
+    await fetch(`/api/orders/${orderId}/photos`, { method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ photoId, approved: true }) });
+    setPhotoActing(null);
+  }
+  async function releaseAllPhotos(orderId: string) {
+    setPhotoActing(orderId);
+    await fetch(`/api/orders/${orderId}/photos`, { method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ approveAll: true }) });
+    setPhotoActing(null);
+  }
+  async function deletePhoto(orderId: string, photoId: string) {
+    if (!confirm("Delete this photo?")) return;
+    setPhotoActing(photoId);
+    await fetch(`/api/orders/${orderId}/photos`, { method:"DELETE", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ photoId }) });
+    setPhotoActing(null);
+  }
+  async function actOnSubmission(id: string, action: "send"|"dismiss", orderId?: string) {
+    setPhotoActing(id);
+    const r = await fetch("/api/submissions", { method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ id, action, orderId }) });
+    if (!r.ok) { const d = await r.json().catch(()=>({})); alert(d.error ?? "Failed"); }
+    setPhotoActing(null);
+    fetchSubmissions();
+  }
+
   const TABS = [
     ["orders","Orders",<ClipboardList key="o" className="w-4 h-4"/>],
     ["agents","Agents",<Users key="a" className="w-4 h-4"/>],
     ["users","Users",<UserPlus key="u" className="w-4 h-4"/>],
     ["wallet","Wallet",<DollarSign key="w" className="w-4 h-4 text-emerald-600"/>],
+    ["photos","Photo Inbox",<CameraIcon key="ph" className="w-4 h-4 text-blue-600"/>],
     ["disputes","Disputes",<AlertTriangle key="disp" className="w-4 h-4 text-red-500"/>],
     ["samples","Samples",<ShieldCheck key="s" className="w-4 h-4"/>],
     ["payouts","Payouts",<CreditCard key="pay" className="w-4 h-4"/>],
@@ -476,6 +514,10 @@ export default function AdminPage() {
               className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${tab===t?"bg-white text-slate-900 shadow-sm":"text-slate-500 hover:text-slate-700"}`}>
               {icon}{label}
               {t==="samples"&&samples.length>0&&<span className="bg-amber-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">{samples.length}</span>}
+              {t==="photos"&&(()=>{
+                const n = orders.reduce((sum,o)=>sum+(o.photos??[]).filter(p=>p.approved===false).length,0) + submissions.filter(su=>su.status==="pending").length;
+                return n>0?<span className="bg-blue-600 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">{n}</span>:null;
+              })()}
             </button>
           ))}
         </div>
@@ -646,6 +688,108 @@ export default function AdminPage() {
                   {orders.length===0&&<tr><td colSpan={7} className="text-center py-12 text-slate-400 text-sm">No orders yet</td></tr>}
                 </tbody>
               </table>
+            </div>
+          </div>
+
+        ) : tab==="photos" ? (
+          <div className="space-y-6">
+            {/* ── Pending order photos (from agent job uploads) ── */}
+            <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+              <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                <div>
+                  <h2 className="font-semibold text-slate-900">Order Photos — Pending Review</h2>
+                  <p className="text-xs text-slate-400 mt-0.5">Agents uploaded these on their jobs. Vendors can&apos;t see them until you release them.</p>
+                </div>
+              </div>
+              {(()=>{
+                const pendingOrders = orders.filter(o=>(o.photos??[]).some(p=>p.approved===false));
+                if (pendingOrders.length===0) return <div className="text-center py-10 text-slate-400 text-sm">No photos waiting for review</div>;
+                return pendingOrders.map(o=>{
+                  const pend = (o.photos??[]).filter(p=>p.approved===false);
+                  return (
+                    <div key={o.id} className="px-6 py-4 border-b border-slate-100 last:border-0">
+                      <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
+                        <div>
+                          <p className="text-sm font-bold text-slate-800">{o.address}</p>
+                          <p className="text-xs text-slate-400">{o.serviceType} · Vendor: {o.client?.name??o.clientId} · Agent: {o.agent?.name??"—"} · {pend.length} pending photo{pend.length!==1?"s":""}</p>
+                        </div>
+                        <button onClick={()=>releaseAllPhotos(o.id)} disabled={photoActing===o.id}
+                          className="text-xs bg-green-600 hover:bg-green-700 text-white font-bold px-3 py-2 rounded-lg disabled:opacity-50 whitespace-nowrap">
+                          {photoActing===o.id?"…":"✓ Release all to vendor"}
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                        {pend.map(ph=>(
+                          <div key={ph.id} className="border border-slate-200 rounded-xl overflow-hidden bg-slate-50">
+                            <a href={ph.url} target="_blank" rel="noopener noreferrer" className="block aspect-video bg-slate-100" title="Open / save full size">
+                              {ph.url?<img src={ph.url} alt={ph.description} className="w-full h-full object-cover"/>:<div className="w-full h-full flex items-center justify-center"><CameraIcon className="w-5 h-5 text-slate-300"/></div>}
+                            </a>
+                            <div className="p-1.5">
+                              <p className="text-[10px] text-slate-500 truncate" title={ph.description}>{ph.description||ph.filename}</p>
+                              <div className="flex gap-1 mt-1">
+                                <button onClick={()=>releasePhoto(o.id,ph.id)} disabled={photoActing===ph.id}
+                                  className="flex-1 text-[10px] bg-green-50 hover:bg-green-100 text-green-700 font-bold px-1 py-1 rounded disabled:opacity-50">✓ Send</button>
+                                <button onClick={()=>deletePhoto(o.id,ph.id)} disabled={photoActing===ph.id}
+                                  className="text-[10px] bg-red-50 hover:bg-red-100 text-red-600 font-bold px-1.5 py-1 rounded disabled:opacity-50">✕</button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+
+            {/* ── Photo submissions (agent open form) ── */}
+            <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+              <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                <div>
+                  <h2 className="font-semibold text-slate-900">Photo Submissions (Upload Form)</h2>
+                  <p className="text-xs text-slate-400 mt-0.5">Sent directly by agents from their Upload Form. Review the images, then send them to a vendor&apos;s order or dismiss.</p>
+                </div>
+                <button onClick={fetchSubmissions} className="text-xs text-slate-500 hover:text-slate-700 flex items-center gap-1"><RefreshCw className="w-3.5 h-3.5"/>Refresh</button>
+              </div>
+              {submissions.filter(su=>su.status==="pending").length===0 ? (
+                <div className="text-center py-10 text-slate-400 text-sm">No pending submissions</div>
+              ) : submissions.filter(su=>su.status==="pending").map(su=>(
+                <div key={su.id} className="px-6 py-4 border-b border-slate-100 last:border-0">
+                  <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
+                    <div>
+                      <p className="text-sm font-bold text-slate-800">{su.serviceName||"Photo submission"} <span className="text-xs font-normal text-slate-400">· {su.photos.length} photos</span></p>
+                      <p className="text-xs text-slate-400">Agent: {su.agentName??su.agentId} · {new Date(su.createdAt).toLocaleString()} {su.orderId?`· Linked order: ${su.orderId}`:"· No order linked"}</p>
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {!su.orderId&&(
+                        <select value={subSendTarget[su.id]??""} onChange={e=>setSubSendTarget(prev=>({...prev,[su.id]:e.target.value}))}
+                          className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white max-w-[220px]">
+                          <option value="">Choose order to send to…</option>
+                          {orders.filter(o=>o.assignedAgentId===su.agentId).map(o=><option key={o.id} value={o.id}>{o.address}</option>)}
+                        </select>
+                      )}
+                      <button onClick={()=>actOnSubmission(su.id,"send", su.orderId??subSendTarget[su.id])}
+                        disabled={photoActing===su.id||(!su.orderId&&!subSendTarget[su.id])}
+                        className="text-xs bg-green-600 hover:bg-green-700 text-white font-bold px-3 py-2 rounded-lg disabled:opacity-50 whitespace-nowrap">
+                        {photoActing===su.id?"…":"✓ Send to vendor"}
+                      </button>
+                      <button onClick={()=>actOnSubmission(su.id,"dismiss")} disabled={photoActing===su.id}
+                        className="text-xs bg-red-50 hover:bg-red-100 text-red-600 font-bold px-3 py-2 rounded-lg disabled:opacity-50">Dismiss</button>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                    {su.photos.map((ph,i)=>(
+                      <a key={i} href={ph.url} target="_blank" rel="noopener noreferrer"
+                        className="border border-slate-200 rounded-xl overflow-hidden bg-slate-50 group" title={`${ph.label} — open / save full size`}>
+                        <div className="aspect-video bg-slate-100">
+                          {ph.url?<img src={ph.url} alt={ph.label} className="w-full h-full object-cover group-hover:opacity-90"/>:<div className="w-full h-full flex items-center justify-center"><CameraIcon className="w-5 h-5 text-slate-300"/></div>}
+                        </div>
+                        <p className="text-[10px] text-slate-500 truncate px-1.5 py-1">{ph.label||ph.filename}</p>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
 

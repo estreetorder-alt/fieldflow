@@ -39,6 +39,7 @@ export async function GET(request: NextRequest) {
               ...o,
               agent: o.agent ? { name: anonUserId(o.assignedAgentId) } : null,
               bids: (o.bids ?? []).map(b => ({ ...b, agentName: anonUserId(b.agentId) })),
+              photos: (o.photos ?? []).filter(p => p.approved !== false),
             }));
           }
           else orders = await getOrdersByAgentId(userId!);

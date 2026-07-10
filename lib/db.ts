@@ -28,6 +28,7 @@ export interface Bid {
 export interface Photo {
   id: string; orderId: string; filename: string; url: string;
   description: string; uploadedAt: string; selectedByClient: boolean;
+  approved: boolean;
 }
 
 export interface StatusEvent { status: string; timestamp: string; note: string; }
@@ -44,6 +45,7 @@ export interface Order {
   statusHistory: StatusEvent[];
   offerSentAt: string | null; offerAcceptedAt: string | null;
   bulkBatchId: string | null; invoicePaid: boolean;
+  serviceId?: string | null; customShotList?: string | null;
   bids: Bid[];
   client?: { name: string; email: string } | null;
   agent?: { name: string; rating?: number } | null;
@@ -115,6 +117,8 @@ function mapOrder(
     offerAcceptedAt: row.offer_accepted_at as string | null,
     bulkBatchId: row.bulk_batch_id as string | null,
     invoicePaid: row.invoice_paid as boolean,
+    serviceId: (row.service_id as string) ?? null,
+    customShotList: (row.custom_shot_list as string) ?? null,
     bids,
     photos,
     statusHistory: history,
@@ -147,6 +151,7 @@ function mapPhoto(row: Record<string, unknown>): Photo {
     description: row.description as string,
     uploadedAt: row.uploaded_at as string,
     selectedByClient: row.selected_by_client as boolean,
+    approved: row.approved === false ? false : true, // legacy rows (null) count as approved
   };
 }
 
@@ -404,7 +409,7 @@ export async function rejectOtherBids(orderId: string, acceptedBidId: string): P
 // ── Photos ────────────────────────────────────────────────────
 
 export async function addPhoto(photo: {
-  orderId: string; filename: string; url: string; description: string;
+  orderId: string; filename: string; url: string; description: string; approved?: boolean;
 }): Promise<Photo> {
   const id = `ph-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`;
   const { data, error } = await supabase.from("photos").insert({
@@ -414,6 +419,7 @@ export async function addPhoto(photo: {
     url: photo.url,
     description: photo.description,
     selected_by_client: false,
+    approved: photo.approved ?? true,
   }).select().single();
   if (error) throw new Error(error.message);
   return mapPhoto(data as Record<string, unknown>);
@@ -1053,4 +1059,65 @@ export async function logAdminAction(entry: { actorId: string; actorName: string
 export async function getAuditLog(limit = 200): Promise<Record<string, unknown>[]> {
   const { data } = await supabase.from("audit_log").select("*").order("created_at", { ascending: false }).limit(limit);
   return (data ?? []) as Record<string, unknown>[];
+}
+
+// ── Photo Submissions (agent open form → admin inbox) ────────
+export interface PhotoSubmission {
+  id: string; agentId: string; agentName?: string;
+  orderId: string | null; serviceName: string;
+  photos: { label: string; filename: string; url: string }[];
+  status: "pending" | "sent" | "dismissed";
+  createdAt: string;
+}
+
+function mapSubmission(row: Record<string, unknown>): PhotoSubmission {
+  let photos: PhotoSubmission["photos"] = [];
+  try { photos = typeof row.photos === "string" ? JSON.parse(row.photos as string) : (row.photos as PhotoSubmission["photos"]) ?? []; } catch { photos = []; }
+  return {
+    id: row.id as string,
+    agentId: row.agent_id as string,
+    orderId: (row.order_id as string) ?? null,
+    serviceName: (row.service_name as string) ?? "",
+    photos,
+    status: (row.status as PhotoSubmission["status"]) ?? "pending",
+    createdAt: row.created_at as string,
+  };
+}
+
+export async function createPhotoSubmission(sub: {
+  agentId: string; orderId?: string | null; serviceName: string;
+  photos: { label: string; filename: string; url: string }[];
+}): Promise<PhotoSubmission> {
+  const id = `ps-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`;
+  const { data, error } = await supabase.from("photo_submissions").insert({
+    id, agent_id: sub.agentId, order_id: sub.orderId ?? null,
+    service_name: sub.serviceName, photos: JSON.stringify(sub.photos), status: "pending",
+  }).select().single();
+  if (error) throw new Error(error.message);
+  return mapSubmission(data as Record<string, unknown>);
+}
+
+export async function getPhotoSubmissions(agentId?: string): Promise<PhotoSubmission[]> {
+  let q = supabase.from("photo_submissions").select("*").order("created_at", { ascending: false });
+  if (agentId) q = q.eq("agent_id", agentId);
+  const { data } = await q;
+  const subs = ((data ?? []) as Record<string, unknown>[]).map(mapSubmission);
+  // attach agent names
+  const ids = [...new Set(subs.map(s => s.agentId))];
+  if (ids.length) {
+    const { data: users } = await supabase.from("users").select("id, name").in("id", ids);
+    const names: Record<string,string> = {};
+    for (const u of (users ?? []) as Record<string, unknown>[]) names[u.id as string] = u.name as string;
+    subs.forEach(s => { s.agentName = names[s.agentId]; });
+  }
+  return subs;
+}
+
+export async function getPhotoSubmissionById(id: string): Promise<PhotoSubmission | null> {
+  const { data } = await supabase.from("photo_submissions").select("*").eq("id", id).single();
+  return data ? mapSubmission(data as Record<string, unknown>) : null;
+}
+
+export async function updatePhotoSubmissionStatus(id: string, status: "sent" | "dismissed"): Promise<void> {
+  await supabase.from("photo_submissions").update({ status, reviewed_at: new Date().toISOString() }).eq("id", id);
 }
