@@ -118,15 +118,13 @@ export async function PATCH(request: NextRequest, { params }: Params) {
         });
       }
       if (order.assignedAgentId) {
-        const agent = await getUserById(order.assignedAgentId);
-        if (agent) {
-          const { updateUser } = await import("@/lib/db");
-          await updateUser(order.assignedAgentId, {
-            completedJobs: (agent.completedJobs ?? 0) + 1,
-            totalEarnings: (agent.totalEarnings ?? 0) + order.compensationAmount,
-            pendingPayout: (agent.pendingPayout ?? 0) + order.compensationAmount,
-          });
-        }
+        // Release the held wallet funds to the agent — releaseWalletHold is
+        // guarded by wallet_released, so repeated status flips can't double-pay.
+        const { releaseWalletHold, getUserById: getU, updateUser } = await import("@/lib/db");
+        await releaseWalletHold(order.id, order.assignedAgentId);
+        // completedJobs counter (earnings are handled inside releaseWalletHold)
+        const agent = await getU(order.assignedAgentId);
+        if (agent) await updateUser(order.assignedAgentId, { completedJobs: (agent.completedJobs ?? 0) + 1 });
         const { updateAgentGrade } = await import("@/lib/db");
         await updateAgentGrade(order.assignedAgentId);
       }

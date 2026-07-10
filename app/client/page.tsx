@@ -227,7 +227,15 @@ function ClientPageInner() {
     } finally { setValidatingAddress(false); }
   }
 
-  async function respondToBid(orderId: string, bidId: string, action: "accept"|"reject") {
+  async function respondToBid(orderId: string, bidId: string, action: "accept"|"reject", amount?: number) {
+    if (action === "accept" && typeof amount === "number") {
+      const bal = walletBalance ?? 0;
+      if (bal < amount) {
+        if (confirm(`This offer is $${amount.toFixed(2)} but your wallet balance is $${bal.toFixed(2)}.\n\nGo to your wallet to add funds now?`)) router.push("/client/wallet");
+        return;
+      }
+      if (!confirm(`Accept this offer for $${amount.toFixed(2)}?\n\nYour wallet balance: $${bal.toFixed(2)}\nAfter acceptance: $${(bal - amount).toFixed(2)}\n\nThe amount is deducted immediately and the order is assigned to this agent.`)) return;
+    }
     setActingBid(bidId);
     const r = await fetch(`/api/orders/${orderId}/bids`, { method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify({bidId,action}) });
     if (!r.ok) {
@@ -238,6 +246,9 @@ function ClientPageInner() {
         return;
       }
       alert(d.message ?? d.error ?? "Failed to update bid");
+    }
+    if (action === "accept" && r.ok) {
+      fetch("/api/wallet").then(res=>res.json()).then(d=>{ if(typeof d.balance==="number") setWalletBalance(d.balance); }).catch(()=>{});
     }
     await fetchBids(orderId); setActingBid(null);
   }
@@ -738,6 +749,9 @@ function ClientPageInner() {
                                     </button>
                                     {showBids&&(
                                       <div className="mt-3 space-y-2">
+                                        {walletBalance!==null&&(
+                                          <p className="text-[11px] font-semibold text-slate-500">Your wallet balance: <span className={walletBalance>0?"text-green-700":"text-red-600"}>${walletBalance.toFixed(2)}</span> — accepting an offer deducts it instantly</p>
+                                        )}
                                         {orderBids.length===0 ? <p className="text-xs text-slate-400">No bids yet.</p>
                                         : orderBids.map(bid=>(
                                           <div key={bid.id} className={`flex items-center justify-between gap-3 p-3 rounded-xl border ${bid.status==="accepted"?"bg-green-50 border-green-200":bid.status==="rejected"?"bg-red-50 border-red-200 opacity-60":"bg-white border-slate-200"}`}>
@@ -753,7 +767,7 @@ function ClientPageInner() {
                                               <span className="font-bold text-green-700">${bid.amount}</span>
                                               {bid.status==="pending"&&(
                                                 <>
-                                                  <button onClick={()=>respondToBid(order.id,bid.id,"accept")} disabled={actingBid===bid.id}
+                                                  <button onClick={()=>respondToBid(order.id,bid.id,"accept",bid.amount)} disabled={actingBid===bid.id}
                                                     className="text-xs bg-green-600 hover:bg-green-700 text-white font-semibold px-2.5 py-1.5 rounded-lg disabled:opacity-50">{actingBid===bid.id?"…":"Accept"}</button>
                                                   <button onClick={()=>respondToBid(order.id,bid.id,"reject")} disabled={actingBid===bid.id}
                                                     className="text-xs bg-red-50 hover:bg-red-100 text-red-600 font-semibold px-2.5 py-1.5 rounded-lg disabled:opacity-50">Reject</button>
