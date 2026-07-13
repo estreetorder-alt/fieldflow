@@ -138,7 +138,7 @@ function LoginForm() {
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"/>
                 <input type={showPassword ? "text" : "password"} value={password} onChange={e=>setPassword(e.target.value)} required
-                  placeholder="••••••••" autoComplete="current-password"
+                  placeholder="ΓÇóΓÇóΓÇóΓÇóΓÇóΓÇóΓÇóΓÇó" autoComplete="current-password"
                   className="w-full pl-9 pr-10 border border-slate-300 rounded-xl py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#c8991a] focus:border-transparent"/>
                 <button type="button" onClick={()=>setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
