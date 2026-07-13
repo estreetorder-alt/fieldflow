@@ -138,7 +138,7 @@ function LoginForm() {
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"/>
                 <input type={showPassword ? "text" : "password"} value={password} onChange={e=>setPassword(e.target.value)} required
-                  placeholder="ΓÇóΓÇóΓÇóΓÇóΓÇóΓÇóΓÇóΓÇó" autoComplete="current-password"
+                  placeholder="••••••••" autoComplete="current-password"
                   className="w-full pl-9 pr-10 border border-slate-300 rounded-xl py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#c8991a] focus:border-transparent"/>
                 <button type="button" onClick={()=>setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
@@ -185,7 +185,7 @@ function LoginForm() {
             <p className="text-sm text-slate-400">
               New here?{" "}
               <Link href="/register/client" className="text-[#c8991a] font-semibold hover:underline">Sign up as a client</Link>
-              {" ┬╖ "}
+              {" · "}
               <Link href="/register/agent" className="text-[#c8991a] font-semibold hover:underline">Become a field agent</Link>
             </p>
           </div>
@@ -193,9 +193,9 @@ function LoginForm() {
       </div>
       <footer className="py-5 text-center text-xs text-slate-600 border-t border-[#1a1a2e]">
         <Link href="/privacy" className="hover:text-slate-400">Privacy Policy</Link>
-        {" ┬╖ "}
+        {" · "}
         <Link href="/terms" className="hover:text-slate-400">Terms of Service</Link>
-        {" ┬╖ "}
+        {" · "}
         &copy; {new Date().getFullYear()} Snapect
       </footer>
     </div>
