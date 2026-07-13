@@ -105,7 +105,7 @@ export default function CoveragePage() {
             <h2 className="text-2xl font-bold mb-4">Become the First Agent in Your Area</h2>
             <p className="text-slate-600 mb-6 leading-relaxed">If we don't have coverage in your ZIP, you could be the first Snapect agent there. Early agents in new areas get priority on all orders.</p>
             <ul className="space-y-2 mb-6">
-              {["Earn $40–$300+ per job","First-in-area priority routing","Flexible hours — work when you want","Paid every Friday via PayPal"].map(b=>(
+              {["Earn as much as you can","First-in-area priority routing","Flexible hours — work when you want","Paid every Friday via PayPal"].map(b=>(
                 <li key={b} className="flex items-center gap-2 text-sm text-slate-600"><CheckCircle className="w-4 h-4 text-[#c8991a]"/>{b}</li>
               ))}
             </ul>

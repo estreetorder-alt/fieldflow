@@ -840,8 +840,15 @@ export async function holdWalletFunds(userId: string, orderId: string, amount: n
   await supabase.from("wallet_transactions").insert({
     user_id: userId, type: "hold", amount, balance_after: newBalance,
     description: `Hold for order ${orderId}`, order_id: orderId, status: "confirmed",
+    purpose: "order_hold",
   });
   await supabase.from("orders").update({ wallet_hold_amount: amount }).eq("id", orderId);
+
+  // Fire-and-forget: if balance is now low, auto top-up may charge saved card
+  void import("@/lib/autoTopup")
+    .then(({ maybeRunAutoTopup }) => maybeRunAutoTopup(userId))
+    .catch((err) => console.error("[auto-topup] after hold", err));
+
   return true;
 }
 

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useState, Suspense, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, EyeOff, ArrowLeft, Lock, Mail } from "lucide-react";
@@ -71,7 +71,7 @@ function LoginForm() {
     try {
       const res = await fetch("/api/auth/login", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, recaptchaToken }),
+        body: JSON.stringify({ email: email.trim(), password, recaptchaToken }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -87,7 +87,8 @@ function LoginForm() {
         refreshCaptcha(); return;
       }
       const dashboards: Record<string, string> = { admin: "/admin", agent: "/agent", client: "/client" };
-      router.push(redirect || dashboards[data.user.role] || "/");
+      const dest = redirect || dashboards[data.user.role] || "/";
+      window.location.assign(dest);
     } catch { setError("Network error. Please try again."); }
     finally { setLoading(false); }
   }
@@ -146,7 +147,7 @@ function LoginForm() {
               </div>
             </div>
 
-            {/* Google reCAPTCHA v2 checkbox — hidden entirely if no site key is configured */}
+            {/* Google reCAPTCHA v2 checkbox ΓÇö hidden entirely if no site key is configured */}
             {RECAPTCHA_SITE_KEY && (
               <div className="flex justify-center">
                 <div ref={recaptchaRef}/>
@@ -155,13 +156,13 @@ function LoginForm() {
 
             <button type="submit" disabled={loading}
               className="w-full bg-[#c8991a] hover:bg-[#f0b429] disabled:opacity-60 text-[#0f1f3d] font-bold py-3 rounded-xl transition-colors text-sm">
-              {loading ? "Signing in…" : "Sign In"}
+              {loading ? "Signing inΓÇª" : "Sign In"}
             </button>
           </form>
 
           {pendingActivation && (
             <div className="mt-4 bg-amber-50 border border-amber-300 rounded-xl p-5">
-              <p className="font-bold text-amber-900 text-sm mb-2">⏳ Account Pending Activation</p>
+              <p className="font-bold text-amber-900 text-sm mb-2">ΓÅ│ Account Pending Activation</p>
               <p className="text-amber-800 text-xs mb-4 leading-relaxed">Your account has been created but is not yet active. Complete your payment to access your dashboard.</p>
               {paymentLinks.length > 0 ? (
                 <div className="space-y-2">
@@ -169,7 +170,7 @@ function LoginForm() {
                     <a key={link.id} href={link.url} target="_blank" rel="noopener noreferrer"
                       className="flex items-center justify-between gap-2 p-3 border-2 border-[#c8991a] rounded-xl hover:bg-[#c8991a]/5 transition-colors text-sm">
                       <span className="font-bold text-[#0f1f3d]">{link.label}</span>
-                      <span className="text-xs bg-[#c8991a] text-white font-bold px-2.5 py-1 rounded-lg">Pay Now →</span>
+                      <span className="text-xs bg-[#c8991a] text-white font-bold px-2.5 py-1 rounded-lg">Pay Now ΓåÆ</span>
                     </a>
                   ))}
                 </div>
@@ -184,7 +185,7 @@ function LoginForm() {
             <p className="text-sm text-slate-400">
               New here?{" "}
               <Link href="/register/client" className="text-[#c8991a] font-semibold hover:underline">Sign up as a client</Link>
-              {" · "}
+              {" ┬╖ "}
               <Link href="/register/agent" className="text-[#c8991a] font-semibold hover:underline">Become a field agent</Link>
             </p>
           </div>
@@ -192,9 +193,9 @@ function LoginForm() {
       </div>
       <footer className="py-5 text-center text-xs text-slate-600 border-t border-[#1a1a2e]">
         <Link href="/privacy" className="hover:text-slate-400">Privacy Policy</Link>
-        {" · "}
+        {" ┬╖ "}
         <Link href="/terms" className="hover:text-slate-400">Terms of Service</Link>
-        {" · "}
+        {" ┬╖ "}
         &copy; {new Date().getFullYear()} Snapect
       </footer>
     </div>

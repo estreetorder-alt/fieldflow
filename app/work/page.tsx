@@ -5,7 +5,7 @@ import PublicFooter from "../components/PublicFooter";
 import { CheckCircle, DollarSign, Clock, MapPin, Star, Camera, ChevronRight, Send, Users, Smartphone, Award, AlertTriangle, Search } from "lucide-react";
 
 const PERKS = [
-  { icon:<DollarSign className="w-6 h-6"/>, title:"$40–$300+ Per Job", desc:"Earn based on service complexity. Vehicle inspections from $45, full property assessments up to $300+. Paid every Friday via PayPal." },
+  { icon:<DollarSign className="w-6 h-6"/>, title:"Earn As Much As You Can", desc:"Earn based on service complexity. Vehicle inspections from $45, full property assessments up to $300+. Paid every Friday via PayPal." },
   { icon:<Clock className="w-6 h-6"/>, title:"Flexible Schedule", desc:"You set your availability. Accept jobs that fit your calendar. No minimums, no quotas — work when you want." },
   { icon:<MapPin className="w-6 h-6"/>, title:"Only Local Jobs", desc:"You set your ZIP codes. Only orders in your coverage area appear in your feed. No long drives or multi-state routing." },
   { icon:<Smartphone className="w-6 h-6"/>, title:"Just Your Smartphone", desc:"No special equipment needed. Accept, document, and complete jobs entirely through the Snapect agent portal." },
@@ -71,7 +71,7 @@ export default function WorkPage() {
           </div>
           <h1 className="text-4xl sm:text-5xl font-extrabold mb-5 leading-tight">Join Our Field Agent Network</h1>
           <p className="text-xl text-slate-600 max-w-2xl mx-auto leading-relaxed mb-8">
-            Earn $40–$300+ per job conducting property and vehicle inspections in your area. No real estate license required. Get paid every Friday via PayPal.
+            Earn as much as you can conducting property and vehicle inspections in your area. No real estate license required. Get paid every Friday via PayPal.
           </p>
           <a href="#apply" className="inline-flex items-center gap-2 bg-[#c8991a] hover:bg-[#f0b429] text-[#0f1f3d] font-bold px-8 py-4 rounded-xl text-lg transition-colors shadow-lg">
             Apply Now — 3 Minutes <ChevronRight className="w-5 h-5"/>
@@ -82,7 +82,7 @@ export default function WorkPage() {
       {/* Stats */}
       <section className="bg-[#c8991a] py-4 px-4">
         <div className="max-w-4xl mx-auto grid grid-cols-2 sm:grid-cols-4 gap-6 text-center text-[#0f1f3d]">
-          {[["$40–$300+","Per Job"],["Every Friday","Payout Day"],["150+","Active Agents"],["2,400+","Jobs Completed"]].map(([v,l])=>(
+          {[["Earn As Much","As You Can"],["Every Friday","Payout Day"],["150+","Active Agents"],["2,400+","Jobs Completed"]].map(([v,l])=>(
             <div key={l}><div className="text-2xl font-extrabold">{v}</div><div className="text-xs font-medium opacity-75">{l}</div></div>
           ))}
         </div>

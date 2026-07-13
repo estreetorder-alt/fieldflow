@@ -255,7 +255,7 @@ export default function HomePage() {
         <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8">
           <div>
             <p className="text-[#c8991a] font-bold text-sm uppercase tracking-widest mb-2">Field Agent Opportunities</p>
-            <h2 id="agent-cta-heading" className="text-2xl font-extrabold text-[#0f1f3d] mb-2">Earn $40–$300+ Per Job. Work Your Schedule.</h2>
+            <h2 id="agent-cta-heading" className="text-2xl font-extrabold text-[#0f1f3d] mb-2">Earn As Much As You Can. Work Your Schedule.</h2>
             <p className="text-slate-500 text-sm max-w-lg">Paid every Friday via PayPal. Only local jobs. No equipment needed — just your smartphone. 3-minute application.</p>
             <ul className="mt-4 space-y-1.5">
               {["No photography license required","Set your own ZIP code coverage","Respond to orders 9 AM–6 PM local time","Weekly PayPal payout — we cover the fees"].map(p=>(

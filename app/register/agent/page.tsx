@@ -99,7 +99,7 @@ export default function AgentRegisterPage() {
               <h1 className="text-2xl font-extrabold mb-5 leading-tight">Become a Field Agent</h1>
               <ul className="space-y-4">
                 {[
-                  { icon:<DollarSign className="w-4 h-4"/>, text:"$40–$300+ per job, paid every Friday via PayPal" },
+                  { icon:<DollarSign className="w-4 h-4"/>, text:"Earn as much as you can, paid every Friday via PayPal" },
                   { icon:<MapPin className="w-4 h-4"/>, text:"Only local jobs — set your own ZIP codes" },
                   { icon:<Camera className="w-4 h-4"/>, text:"Just your smartphone — no equipment needed" },
                   { icon:<CheckCircle className="w-4 h-4"/>, text:"No real estate license required" },
