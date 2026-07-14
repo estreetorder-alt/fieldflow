@@ -2,6 +2,23 @@ import PublicNav from "../components/PublicNav";
 import PublicFooter from "../components/PublicFooter";
 import Link from "next/link";
 import { CheckCircle, Clock, ChevronRight, Star } from "lucide-react";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "BPO & REO Inspection Services — 45+ Options",
+  description: "Browse Snapect's full catalog of BPO and REO field inspection services: exterior photo sets, interior condition reports, occupancy checks, vehicle inspections, and property documentation. Fixed pricing, fast turnaround.",
+  keywords: [
+    "BPO inspection services", "REO photo services", "exterior photo set pricing",
+    "occupancy verification service", "vehicle condition inspection", "property condition report service",
+    "interior BPO inspection", "field inspection pricing", "REO property services"
+  ],
+  alternates: { canonical: "/services" },
+  openGraph: {
+    title: "BPO & REO Inspection Services — 45+ Options | Snapect",
+    description: "Full catalog of field inspection services: photo sets, condition reports, occupancy checks, vehicle inspections. Fixed pricing, fast dispatch.",
+    url: "/services",
+  },
+};
 
 const CATALOG = [
   {
