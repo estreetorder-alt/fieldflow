@@ -15,7 +15,7 @@ interface Order { id: string; address: string; status: string; clientId: string;
 interface PhotoSub { id: string; agentId: string; agentName?: string; orderId: string | null; serviceName: string; photos: { label: string; filename: string; url: string }[]; status: string; createdAt: string; }
 interface Bid { id: string; agentId: string; agentName: string; agentRating: number | null; amount: number; message: string; placedAt: string; status: string; placedByAdmin?: boolean; }
 interface Agent { id: string; name: string; email: string; phone: string; coverageZone: string; vehicle: string; available: boolean; rating: number; totalEarnings: number; pendingPayout: number; completedJobs: number; grade?: number; approved?: boolean; state?: string; backgroundCheckStatus?: string; smsOptIn?: boolean; }
-interface AUser { id: string; name: string; email: string; role: string; phone: string; company?: string; createdAt?: string; accountActive?: boolean; suspended?: boolean; }
+interface AUser { id: string; name: string; email: string; role: string; phone: string; company?: string; createdAt?: string; accountActive?: boolean; suspended?: boolean; walletBalance?: number; }
 interface AdminDispute { id: string; orderId: string; clientId: string; clientName?: string; clientEmail?: string; orderAddress?: string; reason: string; description: string; status: string; resolution?: string | null; resolutionAmount?: number; resolutionNotes?: string; createdAt: string; }
 interface AuditEntry { id: number; actor_name: string; action: string; target_type: string; target_id: string; details: Record<string, unknown>; created_at: string; }
 interface PricingConfig { id: string; serviceType: string; name: string; basePrice: number; compensation: number; urgencyMultiplier: number; active: boolean; category: string; description: string; photoCount?: number; isCustom?: boolean; requiresInterior?: boolean; }
@@ -47,6 +47,12 @@ export default function AdminPage() {
   const [payouts, setPayouts] = useState<Payout[]>([]);
   const [pendingTopups, setPendingTopups] = useState<{id:string;userId:string;amount:number;description:string;createdAt:string;userName?:string;userEmail?:string}[]>([]);
   const [confirmingTopup, setConfirmingTopup] = useState<string|null>(null);
+  const [manualEntryUser, setManualEntryUser] = useState<AUser|null>(null);
+  const [manualEntryAmount, setManualEntryAmount] = useState("");
+  const [manualEntryDirection, setManualEntryDirection] = useState<"credit"|"debit">("credit");
+  const [manualEntryNote, setManualEntryNote] = useState("");
+  const [manualEntryBusy, setManualEntryBusy] = useState(false);
+  const [manualEntryError, setManualEntryError] = useState("");
   const [walletPlans, setWalletPlans] = useState<{id:string;name:string;amountUsd:number;credits:number;description:string;active:boolean;sortOrder:number}[]>([]);
   const [newPlan, setNewPlan] = useState({ name: "", amount: "", description: "", sortOrder: "0" });
   const [editingPlan, setEditingPlan] = useState<{id:string;name:string;amount:string;description:string;sortOrder:string}|null>(null);
@@ -627,6 +633,34 @@ export default function AdminPage() {
     setPlanBusy(null);
     setPlanSuccess("Plan deactivated");
     fetchWalletPlans();
+  }
+
+  // Manual wallet entry — admin backup tool for crediting/debiting a vendor
+  // directly when the normal pd.cash payment flow isn't available.
+  async function submitManualEntry() {
+    if (!manualEntryUser) return;
+    const amountNum = Number(manualEntryAmount);
+    if (!amountNum || amountNum <= 0) { setManualEntryError("Enter a valid amount"); return; }
+    setManualEntryBusy(true);
+    setManualEntryError("");
+    const r = await fetch("/api/wallet/manual-entry", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        userId: manualEntryUser.id,
+        amount: amountNum,
+        direction: manualEntryDirection,
+        note: manualEntryNote,
+      }),
+    });
+    const d = await r.json();
+    setManualEntryBusy(false);
+    if (!r.ok) { setManualEntryError(d.error ?? "Failed to save entry"); return; }
+    setAllUsers(prev => prev.map(u => u.id === manualEntryUser.id ? { ...u, walletBalance: d.newBalance } : u));
+    setManualEntryUser(null);
+    setManualEntryAmount("");
+    setManualEntryNote("");
+    setManualEntryDirection("credit");
   }
 
   const TABS = [
@@ -1661,7 +1695,9 @@ export default function AdminPage() {
             <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
               <div className="px-6 py-4 border-b border-slate-100">
                 <h2 className="font-bold text-slate-900">Vendor Wallet Balances</h2>
-                <p className="text-xs text-slate-400 mt-0.5">All active vendors and their current wallet balance</p>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  All active vendors and their current wallet balance. Use &quot;Manual entry&quot; as a backup to credit or debit a wallet by hand if a payment isn&apos;t confirmed automatically.
+                </p>
               </div>
               <div className="divide-y divide-slate-100">
                 {allUsers.filter(u => u.role === "client" && u.accountActive).map(u => (
@@ -1670,9 +1706,17 @@ export default function AdminPage() {
                       <p className="font-medium text-slate-800">{u.name}</p>
                       <p className="text-xs text-slate-500">{u.email}</p>
                     </div>
-                    <div className="text-right">
-                      <p className="text-lg font-bold text-emerald-600">$0.00</p>
-                      <p className="text-xs text-slate-400">wallet balance</p>
+                    <div className="flex items-center gap-4">
+                      <div className="text-right">
+                        <p className="text-lg font-bold text-emerald-600">${Number(u.walletBalance ?? 0).toFixed(2)}</p>
+                        <p className="text-xs text-slate-400">wallet balance</p>
+                      </div>
+                      <button
+                        onClick={() => { setManualEntryUser(u); setManualEntryError(""); }}
+                        className="text-xs font-bold text-[#0f1f3d] border border-slate-300 hover:border-[#c8991a] hover:text-[#c8991a] rounded-lg px-3 py-2 whitespace-nowrap"
+                      >
+                        Manual entry
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -1681,6 +1725,78 @@ export default function AdminPage() {
                 )}
               </div>
             </div>
+
+            {/* Manual wallet entry modal */}
+            {manualEntryUser && (
+              <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => !manualEntryBusy && setManualEntryUser(null)}>
+                <div className="bg-white rounded-2xl w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
+                  <h3 className="font-bold text-slate-900 flex items-center gap-2">
+                    <WalletIcon className="w-5 h-5 text-[#c8991a]" />
+                    Manual wallet entry
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-1">
+                    {manualEntryUser.name} · {manualEntryUser.email}
+                  </p>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Current balance: ${Number(manualEntryUser.walletBalance ?? 0).toFixed(2)}
+                  </p>
+
+                  <div className="mt-4 grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => setManualEntryDirection("credit")}
+                      className={`py-2 rounded-lg text-sm font-bold border-2 ${manualEntryDirection === "credit" ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-slate-200 text-slate-500"}`}
+                    >
+                      + Credit
+                    </button>
+                    <button
+                      onClick={() => setManualEntryDirection("debit")}
+                      className={`py-2 rounded-lg text-sm font-bold border-2 ${manualEntryDirection === "debit" ? "border-red-500 bg-red-50 text-red-700" : "border-slate-200 text-slate-500"}`}
+                    >
+                      − Debit
+                    </button>
+                  </div>
+
+                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mt-4 mb-1">Amount (USD)</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">$</span>
+                    <input
+                      type="number" min="0.01" step="0.01" value={manualEntryAmount}
+                      onChange={(e) => setManualEntryAmount(e.target.value)}
+                      placeholder="e.g. 50"
+                      className="w-full pl-7 pr-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#c8991a]"
+                    />
+                  </div>
+
+                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mt-4 mb-1">Reason / note</label>
+                  <textarea
+                    value={manualEntryNote}
+                    onChange={(e) => setManualEntryNote(e.target.value)}
+                    placeholder="e.g. Bank transfer received outside pd.cash, ref #1234"
+                    rows={2}
+                    className="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#c8991a] resize-none"
+                  />
+
+                  {manualEntryError && <p className="text-xs text-red-600 mt-2">{manualEntryError}</p>}
+
+                  <div className="flex gap-2 mt-5">
+                    <button
+                      onClick={() => setManualEntryUser(null)}
+                      disabled={manualEntryBusy}
+                      className="flex-1 border border-slate-300 text-slate-600 font-bold py-2.5 rounded-xl text-sm disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={submitManualEntry}
+                      disabled={manualEntryBusy}
+                      className={`flex-1 font-bold py-2.5 rounded-xl text-sm text-white disabled:opacity-50 ${manualEntryDirection === "credit" ? "bg-emerald-600 hover:bg-emerald-700" : "bg-red-600 hover:bg-red-700"}`}
+                    >
+                      {manualEntryBusy ? "Saving…" : manualEntryDirection === "credit" ? "Add credit" : "Apply debit"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Admin-managed wallet credit plans (USD) — stored in our DB, not Whop */}
             <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">

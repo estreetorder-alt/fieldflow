@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft, DollarSign, Plus, Clock, CheckCircle, ArrowDownCircle, ArrowUpCircle,
-  RefreshCw, Wallet, AlertTriangle, CreditCard, XCircle, Loader2,
+  RefreshCw, Wallet, AlertTriangle, XCircle, Loader2,
 } from "lucide-react";
 
 interface WalletTx {
@@ -43,17 +43,22 @@ interface AutoPrefs {
 const TYPE_COLORS: Record<string, string> = {
   topup: "text-green-600 bg-green-50",
   deduction: "text-red-600 bg-red-50",
-  hold: "text-amber-600 bg-amber-50",
+  hold: "text-red-600 bg-red-50",
   release: "text-blue-600 bg-blue-50",
   refund: "text-purple-600 bg-purple-50",
+  manual_credit: "text-green-600 bg-green-50",
+  manual_debit: "text-red-600 bg-red-50",
 };
 const TYPE_ICONS: Record<string, React.ReactNode> = {
   topup: <ArrowDownCircle className="w-4 h-4" />,
   deduction: <ArrowUpCircle className="w-4 h-4" />,
-  hold: <Clock className="w-4 h-4" />,
+  hold: <ArrowUpCircle className="w-4 h-4" />,
   release: <CheckCircle className="w-4 h-4" />,
   refund: <RefreshCw className="w-4 h-4" />,
+  manual_credit: <ArrowDownCircle className="w-4 h-4" />,
+  manual_debit: <ArrowUpCircle className="w-4 h-4" />,
 };
+const POSITIVE_TYPES = new Set(["topup", "refund", "release", "manual_credit"]);
 
 export default function WalletPage() {
   return (
@@ -319,7 +324,14 @@ function WalletPageInner() {
     }
   }
 
-  const defaultCard = cards.find((c) => c.isDefault) ?? cards[0];
+  const pendingCredits = transactions
+    .filter((t) => t.type === "topup" && t.status === "pending")
+    .reduce((sum, t) => sum + Number(t.amount), 0);
+  const totalSpent = transactions
+    .filter((t) => ["deduction", "hold", "manual_debit"].includes(t.type) && t.status === "confirmed")
+    .reduce((sum, t) => sum + Number(t.amount), 0);
+
+  const scrollTo = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
 
   if (bouncing) {
     return (
@@ -347,118 +359,132 @@ function WalletPageInner() {
         </span>
       </header>
 
-      <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
-        {/* Balance */}
-        <div className="bg-[#0f1f3d] rounded-2xl p-8 text-white text-center shadow-xl">
-          <div className="w-16 h-16 bg-[#c8991a] rounded-full flex items-center justify-center mx-auto mb-4">
-            <Wallet className="w-8 h-8 text-white" />
-          </div>
-          <p className="text-slate-300 text-sm font-medium uppercase tracking-wider mb-2">Available credits</p>
-          <p className="text-5xl font-extrabold text-white mb-1">${balance.toFixed(2)}</p>
-          <p className="text-slate-400 text-xs mt-2">$1 USD paid = $1 wallet credit · USD only</p>
-          {polling && (
-            <p className="mt-3 text-xs text-[#f0b429] flex items-center justify-center gap-1.5">
-              <Loader2 className="w-3.5 h-3.5 animate-spin" /> Updating balance…
-            </p>
-          )}
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
+        <div className="mb-6">
+          <h1 className="text-xl font-bold text-[#0f1f3d]">Welcome back, {userName} 👋</h1>
+          <p className="text-sm text-slate-500 mt-1">Here&apos;s what&apos;s happening with your wallet today.</p>
         </div>
 
         {/* Redirect / status banners */}
-        {banner && (
-          <div
-            className={`rounded-xl p-4 flex items-start gap-3 border ${
-              banner.kind === "success"
-                ? "bg-green-50 border-green-200"
-                : banner.kind === "error"
-                  ? "bg-red-50 border-red-200"
-                  : "bg-slate-50 border-slate-200"
-            }`}
-          >
-            {banner.kind === "success" ? (
-              <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-            ) : banner.kind === "error" ? (
-              <XCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-            ) : (
-              <AlertTriangle className="w-5 h-5 text-slate-500 flex-shrink-0 mt-0.5" />
-            )}
-            <div className="flex-1">
-              <p
-                className={`font-bold text-sm ${
-                  banner.kind === "success" ? "text-green-900" : banner.kind === "error" ? "text-red-900" : "text-slate-800"
-                }`}
-              >
-                {banner.title}
-              </p>
-              <p
-                className={`text-xs mt-0.5 ${
-                  banner.kind === "success" ? "text-green-800" : banner.kind === "error" ? "text-red-700" : "text-slate-600"
-                }`}
-              >
-                {banner.body}
-              </p>
-              <button onClick={() => setBanner(null)} className="text-xs underline mt-1 opacity-70">
-                Dismiss
-              </button>
-            </div>
-          </div>
-        )}
-
-        {actionError && (
-          <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
-            <XCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="font-bold text-red-900 text-sm">Could not continue</p>
-              <p className="text-red-700 text-xs mt-0.5">{actionError}</p>
-              <button onClick={() => setActionError("")} className="text-xs text-red-700 underline mt-1">
-                Dismiss
-              </button>
-            </div>
-          </div>
-        )}
-
-        {balance < 40 && !banner && (
-          <div className="bg-amber-50 border border-amber-300 rounded-xl p-4 flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="font-bold text-amber-900 text-sm">Low balance</p>
-              <p className="text-amber-800 text-xs mt-0.5">Add credits below so you can place and fund orders.</p>
-            </div>
-          </div>
-        )}
-
-        {/* Payment method — pd.cash */}
-        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-100">
-            <h2 className="font-bold text-[#0f1f3d] flex items-center gap-2">
-              <CreditCard className="w-4 h-4 text-[#c8991a]" />
-              Payment method
-            </h2>
-            <p className="text-xs text-slate-400 mt-0.5">Payments are processed securely via pd.cash</p>
-          </div>
-          <div className="px-5 py-4 flex items-center gap-4">
-            <div className="w-10 h-10 rounded-xl bg-[#c8991a]/10 flex items-center justify-center flex-shrink-0">
-              <CreditCard className="w-5 h-5 text-[#c8991a]" />
-            </div>
-            <div className="min-w-0">
-              <p className="font-semibold text-slate-800 text-sm">pd.cash — @Snapect</p>
-              <p className="text-xs text-slate-500 mt-0.5">
-                When you add credits, you&apos;ll be redirected to{" "}
-                <a
-                  href="https://pd.cash/pay/@Snapect"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[#c8991a] underline hover:text-[#f0b429]"
+        <div className="space-y-3 mb-6">
+          {banner && (
+            <div
+              className={`rounded-xl p-4 flex items-start gap-3 border ${
+                banner.kind === "success"
+                  ? "bg-green-50 border-green-200"
+                  : banner.kind === "error"
+                    ? "bg-red-50 border-red-200"
+                    : "bg-slate-50 border-slate-200"
+              }`}
+            >
+              {banner.kind === "success" ? (
+                <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+              ) : banner.kind === "error" ? (
+                <XCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+              ) : (
+                <AlertTriangle className="w-5 h-5 text-slate-500 flex-shrink-0 mt-0.5" />
+              )}
+              <div className="flex-1">
+                <p
+                  className={`font-bold text-sm ${
+                    banner.kind === "success" ? "text-green-900" : banner.kind === "error" ? "text-red-900" : "text-slate-800"
+                  }`}
                 >
-                  pd.cash/pay/@Snapect
-                </a>{" "}
-                to complete payment.
-              </p>
+                  {banner.title}
+                </p>
+                <p
+                  className={`text-xs mt-0.5 ${
+                    banner.kind === "success" ? "text-green-800" : banner.kind === "error" ? "text-red-700" : "text-slate-600"
+                  }`}
+                >
+                  {banner.body}
+                </p>
+                <button onClick={() => setBanner(null)} className="text-xs underline mt-1 opacity-70">
+                  Dismiss
+                </button>
+              </div>
             </div>
-          </div>
+          )}
+
+          {actionError && (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
+              <XCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="font-bold text-red-900 text-sm">Could not continue</p>
+                <p className="text-red-700 text-xs mt-0.5">{actionError}</p>
+                <button onClick={() => setActionError("")} className="text-xs text-red-700 underline mt-1">
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          )}
+
+          {balance < 40 && !banner && (
+            <div className="bg-amber-50 border border-amber-300 rounded-xl p-4 flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="font-bold text-amber-900 text-sm">Low balance</p>
+                <p className="text-amber-800 text-xs mt-0.5">Add credits below so you can place and fund orders.</p>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Auto top-up */}
-        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+          {/* LEFT column */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Balance hero card */}
+            <div className="relative overflow-hidden bg-gradient-to-br from-[#0f1f3d] to-[#16294f] rounded-2xl p-8 text-white shadow-xl">
+              <Wallet className="absolute -right-6 -bottom-6 w-40 h-40 text-white/5" />
+              <p className="text-slate-300 text-xs font-semibold uppercase tracking-wider mb-2">Wallet Balance</p>
+              <p className="text-5xl font-extrabold text-white mb-3">${balance.toFixed(2)}</p>
+              <span className="inline-block bg-white/10 border border-white/15 rounded-full px-3 py-1 text-xs font-medium">
+                = {balance.toFixed(0)} Credits
+              </span>
+              <p className="text-slate-400 text-xs mt-4">$1 USD paid = $1 wallet credit · USD only</p>
+              {polling && (
+                <p className="mt-3 text-xs text-[#f0b429] flex items-center gap-1.5">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" /> Updating balance…
+                </p>
+              )}
+            </div>
+
+            {/* Quick action tiles */}
+            <div className="grid grid-cols-3 gap-3">
+              <button
+                onClick={() => scrollTo("buy-credits")}
+                className="bg-white border border-slate-200 hover:border-[#c8991a] rounded-2xl p-4 text-left transition-colors"
+              >
+                <div className="w-9 h-9 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center mb-3">
+                  <Plus className="w-4 h-4" />
+                </div>
+                <p className="font-bold text-[#0f1f3d] text-sm">Buy Credits</p>
+                <p className="text-xs text-slate-400 mt-0.5">Add credits to wallet</p>
+              </button>
+              <button
+                onClick={() => scrollTo("auto-topup")}
+                className="bg-white border border-slate-200 hover:border-[#c8991a] rounded-2xl p-4 text-left transition-colors"
+              >
+                <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center mb-3">
+                  <RefreshCw className="w-4 h-4" />
+                </div>
+                <p className="font-bold text-[#0f1f3d] text-sm">Auto Top-up</p>
+                <p className="text-xs text-slate-400 mt-0.5">Keep balance ready</p>
+              </button>
+              <button
+                onClick={() => scrollTo("history")}
+                className="bg-white border border-slate-200 hover:border-[#c8991a] rounded-2xl p-4 text-left transition-colors"
+              >
+                <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center mb-3">
+                  <Clock className="w-4 h-4" />
+                </div>
+                <p className="font-bold text-[#0f1f3d] text-sm">Transaction History</p>
+                <p className="text-xs text-slate-400 mt-0.5">View all activity</p>
+              </button>
+            </div>
+
+            {/* Auto top-up */}
+            <div id="auto-topup" className="bg-white border border-slate-200 rounded-2xl overflow-hidden scroll-mt-6">
           <div className="px-5 py-4 border-b border-slate-100">
             <h2 className="font-bold text-[#0f1f3d] flex items-center gap-2">
               <RefreshCw className="w-4 h-4 text-[#c8991a]" />
@@ -571,7 +597,7 @@ function WalletPageInner() {
         </div>
 
         {/* Admin plans */}
-        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+        <div id="buy-credits" className="bg-white border border-slate-200 rounded-2xl overflow-hidden scroll-mt-6">
           <div className="px-5 py-4 border-b border-slate-100">
             <h2 className="font-bold text-[#0f1f3d] flex items-center gap-2">
               <DollarSign className="w-4 h-4 text-[#c8991a]" />
@@ -639,31 +665,8 @@ function WalletPageInner() {
           </div>
         </div>
 
-        {/* How it works */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-5">
-          <h3 className="font-bold text-[#0f1f3d] mb-3 flex items-center gap-2">
-            <Wallet className="w-4 h-4 text-[#c8991a]" />
-            How billing works
-          </h3>
-          <ul className="space-y-2 text-sm text-slate-600">
-            {[
-              "Pick a credit plan (or enter a custom USD amount)",
-              "You’re redirected to pd.cash to pay securely",
-              "After payment, you return here — wallet credit is applied once pd.cash confirms (webhook)",
-              "Credits are added 1:1 with USD paid",
-            ].map((t, i) => (
-              <li key={i} className="flex items-start gap-2">
-                <span className="w-5 h-5 bg-[#c8991a] text-white rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">
-                  {i + 1}
-                </span>
-                {t}
-              </li>
-            ))}
-          </ul>
-        </div>
-
         {/* History */}
-        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+        <div id="history" className="bg-white border border-slate-200 rounded-2xl overflow-hidden scroll-mt-6">
           <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
             <h3 className="font-bold text-[#0f1f3d]">Transaction history</h3>
             <button onClick={() => fetchAll()} className="text-xs text-slate-500 hover:text-slate-800 flex items-center gap-1">
@@ -692,12 +695,8 @@ function WalletPageInner() {
                   </div>
                 </div>
                 <div className="text-right flex-shrink-0">
-                  <p
-                    className={`font-bold ${
-                      tx.type === "topup" || tx.type === "refund" || tx.type === "release" ? "text-green-600" : "text-red-600"
-                    }`}
-                  >
-                    {tx.type === "topup" || tx.type === "refund" ? "+" : "-"}${Number(tx.amount).toFixed(2)}
+                  <p className={`font-bold ${POSITIVE_TYPES.has(tx.type) ? "text-green-600" : "text-red-600"}`}>
+                    {POSITIVE_TYPES.has(tx.type) ? "+" : "-"}${Number(tx.amount).toFixed(2)}
                   </p>
                   {tx.status === "confirmed" && (
                     <p className="text-xs text-slate-400">Balance: ${Number(tx.balanceAfter).toFixed(2)}</p>
@@ -709,6 +708,70 @@ function WalletPageInner() {
               </div>
             ))
           )}
+        </div>
+          </div>
+
+          {/* RIGHT column */}
+          <div className="space-y-6">
+            {/* Quick Actions */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-5">
+              <h3 className="font-bold text-[#0f1f3d] mb-3">Quick Actions</h3>
+              <div className="divide-y divide-slate-100">
+                {[
+                  { id: "buy-credits", label: "Buy Credits", sub: "Choose a credit package", icon: <Plus className="w-4 h-4" />, bg: "bg-purple-100 text-purple-600" },
+                  { id: "auto-topup", label: "Auto Top-up Settings", sub: "Manage your preferences", icon: <RefreshCw className="w-4 h-4" />, bg: "bg-emerald-100 text-emerald-600" },
+                  { id: "history", label: "Billing History", sub: "View invoices & receipts", icon: <Clock className="w-4 h-4" />, bg: "bg-amber-100 text-amber-600" },
+                ].map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => scrollTo(item.id)}
+                    className="w-full flex items-center gap-3 py-3 text-left hover:bg-slate-50 -mx-1 px-1 rounded-lg transition-colors"
+                  >
+                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${item.bg}`}>{item.icon}</div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-slate-800">{item.label}</p>
+                      <p className="text-xs text-slate-400">{item.sub}</p>
+                    </div>
+                    <span className="text-slate-300">›</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Wallet Overview */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-5">
+              <h3 className="font-bold text-[#0f1f3d] mb-3">Wallet Overview</h3>
+              <div className="space-y-2.5 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500">Available Credits</span>
+                  <span className="font-bold text-slate-800">{balance.toFixed(0)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500">Pending Credits</span>
+                  <span className="font-bold text-slate-800">{pendingCredits.toFixed(0)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500">Total Spent</span>
+                  <span className="font-bold text-slate-800">${totalSpent.toFixed(2)}</span>
+                </div>
+              </div>
+              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center gap-1.5 text-xs text-slate-400">
+                <CheckCircle className="w-3.5 h-3.5" /> Credits never expire
+              </div>
+            </div>
+
+            {/* Promo */}
+            <div className="bg-[#0f1f3d] rounded-2xl p-5 text-white">
+              <p className="font-bold">Get More, Save More</p>
+              <p className="text-xs text-slate-300 mt-1.5">Buy larger credit packs and get better value for your money.</p>
+              <button
+                onClick={() => scrollTo("buy-credits")}
+                className="mt-4 bg-white text-[#0f1f3d] font-bold text-sm px-4 py-2 rounded-xl hover:bg-slate-100"
+              >
+                Buy Credits
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

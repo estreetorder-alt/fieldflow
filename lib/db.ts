@@ -16,6 +16,7 @@ export interface User {
   backgroundCheckNotes?: string;
   backgroundCheckUpdatedAt?: string;
   smsOptIn?: boolean;
+  walletBalance?: number;
 }
 
 export interface Bid {
@@ -87,6 +88,7 @@ function mapUser(row: Record<string, unknown>): User {
     backgroundCheckNotes: row.background_check_notes as string | undefined,
     backgroundCheckUpdatedAt: row.background_check_updated_at as string | undefined,
     smsOptIn: row.sms_opt_in as boolean | undefined,
+    walletBalance: row.wallet_balance !== undefined && row.wallet_balance !== null ? Number(row.wallet_balance) : undefined,
   };
 }
 
@@ -839,7 +841,7 @@ export async function holdWalletFunds(userId: string, orderId: string, amount: n
   await supabase.from("users").update({ wallet_balance: newBalance }).eq("id", userId);
   await supabase.from("wallet_transactions").insert({
     user_id: userId, type: "hold", amount, balance_after: newBalance,
-    description: `Hold for order ${orderId}`, order_id: orderId, status: "confirmed",
+    description: `Deduction against order ${orderId}`, order_id: orderId, status: "confirmed",
     purpose: "order_hold",
   });
   await supabase.from("orders").update({ wallet_hold_amount: amount }).eq("id", orderId);
@@ -889,6 +891,50 @@ export async function refundWalletHold(userId: string, orderId: string): Promise
     description: `Refund for cancelled order ${orderId}`, order_id: orderId, status: "confirmed",
   });
   await supabase.from("orders").update({ wallet_released: true, wallet_hold_amount: 0 }).eq("id", orderId);
+}
+
+/**
+ * Manual wallet adjustment — admin backup tool for when automated payment
+ * confirmation (webhook) isn't available or fails. Lets an admin credit or
+ * debit a vendor's wallet directly, with a note and full audit trail.
+ */
+export async function manualWalletAdjustment(opts: {
+  userId: string;
+  amount: number; // positive number; direction controls credit vs debit
+  direction: "credit" | "debit";
+  note: string;
+  adminId: string;
+  adminName: string;
+}): Promise<{ newBalance: number }> {
+  const { userId, amount, direction, note, adminId, adminName } = opts;
+  if (!Number.isFinite(amount) || amount <= 0) throw new Error("Invalid amount");
+
+  const current = await getWalletBalance(userId);
+  const delta = direction === "credit" ? amount : -amount;
+  const newBalance = current + delta;
+
+  await supabase.from("users").update({ wallet_balance: newBalance }).eq("id", userId);
+  await supabase.from("wallet_transactions").insert({
+    user_id: userId,
+    type: direction === "credit" ? "manual_credit" : "manual_debit",
+    amount: Math.abs(amount),
+    balance_after: newBalance,
+    description: note && note.trim().length > 0
+      ? `Manual ${direction} by admin — ${note.trim()}`
+      : `Manual ${direction} by admin`,
+    status: "confirmed",
+  });
+
+  await logAdminAction({
+    actorId: adminId,
+    actorName: adminName,
+    action: direction === "credit" ? "wallet.manual_credit" : "wallet.manual_debit",
+    targetType: "user",
+    targetId: userId,
+    details: { amount, note, newBalance },
+  });
+
+  return { newBalance };
 }
 
 export async function getAllWalletTopupsPending(): Promise<WalletTransaction[]> {
