@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createPaymentCheckout, isWhopConfigured } from "@/lib/whop";
+import { buildPdCashUrl } from "@/lib/pdcash";
+import { createPendingWalletTopup } from "@/lib/walletBilling";
 
-/** Legacy order checkout — creates a one-time Whop payment for an inspection order. */
+function getBaseUrl(): string {
+  return (process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000").replace(/\/$/, "");
+}
+
+/** Legacy order checkout — creates a one-time pd.cash payment for an inspection order. */
 export async function POST(request: NextRequest) {
   const userId = request.cookies.get("user_id")?.value;
   const userRole = request.cookies.get("user_role")?.value;
@@ -9,39 +14,33 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Clients only" }, { status: 403 });
   }
 
-  if (!isWhopConfigured()) {
-    return NextResponse.json({ skip: true, message: "Whop not configured — order placed without payment" });
-  }
-
-  const { orderData, totalPrice, description, successUrl } = await request.json();
+  const { totalPrice, description, successUrl } = await request.json();
   const amount = Number(totalPrice);
   if (!Number.isFinite(amount) || amount <= 0) {
     return NextResponse.json({ error: "Invalid totalPrice" }, { status: 400 });
   }
 
-  try {
-    const redirectPath = successUrl
-      ? successUrl.replace(process.env.NEXT_PUBLIC_BASE_URL ?? "", "") || "/client?payment=success"
-      : "/client?payment=success";
+  const txId = await createPendingWalletTopup({
+    userId,
+    amount,
+    purpose: "custom_topup",
+    description: description ?? "Snapect Inspection Order",
+    metadata: { account_id: userId, purpose: "order" },
+  });
 
-    const { checkoutId, checkoutUrl } = await createPaymentCheckout({
-      amountUsd: amount,
-      title: description ?? "Snapect Inspection Order",
-      redirectPath: redirectPath.startsWith("/") ? redirectPath : `/${redirectPath}`,
-      metadata: {
-        account_id: userId,
-        userId,
-        purpose: "order",
-        orderData: JSON.stringify(orderData ?? {}),
-      },
-    });
+  const redirectPath = successUrl
+    ? successUrl.replace(process.env.NEXT_PUBLIC_BASE_URL ?? "", "") || "/client?payment=success"
+    : "/client?payment=success";
 
-    return NextResponse.json({ url: checkoutUrl, checkout_url: checkoutUrl, sessionId: checkoutId });
-  } catch (err) {
-    console.error("[whop] order checkout failed", err);
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Checkout failed" },
-      { status: 502 },
-    );
-  }
+  const redirectUrl = `${getBaseUrl()}${redirectPath.startsWith("/") ? redirectPath : `/${redirectPath}`}`;
+
+  const checkoutUrl = buildPdCashUrl({
+    amountUsd: amount,
+    txId,
+    userId,
+    purpose: "order",
+    redirectUrl,
+  });
+
+  return NextResponse.json({ url: checkoutUrl, checkout_url: checkoutUrl, sessionId: txId });
 }

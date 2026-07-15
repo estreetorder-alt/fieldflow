@@ -78,7 +78,6 @@ function WalletPageInner() {
   const [customAmount, setCustomAmount] = useState("");
   const [busyPlanId, setBusyPlanId] = useState<string | null>(null);
   const [busyCustom, setBusyCustom] = useState(false);
-  const [busyCard, setBusyCard] = useState(false);
   const [actionError, setActionError] = useState("");
   const [banner, setBanner] = useState<{ kind: "success" | "info" | "error"; title: string; body: string } | null>(null);
   const [polling, setPolling] = useState(false);
@@ -177,7 +176,7 @@ function WalletPageInner() {
       setBanner({
         kind: "success",
         title: "Payment submitted",
-        body: "Whop confirmed your checkout. We’re crediting your wallet now — this usually takes a few seconds.",
+        body: "Payment confirmed. We’re crediting your wallet now — this usually takes a few seconds.",
       });
       setPolling(true);
       let n = 0;
@@ -265,33 +264,11 @@ function WalletPageInner() {
     }
   }
 
-  async function connectCard(purpose: "connect_card" | "add_card" = "connect_card") {
-    setActionError("");
-    setBusyCard(true);
-    try {
-      const res = await fetch("/api/wallet/connect-card", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ purpose }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setActionError(data.error ?? "Could not start card setup");
-        setBusyCard(false);
-        return;
-      }
-      window.location.href = data.checkout_url || data.url;
-    } catch {
-      setActionError("Network error starting card setup");
-      setBusyCard(false);
-    }
-  }
-
   async function saveAutoTopup() {
     setAutoMsg("");
     setActionError("");
     if (autoPrefs.enabled && !hasCard && cards.length === 0) {
-      setActionError("Connect a card before enabling auto top-up");
+      setActionError("A saved payment method is required for auto top-up — contact support to enable this feature");
       return;
     }
     setAutoBusy(true);
@@ -329,7 +306,7 @@ function WalletPageInner() {
         setAutoMsg(
           data.autoResult.creditedNow
             ? `Auto top-up charged $${Number(data.autoResult.amount).toFixed(2)} and credited your wallet.`
-            : `Auto top-up of $${Number(data.autoResult.amount).toFixed(2)} started — credit applies when Whop confirms.`,
+            : `Auto top-up of $${Number(data.autoResult.amount).toFixed(2)} started — credit applies when pd.cash confirms.`,
         );
         setTimeout(fetchAll, 2000);
       } else {
@@ -449,75 +426,34 @@ function WalletPageInner() {
           </div>
         )}
 
-        {/* Saved card */}
+        {/* Payment method — pd.cash */}
         <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between gap-3">
-            <div>
-              <h2 className="font-bold text-[#0f1f3d] flex items-center gap-2">
-                <CreditCard className="w-4 h-4 text-[#c8991a]" />
-                Payment card
-              </h2>
-              <p className="text-xs text-slate-400 mt-0.5">
-                {cards.length > 0
-                  ? "Your saved card is used for top-ups and auto top-up"
-                  : "Save a card once — used for top-ups and future auto top-up"}
+          <div className="px-5 py-4 border-b border-slate-100">
+            <h2 className="font-bold text-[#0f1f3d] flex items-center gap-2">
+              <CreditCard className="w-4 h-4 text-[#c8991a]" />
+              Payment method
+            </h2>
+            <p className="text-xs text-slate-400 mt-0.5">Payments are processed securely via pd.cash</p>
+          </div>
+          <div className="px-5 py-4 flex items-center gap-4">
+            <div className="w-10 h-10 rounded-xl bg-[#c8991a]/10 flex items-center justify-center flex-shrink-0">
+              <CreditCard className="w-5 h-5 text-[#c8991a]" />
+            </div>
+            <div className="min-w-0">
+              <p className="font-semibold text-slate-800 text-sm">pd.cash — @Snapect</p>
+              <p className="text-xs text-slate-500 mt-0.5">
+                When you add credits, you&apos;ll be redirected to{" "}
+                <a
+                  href="https://pd.cash/pay/@Snapect"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[#c8991a] underline hover:text-[#f0b429]"
+                >
+                  pd.cash/pay/@Snapect
+                </a>{" "}
+                to complete payment.
               </p>
             </div>
-            {!cards.length && (
-              <button
-                onClick={() => connectCard("connect_card")}
-                disabled={busyCard}
-                className="text-xs font-bold bg-[#0f1f3d] hover:bg-[#1a3260] text-white px-3 py-2 rounded-lg disabled:opacity-50 whitespace-nowrap"
-              >
-                {busyCard ? "Redirecting…" : "Connect card"}
-              </button>
-            )}
-          </div>
-          <div className="px-5 py-4">
-            {loading ? (
-              <p className="text-sm text-slate-400">Loading…</p>
-            ) : defaultCard ? (
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center">
-                    <CreditCard className="w-5 h-5 text-slate-600" />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-slate-800 capitalize">
-                      {defaultCard.brand || "Card"} ···· {defaultCard.last4 || "????"}
-                    </p>
-                    <p className="text-xs text-slate-400">
-                      {defaultCard.isDefault ? "Default card" : "Saved"}
-                      {cards.length > 1 ? ` · ${cards.length} cards on file` : ""}
-                    </p>
-                  </div>
-                  <span className="ml-auto text-[10px] font-bold uppercase bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">
-                    Connected
-                  </span>
-                </div>
-                {cards.length > 1 && (
-                  <ul className="text-xs text-slate-500 space-y-1 pl-1 border-t border-slate-100 pt-2">
-                    {cards
-                      .filter((c) => c.id !== defaultCard.id)
-                      .map((c) => (
-                        <li key={c.id} className="capitalize">
-                          {c.brand || "Card"} ···· {c.last4}
-                        </li>
-                      ))}
-                  </ul>
-                )}
-                <button
-                  type="button"
-                  onClick={() => connectCard("add_card")}
-                  disabled={busyCard}
-                  className="text-xs font-semibold text-[#0f1f3d] border border-slate-200 hover:border-[#c8991a] hover:bg-[#c8991a]/5 px-3 py-2 rounded-lg disabled:opacity-50"
-                >
-                  {busyCard ? "Redirecting…" : "+ Add another card"}
-                </button>
-              </div>
-            ) : (
-              <p className="text-sm text-slate-500">No card on file yet. Connect a card to pay faster.</p>
-            )}
           </div>
         </div>
 
@@ -606,7 +542,7 @@ function WalletPageInner() {
 
             {!hasCard && cards.length === 0 && (
               <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                Connect a card above before enabling auto top-up.
+                Auto top-up requires a saved payment method — currently not supported via pd.cash.
               </p>
             )}
 
@@ -641,7 +577,7 @@ function WalletPageInner() {
               <DollarSign className="w-4 h-4 text-[#c8991a]" />
               Buy credits
             </h2>
-            <p className="text-xs text-slate-400 mt-0.5">Choose a package — you’ll pay securely on Whop, then return here</p>
+            <p className="text-xs text-slate-400 mt-0.5">Choose a package — you’ll pay securely via pd.cash, then return here</p>
           </div>
 
           {loading ? (
@@ -656,7 +592,7 @@ function WalletPageInner() {
                 <button
                   key={plan.id}
                   onClick={() => buyPlan(plan.id)}
-                  disabled={busyPlanId === plan.id || busyCustom || busyCard}
+                  disabled={busyPlanId === plan.id || busyCustom}
                   className="text-left border-2 border-slate-200 hover:border-[#c8991a] rounded-xl p-4 transition-all disabled:opacity-50 group"
                 >
                   <div className="flex items-start justify-between gap-2">
@@ -667,7 +603,7 @@ function WalletPageInner() {
                     <span className="text-lg font-black text-emerald-600">${plan.amountUsd.toFixed(0)}</span>
                   </div>
                   <p className="text-xs text-slate-400 mt-2">
-                    {busyPlanId === plan.id ? "Opening Whop…" : `${plan.credits.toFixed(0)} credits · Pay with card →`}
+                    {busyPlanId === plan.id ? "Redirecting to pd.cash…" : `${plan.credits.toFixed(0)} credits · Pay with card →`}
                   </p>
                 </button>
               ))}
@@ -712,9 +648,9 @@ function WalletPageInner() {
           <ul className="space-y-2 text-sm text-slate-600">
             {[
               "Pick a credit plan (or enter a custom USD amount)",
-              "You’re redirected to Whop to pay by card",
-              "After payment, you return here — wallet credit is applied when Whop confirms (webhook)",
-              "Connect a card once to speed up future top-ups and enable auto top-up later",
+              "You’re redirected to pd.cash to pay securely",
+              "After payment, you return here — wallet credit is applied once pd.cash confirms (webhook)",
+              "Credits are added 1:1 with USD paid",
             ].map((t, i) => (
               <li key={i} className="flex items-start gap-2">
                 <span className="w-5 h-5 bg-[#c8991a] text-white rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">
