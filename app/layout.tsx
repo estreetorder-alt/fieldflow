@@ -9,7 +9,7 @@ export const metadata: Metadata = {
     default: "Snapect — BPO & REO Field Inspection Photography | 45+ Services",
     template: "%s | Snapect"
   },
-  description: "Snapect is America's trusted BPO and REO field inspection photography platform. 45+ services including exterior photo sets, vehicle inspections, occupancy checks, and videography. Verified local agents in 35 states. Orders dispatched within seconds.",
+description: "Snapect is America's trusted BPO & REO field inspection photography platform. 45+ services, verified agents in 35 states. Orders dispatched in seconds.",
   keywords: [
     "BPO photography", "REO inspection photos", "field inspection service",
     "property photography", "occupancy check", "vehicle inspection",
