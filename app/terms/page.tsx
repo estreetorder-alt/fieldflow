@@ -4,7 +4,7 @@ import { FileText } from "lucide-react";
 
 export default function TermsPage() {
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white pt-20">
       <PublicNav />
       <section className="bg-white text-[#0f1f3d] py-16 px-4">
         <div className="max-w-3xl mx-auto text-center">

@@ -1,14 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { buildPdCashUrl } from "@/lib/pdcash";
+import { isPdCashConfigured, buildPdCashCheckoutUrl } from "@/lib/pdcash";
 import {
+  attachCheckoutToTopup,
   createPendingWalletTopup,
   getWalletPlanById,
   listActiveWalletPlans,
 } from "@/lib/walletBilling";
-
-function getBaseUrl(): string {
-  return (process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000").replace(/\/$/, "");
-}
 
 /** GET — list active admin-defined wallet plans (client billing). */
 export async function GET(request: NextRequest) {
@@ -23,7 +20,7 @@ export async function GET(request: NextRequest) {
 }
 
 /**
- * POST — create a pending wallet top-up and redirect to pd.cash.
+ * POST — start a pd.cash checkout for a plan or custom USD amount.
  * Body: { planId?: string, amount?: number }
  * Returns: { success: true, checkout_url, txId }
  */
@@ -32,6 +29,10 @@ export async function POST(request: NextRequest) {
   const userRole = request.cookies.get("user_role")?.value;
   if (!userId || userRole !== "client") {
     return NextResponse.json({ error: "Clients only" }, { status: 403 });
+  }
+
+  if (!isPdCashConfigured()) {
+    return NextResponse.json({ error: "Payments are not configured" }, { status: 503 });
   }
 
   let body: { planId?: string; amount?: number };
@@ -73,22 +74,28 @@ export async function POST(request: NextRequest) {
     metadata: { account_id: userId, purpose },
   });
 
-  const redirectUrl = `${getBaseUrl()}/client/wallet?topup=success&tx=${encodeURIComponent(txId)}`;
+  try {
+    const checkoutUrl = buildPdCashCheckoutUrl({
+      amountUsd: amount,
+      txId,
+      redirectPath: `/client/wallet?topup=success&tx=${encodeURIComponent(txId)}`,
+    });
 
-  const checkoutUrl = buildPdCashUrl({
-    amountUsd: amount,
-    txId,
-    userId,
-    purpose,
-    redirectUrl,
-  });
+    await attachCheckoutToTopup(txId, txId);
 
-  return NextResponse.json({
-    success: true,
-    checkout_url: checkoutUrl,
-    url: checkoutUrl,
-    txId,
-    amount,
-    currency: "usd",
-  });
+    return NextResponse.json({
+      success: true,
+      checkout_url: checkoutUrl,
+      url: checkoutUrl,
+      txId,
+      amount,
+      currency: "usd",
+    });
+  } catch (err) {
+    console.error("[wallet/topup] pd.cash checkout failed", err);
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Failed to create checkout" },
+      { status: 502 },
+    );
+  }
 }

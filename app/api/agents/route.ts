@@ -28,7 +28,6 @@ export async function GET(request: NextRequest) {
       id: u.id, name: u.name, email: u.email, role: u.role,
       phone: u.phone, company: u.company, createdAt: u.createdAt,
       accountActive: u.accountActive, suspended: u.suspended,
-      walletBalance: u.walletBalance ?? 0,
     }));
     return NextResponse.json({ agents: agentList, allUsers });
   }

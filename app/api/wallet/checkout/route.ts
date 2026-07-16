@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { buildPdCashUrl } from "@/lib/pdcash";
+import { createPaymentCheckout, isWhopConfigured } from "@/lib/whop";
 import { attachCheckoutToTopup, createPendingWalletTopup } from "@/lib/walletBilling";
-
-function getBaseUrl(): string {
-  return (process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000").replace(/\/$/, "");
-}
 
 /**
  * Legacy custom-amount top-up endpoint.
@@ -15,6 +11,13 @@ export async function POST(request: NextRequest) {
   const userRole = request.cookies.get("user_role")?.value;
   if (!userId || !["client", "agent"].includes(userRole ?? "")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (!isWhopConfigured()) {
+    return NextResponse.json(
+      { error: "Card top-up isn't configured yet. Please use a manual top-up request instead." },
+      { status: 503 },
+    );
   }
 
   const { amount } = await request.json();
@@ -32,16 +35,28 @@ export async function POST(request: NextRequest) {
     metadata: { account_id: userId, purpose: "custom_topup" },
   });
 
-  const redirectUrl = `${getBaseUrl()}/client/wallet?topup=success&tx=${encodeURIComponent(txId)}`;
-
-  const checkoutUrl = buildPdCashUrl({
-    amountUsd: rounded,
-    txId,
-    userId,
-    purpose: "custom_topup",
-    redirectUrl,
-  });
-
-  await attachCheckoutToTopup(txId, txId); // store txId as checkout ref
-  return NextResponse.json({ url: checkoutUrl, checkout_url: checkoutUrl, txId });
+  try {
+    const { checkoutId, checkoutUrl } = await createPaymentCheckout({
+      amountUsd: rounded,
+      title: "Snapect Wallet Top-up",
+      redirectPath: `/client/wallet?topup=success&tx=${encodeURIComponent(txId)}`,
+      metadata: {
+        account_id: userId,
+        userId,
+        purpose: "custom_topup",
+        tx_id: txId,
+        walletTxId: txId,
+        credits: String(rounded),
+        walletTopup: "true",
+      },
+    });
+    await attachCheckoutToTopup(txId, checkoutId);
+    return NextResponse.json({ url: checkoutUrl, checkout_url: checkoutUrl, txId });
+  } catch (err) {
+    console.error("[wallet/checkout] Whop failed", err);
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Checkout failed" },
+      { status: 502 },
+    );
+  }
 }

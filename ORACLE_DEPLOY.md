@@ -129,7 +129,9 @@ NEXT_PUBLIC_SUPABASE_URL=https://uwjzurlovyjvmycxbvhz.supabase.co
 SUPABASE_SERVICE_KEY=your_service_role_key_here
 NEXT_PUBLIC_BASE_URL=https://yourdomain.com
 MAPBOX_TOKEN=your_mapbox_token_here
-PDCASH_WEBHOOK_SECRET=your_pdcash_webhook_signing_secret
+WHOP_API_KEY=your_whop_company_api_key
+WHOP_COMPANY_ID=biz_your_company_id
+WHOP_WEBHOOK_SECRET=your_whop_webhook_signing_secret
 RESEND_API_KEY=re_your_resend_key
 NODE_ENV=production
 PORT=3000
@@ -300,14 +302,15 @@ On your server, update `.env.local`:
 ```bash
 nano /var/www/fieldflow/.env.local
 # Change NEXT_PUBLIC_BASE_URL to your domain
-# Set PDCASH_WEBHOOK_SECRET from your pd.cash dashboard
+# Change WHOP_WEBHOOK_SECRET to new webhook pointing to your domain
 ```
 
-### 6.2 Set Up pd.cash Webhook
-1. Log in to your **pd.cash dashboard** → Settings → Webhooks
-2. Add webhook URL: `https://yourdomain.com/api/pdcash/webhook`
-3. Events to subscribe: `payment.completed`, `payment.failed`
-4. Copy the webhook signing secret → paste as `PDCASH_WEBHOOK_SECRET` in `.env.local`
+### 6.2 Update Whop Webhook
+1. Go to your **Whop Dashboard** → Developer tab → Webhooks → Create Webhook
+2. URL: `https://yourdomain.com/api/whop/webhook`
+3. Events: `payment.succeeded`
+4. Ensure API version is v1
+5. Copy the webhook signing secret → update `.env.local`
 
 ### 6.3 Rebuild and Restart
 ```bash

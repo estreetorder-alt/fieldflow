@@ -1,9 +1,10 @@
 "use client";
-import { useState, useEffect, useCallback, Suspense } from "react";
+import { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft, DollarSign, Plus, Clock, CheckCircle, ArrowDownCircle, ArrowUpCircle,
-  RefreshCw, Wallet, AlertTriangle, XCircle, Loader2,
+  RefreshCw, Wallet, AlertTriangle, CreditCard, XCircle, Loader2, Sparkles,
+  Bell, ChevronDown, Zap, History as HistoryIcon, Settings2,
 } from "lucide-react";
 
 interface WalletTx {
@@ -43,22 +44,17 @@ interface AutoPrefs {
 const TYPE_COLORS: Record<string, string> = {
   topup: "text-green-600 bg-green-50",
   deduction: "text-red-600 bg-red-50",
-  hold: "text-red-600 bg-red-50",
+  hold: "text-amber-600 bg-amber-50",
   release: "text-blue-600 bg-blue-50",
   refund: "text-purple-600 bg-purple-50",
-  manual_credit: "text-green-600 bg-green-50",
-  manual_debit: "text-red-600 bg-red-50",
 };
 const TYPE_ICONS: Record<string, React.ReactNode> = {
   topup: <ArrowDownCircle className="w-4 h-4" />,
   deduction: <ArrowUpCircle className="w-4 h-4" />,
-  hold: <ArrowUpCircle className="w-4 h-4" />,
+  hold: <Clock className="w-4 h-4" />,
   release: <CheckCircle className="w-4 h-4" />,
   refund: <RefreshCw className="w-4 h-4" />,
-  manual_credit: <ArrowDownCircle className="w-4 h-4" />,
-  manual_debit: <ArrowUpCircle className="w-4 h-4" />,
 };
-const POSITIVE_TYPES = new Set(["topup", "refund", "release", "manual_credit"]);
 
 export default function WalletPage() {
   return (
@@ -83,6 +79,7 @@ function WalletPageInner() {
   const [customAmount, setCustomAmount] = useState("");
   const [busyPlanId, setBusyPlanId] = useState<string | null>(null);
   const [busyCustom, setBusyCustom] = useState(false);
+  const [busyCard, setBusyCard] = useState(false);
   const [actionError, setActionError] = useState("");
   const [banner, setBanner] = useState<{ kind: "success" | "info" | "error"; title: string; body: string } | null>(null);
   const [polling, setPolling] = useState(false);
@@ -100,8 +97,13 @@ function WalletPageInner() {
   const [autoBusy, setAutoBusy] = useState(false);
   const [autoMsg, setAutoMsg] = useState("");
 
-  // Whop must redirect to https (ngrok). Login cookies live on localhost —
-  // bounce back so the wallet page can load with the session.
+  const buyCreditsRef = useRef<HTMLDivElement>(null);
+  const paymentCardRef = useRef<HTMLDivElement>(null);
+  const autoTopupRef = useRef<HTMLDivElement>(null);
+  const historyRef = useRef<HTMLDivElement>(null);
+  const scrollTo = (ref: React.RefObject<HTMLDivElement | null>) =>
+    ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     const host = window.location.hostname;
@@ -160,7 +162,6 @@ function WalletPageInner() {
     fetchAll();
   }, [fetchAll, bouncing]);
 
-  // Redirect status from Whop (UX only — webhook is source of truth)
   useEffect(() => {
     if (bouncing) return;
     const topup = searchParams.get("topup");
@@ -169,20 +170,12 @@ function WalletPageInner() {
     const err = searchParams.get("error");
 
     if (err) {
-      setBanner({
-        kind: "error",
-        title: "Something went wrong",
-        body: decodeURIComponent(err),
-      });
+      setBanner({ kind: "error", title: "Something went wrong", body: decodeURIComponent(err) });
       return;
     }
 
     if (topup === "success" || (checkoutStatus === "success" && searchParams.get("setup_intent_id") == null && !card)) {
-      setBanner({
-        kind: "success",
-        title: "Payment submitted",
-        body: "Payment confirmed. We’re crediting your wallet now — this usually takes a few seconds.",
-      });
+      setBanner({ kind: "success", title: "Payment submitted", body: "We're crediting your wallet now — this usually takes a few seconds." });
       setPolling(true);
       let n = 0;
       const id = setInterval(async () => {
@@ -206,11 +199,7 @@ function WalletPageInner() {
     }
 
     if (card === "connected" || card === "added" || (checkoutStatus === "success" && searchParams.get("setup_intent_id"))) {
-      setBanner({
-        kind: "success",
-        title: card === "added" ? "Card added" : "Card connected",
-        body: "Your card was saved successfully. You can enable auto top-up and buy credits below.",
-      });
+      setBanner({ kind: "success", title: card === "added" ? "Card added" : "Card connected", body: "Your card was saved successfully. You can enable auto top-up and buy credits below." });
       setPolling(true);
       const t = setTimeout(async () => {
         await fetchAll();
@@ -225,113 +214,83 @@ function WalletPageInner() {
     setBusyPlanId(planId);
     try {
       const res = await fetch("/api/wallet/topup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ planId }),
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ planId }),
       });
       const data = await res.json();
-      if (!res.ok) {
-        setActionError(data.error ?? "Could not start checkout");
-        setBusyPlanId(null);
-        return;
-      }
+      if (!res.ok) { setActionError(data.error ?? "Could not start checkout"); setBusyPlanId(null); return; }
       window.location.href = data.checkout_url || data.url;
     } catch {
-      setActionError("Network error starting checkout");
-      setBusyPlanId(null);
+      setActionError("Network error starting checkout"); setBusyPlanId(null);
     }
   }
 
   async function buyCustom() {
     const amount = Number(customAmount);
-    if (!Number.isFinite(amount) || amount < 1) {
-      setActionError("Enter an amount of at least $1");
-      return;
-    }
-    setActionError("");
-    setBusyCustom(true);
+    if (!Number.isFinite(amount) || amount < 1) { setActionError("Enter an amount of at least $1"); return; }
+    setActionError(""); setBusyCustom(true);
     try {
       const res = await fetch("/api/wallet/topup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount }),
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ amount }),
       });
       const data = await res.json();
-      if (!res.ok) {
-        setActionError(data.error ?? "Could not start checkout");
-        setBusyCustom(false);
-        return;
-      }
+      if (!res.ok) { setActionError(data.error ?? "Could not start checkout"); setBusyCustom(false); return; }
       window.location.href = data.checkout_url || data.url;
     } catch {
-      setActionError("Network error starting checkout");
-      setBusyCustom(false);
+      setActionError("Network error starting checkout"); setBusyCustom(false);
+    }
+  }
+
+  async function connectCard(purpose: "connect_card" | "add_card" = "connect_card") {
+    setActionError(""); setBusyCard(true);
+    try {
+      const res = await fetch("/api/wallet/connect-card", {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ purpose }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setActionError(data.error ?? "Could not start card setup"); setBusyCard(false); return; }
+      window.location.href = data.checkout_url || data.url;
+    } catch {
+      setActionError("Network error starting card setup"); setBusyCard(false);
     }
   }
 
   async function saveAutoTopup() {
-    setAutoMsg("");
-    setActionError("");
-    if (autoPrefs.enabled && !hasCard && cards.length === 0) {
-      setActionError("A saved payment method is required for auto top-up — contact support to enable this feature");
-      return;
-    }
+    setAutoMsg(""); setActionError("");
+    if (autoPrefs.enabled && !hasCard && cards.length === 0) { setActionError("Connect a card before enabling auto top-up"); return; }
     setAutoBusy(true);
     try {
       const res = await fetch("/api/wallet/auto-topup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          enabled: autoPrefs.enabled,
-          thresholdUsd: autoPrefs.thresholdUsd,
-          topupAmountUsd: autoPrefs.topupAmountUsd,
-          planId: autoPrefs.planId,
-          runNow: true,
-        }),
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled: autoPrefs.enabled, thresholdUsd: autoPrefs.thresholdUsd, topupAmountUsd: autoPrefs.topupAmountUsd, planId: autoPrefs.planId, runNow: true }),
       });
       const data = await res.json();
       setAutoBusy(false);
-      if (!res.ok) {
-        setActionError(data.error ?? "Could not save auto top-up");
-        return;
-      }
+      if (!res.ok) { setActionError(data.error ?? "Could not save auto top-up"); return; }
       if (data.prefs) {
         setAutoPrefs((p) => ({
-          ...p,
-          enabled: Boolean(data.prefs.enabled),
-          thresholdUsd: Number(data.prefs.thresholdUsd),
-          topupAmountUsd: Number(data.prefs.topupAmountUsd),
-          planId: data.prefs.planId ?? null,
-          cooldownUntil: data.prefs.cooldownUntil ?? null,
-          lastStatus: data.prefs.lastStatus ?? null,
-          lastError: data.prefs.lastError ?? null,
+          ...p, enabled: Boolean(data.prefs.enabled), thresholdUsd: Number(data.prefs.thresholdUsd),
+          topupAmountUsd: Number(data.prefs.topupAmountUsd), planId: data.prefs.planId ?? null,
+          cooldownUntil: data.prefs.cooldownUntil ?? null, lastStatus: data.prefs.lastStatus ?? null, lastError: data.prefs.lastError ?? null,
         }));
       }
       if (data.autoResult?.ran) {
-        setAutoMsg(
-          data.autoResult.creditedNow
-            ? `Auto top-up charged $${Number(data.autoResult.amount).toFixed(2)} and credited your wallet.`
-            : `Auto top-up of $${Number(data.autoResult.amount).toFixed(2)} started — credit applies when pd.cash confirms.`,
-        );
+        setAutoMsg(data.autoResult.creditedNow
+          ? `Auto top-up charged $${Number(data.autoResult.amount).toFixed(2)} and credited your wallet.`
+          : `Auto top-up of $${Number(data.autoResult.amount).toFixed(2)} started — credit applies once confirmed.`);
         setTimeout(fetchAll, 2000);
       } else {
         setAutoMsg("Auto top-up preferences saved.");
       }
       fetchAll();
     } catch {
-      setAutoBusy(false);
-      setActionError("Network error saving auto top-up");
+      setAutoBusy(false); setActionError("Network error saving auto top-up");
     }
   }
 
-  const pendingCredits = transactions
-    .filter((t) => t.type === "topup" && t.status === "pending")
-    .reduce((sum, t) => sum + Number(t.amount), 0);
-  const totalSpent = transactions
-    .filter((t) => ["deduction", "hold", "manual_debit"].includes(t.type) && t.status === "confirmed")
-    .reduce((sum, t) => sum + Number(t.amount), 0);
+  const defaultCard = cards.find((c) => c.isDefault) ?? cards[0];
 
-  const scrollTo = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  const pendingCredits = transactions.filter((t) => t.status === "pending" && t.type === "topup").reduce((sum, t) => sum + Number(t.amount), 0);
+  const totalSpent = transactions.filter((t) => t.status === "confirmed" && (t.type === "deduction" || t.type === "hold")).reduce((sum, t) => sum + Number(t.amount), 0);
 
   if (bouncing) {
     return (
@@ -350,357 +309,261 @@ function WalletPageInner() {
             <ArrowLeft className="w-5 h-5" />
           </button>
           <img src="/snapect-logo.png" alt="Snapect" className="h-8 w-auto object-contain" />
-          <span className="text-xs bg-blue-50 text-blue-600 border border-blue-100 rounded-full px-2 py-0.5 font-medium">
-            Billing & Wallet
-          </span>
+          <span className="text-xs bg-blue-50 text-blue-600 border border-blue-100 rounded-full px-2 py-0.5 font-medium">Billing & Wallet</span>
         </div>
-        <span className="text-sm text-slate-600">
-          Welcome, <span className="font-semibold">{userName}</span>
-        </span>
+        <div className="flex items-center gap-4">
+          <Bell className="w-5 h-5 text-slate-400" />
+          <span className="text-sm text-slate-600">Welcome back, <span className="font-semibold">{userName}</span> 👋</span>
+        </div>
       </header>
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
-        <div className="mb-6">
-          <h1 className="text-xl font-bold text-[#0f1f3d]">Welcome back, {userName} 👋</h1>
-          <p className="text-sm text-slate-500 mt-1">Here&apos;s what&apos;s happening with your wallet today.</p>
-        </div>
-
-        {/* Redirect / status banners */}
-        <div className="space-y-3 mb-6">
-          {banner && (
-            <div
-              className={`rounded-xl p-4 flex items-start gap-3 border ${
-                banner.kind === "success"
-                  ? "bg-green-50 border-green-200"
-                  : banner.kind === "error"
-                    ? "bg-red-50 border-red-200"
-                    : "bg-slate-50 border-slate-200"
-              }`}
-            >
-              {banner.kind === "success" ? (
-                <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-              ) : banner.kind === "error" ? (
-                <XCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-              ) : (
-                <AlertTriangle className="w-5 h-5 text-slate-500 flex-shrink-0 mt-0.5" />
-              )}
-              <div className="flex-1">
-                <p
-                  className={`font-bold text-sm ${
-                    banner.kind === "success" ? "text-green-900" : banner.kind === "error" ? "text-red-900" : "text-slate-800"
-                  }`}
-                >
-                  {banner.title}
-                </p>
-                <p
-                  className={`text-xs mt-0.5 ${
-                    banner.kind === "success" ? "text-green-800" : banner.kind === "error" ? "text-red-700" : "text-slate-600"
-                  }`}
-                >
-                  {banner.body}
-                </p>
-                <button onClick={() => setBanner(null)} className="text-xs underline mt-1 opacity-70">
-                  Dismiss
-                </button>
-              </div>
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        {banner && (
+          <div className={`mb-6 rounded-xl p-4 flex items-start gap-3 border ${banner.kind === "success" ? "bg-green-50 border-green-200" : banner.kind === "error" ? "bg-red-50 border-red-200" : "bg-slate-50 border-slate-200"}`}>
+            {banner.kind === "success" ? <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" /> : banner.kind === "error" ? <XCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" /> : <AlertTriangle className="w-5 h-5 text-slate-500 flex-shrink-0 mt-0.5" />}
+            <div className="flex-1">
+              <p className={`font-bold text-sm ${banner.kind === "success" ? "text-green-900" : banner.kind === "error" ? "text-red-900" : "text-slate-800"}`}>{banner.title}</p>
+              <p className={`text-xs mt-0.5 ${banner.kind === "success" ? "text-green-800" : banner.kind === "error" ? "text-red-700" : "text-slate-600"}`}>{banner.body}</p>
+              <button onClick={() => setBanner(null)} className="text-xs underline mt-1 opacity-70">Dismiss</button>
             </div>
-          )}
-
-          {actionError && (
-            <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
-              <XCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="font-bold text-red-900 text-sm">Could not continue</p>
-                <p className="text-red-700 text-xs mt-0.5">{actionError}</p>
-                <button onClick={() => setActionError("")} className="text-xs text-red-700 underline mt-1">
-                  Dismiss
-                </button>
-              </div>
+          </div>
+        )}
+        {actionError && (
+          <div className="mb-6 bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
+            <XCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-bold text-red-900 text-sm">Could not continue</p>
+              <p className="text-red-700 text-xs mt-0.5">{actionError}</p>
+              <button onClick={() => setActionError("")} className="text-xs text-red-700 underline mt-1">Dismiss</button>
             </div>
-          )}
+          </div>
+        )}
 
-          {balance < 40 && !banner && (
-            <div className="bg-amber-50 border border-amber-300 rounded-xl p-4 flex items-start gap-3">
-              <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="font-bold text-amber-900 text-sm">Low balance</p>
-                <p className="text-amber-800 text-xs mt-0.5">Add credits below so you can place and fund orders.</p>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-          {/* LEFT column */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
-            {/* Balance hero card */}
-            <div className="relative overflow-hidden bg-gradient-to-br from-[#0f1f3d] to-[#16294f] rounded-2xl p-8 text-white shadow-xl">
-              <Wallet className="absolute -right-6 -bottom-6 w-40 h-40 text-white/5" />
-              <p className="text-slate-300 text-xs font-semibold uppercase tracking-wider mb-2">Wallet Balance</p>
-              <p className="text-5xl font-extrabold text-white mb-3">${balance.toFixed(2)}</p>
-              <span className="inline-block bg-white/10 border border-white/15 rounded-full px-3 py-1 text-xs font-medium">
-                = {balance.toFixed(0)} Credits
-              </span>
-              <p className="text-slate-400 text-xs mt-4">$1 USD paid = $1 wallet credit · USD only</p>
-              {polling && (
-                <p className="mt-3 text-xs text-[#f0b429] flex items-center gap-1.5">
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" /> Updating balance…
-                </p>
-              )}
+            <div className="relative overflow-hidden bg-gradient-to-br from-[#0f1f3d] to-[#16295c] rounded-2xl p-8 text-white shadow-xl">
+              <div className="absolute -right-8 -top-8 w-40 h-40 bg-[#c8991a]/10 rounded-full blur-2xl" />
+              <div className="absolute right-6 bottom-6 opacity-20"><Wallet className="w-24 h-24" /></div>
+              <p className="text-slate-300 text-xs font-bold uppercase tracking-wider mb-2">Wallet Balance</p>
+              <p className="text-5xl font-extrabold text-white mb-1">${balance.toFixed(2)}</p>
+              <span className="inline-block mt-2 text-xs font-semibold bg-white/10 border border-white/10 rounded-full px-3 py-1">= {balance.toFixed(0)} Credits</span>
+              <p className="text-slate-400 text-xs mt-3">$1 USD paid = $1 wallet credit</p>
+              {polling && <p className="mt-3 text-xs text-[#f0b429] flex items-center gap-1.5"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Updating balance…</p>}
             </div>
 
-            {/* Quick action tiles */}
-            <div className="grid grid-cols-3 gap-3">
-              <button
-                onClick={() => scrollTo("buy-credits")}
-                className="bg-white border border-slate-200 hover:border-[#c8991a] rounded-2xl p-4 text-left transition-colors"
-              >
-                <div className="w-9 h-9 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center mb-3">
-                  <Plus className="w-4 h-4" />
-                </div>
-                <p className="font-bold text-[#0f1f3d] text-sm">Buy Credits</p>
-                <p className="text-xs text-slate-400 mt-0.5">Add credits to wallet</p>
-              </button>
-              <button
-                onClick={() => scrollTo("auto-topup")}
-                className="bg-white border border-slate-200 hover:border-[#c8991a] rounded-2xl p-4 text-left transition-colors"
-              >
-                <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center mb-3">
-                  <RefreshCw className="w-4 h-4" />
-                </div>
-                <p className="font-bold text-[#0f1f3d] text-sm">Auto Top-up</p>
-                <p className="text-xs text-slate-400 mt-0.5">Keep balance ready</p>
-              </button>
-              <button
-                onClick={() => scrollTo("history")}
-                className="bg-white border border-slate-200 hover:border-[#c8991a] rounded-2xl p-4 text-left transition-colors"
-              >
-                <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center mb-3">
-                  <Clock className="w-4 h-4" />
-                </div>
-                <p className="font-bold text-[#0f1f3d] text-sm">Transaction History</p>
-                <p className="text-xs text-slate-400 mt-0.5">View all activity</p>
-              </button>
-            </div>
-
-            {/* Auto top-up */}
-            <div id="auto-topup" className="bg-white border border-slate-200 rounded-2xl overflow-hidden scroll-mt-6">
-          <div className="px-5 py-4 border-b border-slate-100">
-            <h2 className="font-bold text-[#0f1f3d] flex items-center gap-2">
-              <RefreshCw className="w-4 h-4 text-[#c8991a]" />
-              Auto top-up
-            </h2>
-            <p className="text-xs text-slate-400 mt-0.5">
-              When your balance drops to the threshold, we charge your saved card automatically ($1 = $1 credit)
-            </p>
-          </div>
-          <div className="px-5 py-4 space-y-4">
-            <label className="flex items-center justify-between gap-3 cursor-pointer">
-              <span className="text-sm font-medium text-slate-800">Enable auto top-up</span>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={autoPrefs.enabled}
-                onClick={() => setAutoPrefs((p) => ({ ...p, enabled: !p.enabled }))}
-                className={`relative w-11 h-6 rounded-full transition-colors ${autoPrefs.enabled ? "bg-emerald-500" : "bg-slate-300"}`}
-              >
-                <span
-                  className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
-                    autoPrefs.enabled ? "translate-x-5" : ""
-                  }`}
-                />
-              </button>
-            </label>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs font-semibold text-slate-500 block mb-1">When balance is at or below ($)</label>
-                <input
-                  type="number"
-                  min="0"
-                  step="1"
-                  value={autoPrefs.thresholdUsd}
-                  onChange={(e) => setAutoPrefs((p) => ({ ...p, thresholdUsd: Number(e.target.value) || 0 }))}
-                  className="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#c8991a]"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-slate-500 block mb-1">Top-up amount ($)</label>
-                <input
-                  type="number"
-                  min="1"
-                  max="5000"
-                  step="1"
-                  value={autoPrefs.topupAmountUsd}
-                  onChange={(e) =>
-                    setAutoPrefs((p) => ({ ...p, topupAmountUsd: Number(e.target.value) || 0, planId: null }))
-                  }
-                  className="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#c8991a]"
-                />
-              </div>
-            </div>
-
-            {plans.length > 0 && (
-              <div>
-                <label className="text-xs font-semibold text-slate-500 block mb-1">Or use a plan amount</label>
-                <select
-                  value={autoPrefs.planId ?? ""}
-                  onChange={(e) => {
-                    const id = e.target.value || null;
-                    const plan = plans.find((p) => p.id === id);
-                    setAutoPrefs((p) => ({
-                      ...p,
-                      planId: id,
-                      topupAmountUsd: plan ? plan.amountUsd : p.topupAmountUsd,
-                    }));
-                  }}
-                  className="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#c8991a]"
-                >
-                  <option value="">Custom amount above</option>
-                  {plans.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name} — ${p.amountUsd.toFixed(0)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            {!hasCard && cards.length === 0 && (
-              <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                Auto top-up requires a saved payment method — currently not supported via pd.cash.
-              </p>
-            )}
-
-            {autoPrefs.lastStatus === "failed" && autoPrefs.lastError && (
-              <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-                Last attempt failed: {autoPrefs.lastError}
-              </p>
-            )}
-
-            {autoPrefs.cooldownUntil && new Date(autoPrefs.cooldownUntil).getTime() > Date.now() && (
-              <p className="text-xs text-slate-500">
-                Cooldown active until {new Date(autoPrefs.cooldownUntil).toLocaleString()} (prevents rapid retries)
-              </p>
-            )}
-
-            {autoMsg && <p className="text-xs text-emerald-700 font-medium">{autoMsg}</p>}
-
-            <button
-              onClick={saveAutoTopup}
-              disabled={autoBusy}
-              className="w-full bg-[#0f1f3d] hover:bg-[#1a3260] text-white font-bold py-2.5 rounded-xl text-sm disabled:opacity-50"
-            >
-              {autoBusy ? "Saving…" : "Save auto top-up settings"}
-            </button>
-          </div>
-        </div>
-
-        {/* Admin plans */}
-        <div id="buy-credits" className="bg-white border border-slate-200 rounded-2xl overflow-hidden scroll-mt-6">
-          <div className="px-5 py-4 border-b border-slate-100">
-            <h2 className="font-bold text-[#0f1f3d] flex items-center gap-2">
-              <DollarSign className="w-4 h-4 text-[#c8991a]" />
-              Buy credits
-            </h2>
-            <p className="text-xs text-slate-400 mt-0.5">Choose a package — you’ll pay securely via pd.cash, then return here</p>
-          </div>
-
-          {loading ? (
-            <div className="text-center py-10 text-slate-400 text-sm">Loading plans…</div>
-          ) : plans.length === 0 ? (
-            <div className="text-center py-10 text-slate-400 text-sm px-4">
-              No credit plans are available yet. Ask your admin to create plans in Admin → Wallet.
-            </div>
-          ) : (
-            <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {plans.map((plan) => (
-                <button
-                  key={plan.id}
-                  onClick={() => buyPlan(plan.id)}
-                  disabled={busyPlanId === plan.id || busyCustom}
-                  className="text-left border-2 border-slate-200 hover:border-[#c8991a] rounded-xl p-4 transition-all disabled:opacity-50 group"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <p className="font-bold text-[#0f1f3d] group-hover:text-[#c8991a]">{plan.name}</p>
-                      {plan.description && <p className="text-xs text-slate-500 mt-0.5">{plan.description}</p>}
-                    </div>
-                    <span className="text-lg font-black text-emerald-600">${plan.amountUsd.toFixed(0)}</span>
-                  </div>
-                  <p className="text-xs text-slate-400 mt-2">
-                    {busyPlanId === plan.id ? "Redirecting to pd.cash…" : `${plan.credits.toFixed(0)} credits · Pay with card →`}
-                  </p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {[
+                { label: "Buy Credits", sub: "Add credits", icon: <Plus className="w-5 h-5" />, color: "bg-violet-100 text-violet-600", onClick: () => scrollTo(buyCreditsRef) },
+                { label: "Payment Card", sub: "Manage card", icon: <CreditCard className="w-5 h-5" />, color: "bg-blue-100 text-blue-600", onClick: () => scrollTo(paymentCardRef) },
+                { label: "Auto Top-up", sub: "Keep ready", icon: <RefreshCw className="w-5 h-5" />, color: "bg-emerald-100 text-emerald-600", onClick: () => scrollTo(autoTopupRef) },
+                { label: "Transactions", sub: "View activity", icon: <HistoryIcon className="w-5 h-5" />, color: "bg-amber-100 text-amber-600", onClick: () => scrollTo(historyRef) },
+              ].map((t) => (
+                <button key={t.label} onClick={t.onClick} className="bg-white border border-slate-200 rounded-2xl p-4 text-left hover:border-[#c8991a] hover:shadow-sm transition-all">
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center mb-3 ${t.color}`}>{t.icon}</div>
+                  <p className="text-sm font-bold text-[#0f1f3d]">{t.label}</p>
+                  <p className="text-xs text-slate-400">{t.sub}</p>
                 </button>
               ))}
             </div>
-          )}
 
-          {/* Custom amount */}
-          <div className="px-5 py-4 border-t border-slate-100 bg-slate-50/80">
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Custom amount</p>
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">$</span>
-                <input
-                  type="number"
-                  min="1"
-                  max="5000"
-                  step="0.01"
-                  value={customAmount}
-                  onChange={(e) => setCustomAmount(e.target.value)}
-                  placeholder="e.g. 75"
-                  className="w-full pl-7 pr-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#c8991a] bg-white"
-                />
+            {balance < 40 && !banner && (
+              <div className="bg-amber-50 border border-amber-300 rounded-xl p-4 flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold text-amber-900 text-sm">Low balance</p>
+                  <p className="text-amber-800 text-xs mt-0.5">Add credits below so you can place and fund orders.</p>
+                </div>
               </div>
-              <button
-                onClick={buyCustom}
-                disabled={busyCustom || !!busyPlanId}
-                className="flex items-center gap-1.5 bg-[#c8991a] hover:bg-[#f0b429] text-[#0f1f3d] font-bold px-4 py-2.5 rounded-xl text-sm disabled:opacity-50 whitespace-nowrap"
-              >
-                <Plus className="w-4 h-4" />
-                {busyCustom ? "…" : "Pay"}
-              </button>
+            )}
+
+            <div ref={paymentCardRef} className="bg-white border border-slate-200 rounded-2xl overflow-hidden scroll-mt-20">
+              <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="font-bold text-[#0f1f3d] flex items-center gap-2"><CreditCard className="w-4 h-4 text-[#c8991a]" />Payment card</h2>
+                  <p className="text-xs text-slate-400 mt-0.5">{cards.length > 0 ? "Your saved card is used for auto top-up" : "Save a card once — used for auto top-up"}</p>
+                </div>
+                {!cards.length && (
+                  <button onClick={() => connectCard("connect_card")} disabled={busyCard} className="text-xs font-bold bg-[#0f1f3d] hover:bg-[#1a3260] text-white px-3 py-2 rounded-lg disabled:opacity-50 whitespace-nowrap">
+                    {busyCard ? "Redirecting…" : "Connect card"}
+                  </button>
+                )}
+              </div>
+              <div className="px-5 py-4">
+                {loading ? <p className="text-sm text-slate-400">Loading…</p> : defaultCard ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center"><CreditCard className="w-5 h-5 text-slate-600" /></div>
+                      <div>
+                        <p className="font-semibold text-slate-800 capitalize">{defaultCard.brand || "Card"} ···· {defaultCard.last4 || "????"}</p>
+                        <p className="text-xs text-slate-400">{defaultCard.isDefault ? "Default card" : "Saved"}{cards.length > 1 ? ` · ${cards.length} cards on file` : ""}</p>
+                      </div>
+                      <span className="ml-auto text-[10px] font-bold uppercase bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">Connected</span>
+                    </div>
+                    {cards.length > 1 && (
+                      <ul className="text-xs text-slate-500 space-y-1 pl-1 border-t border-slate-100 pt-2">
+                        {cards.filter((c) => c.id !== defaultCard.id).map((c) => (<li key={c.id} className="capitalize">{c.brand || "Card"} ···· {c.last4}</li>))}
+                      </ul>
+                    )}
+                    <button type="button" onClick={() => connectCard("add_card")} disabled={busyCard} className="text-xs font-semibold text-[#0f1f3d] border border-slate-200 hover:border-[#c8991a] hover:bg-[#c8991a]/5 px-3 py-2 rounded-lg disabled:opacity-50">
+                      {busyCard ? "Redirecting…" : "+ Add another card"}
+                    </button>
+                  </div>
+                ) : <p className="text-sm text-slate-500">No card on file yet. Connect a card for auto top-up.</p>}
+              </div>
+            </div>
+
+            <div ref={autoTopupRef} className="bg-white border border-slate-200 rounded-2xl overflow-hidden scroll-mt-20">
+              <div className="px-5 py-4 border-b border-slate-100">
+                <h2 className="font-bold text-[#0f1f3d] flex items-center gap-2"><RefreshCw className="w-4 h-4 text-[#c8991a]" />Auto top-up</h2>
+                <p className="text-xs text-slate-400 mt-0.5">When your balance drops to the threshold, we charge your saved card automatically ($1 = $1 credit)</p>
+              </div>
+              <div className="px-5 py-4 space-y-4">
+                <label className="flex items-center justify-between gap-3 cursor-pointer">
+                  <span className="text-sm font-medium text-slate-800">Enable auto top-up</span>
+                  <button type="button" role="switch" aria-checked={autoPrefs.enabled} onClick={() => setAutoPrefs((p) => ({ ...p, enabled: !p.enabled }))} className={`relative w-11 h-6 rounded-full transition-colors ${autoPrefs.enabled ? "bg-emerald-500" : "bg-slate-300"}`}>
+                    <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${autoPrefs.enabled ? "translate-x-5" : ""}`} />
+                  </button>
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-semibold text-slate-500 block mb-1">When balance is at or below ($)</label>
+                    <input type="number" min="0" step="1" value={autoPrefs.thresholdUsd} onChange={(e) => setAutoPrefs((p) => ({ ...p, thresholdUsd: Number(e.target.value) || 0 }))} className="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#c8991a]" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-slate-500 block mb-1">Top-up amount ($)</label>
+                    <input type="number" min="1" max="5000" step="1" value={autoPrefs.topupAmountUsd} onChange={(e) => setAutoPrefs((p) => ({ ...p, topupAmountUsd: Number(e.target.value) || 0, planId: null }))} className="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#c8991a]" />
+                  </div>
+                </div>
+                {plans.length > 0 && (
+                  <div>
+                    <label className="text-xs font-semibold text-slate-500 block mb-1">Or use a plan amount</label>
+                    <select value={autoPrefs.planId ?? ""} onChange={(e) => { const id = e.target.value || null; const plan = plans.find((p) => p.id === id); setAutoPrefs((p) => ({ ...p, planId: id, topupAmountUsd: plan ? plan.amountUsd : p.topupAmountUsd })); }} className="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#c8991a]">
+                      <option value="">Custom amount above</option>
+                      {plans.map((p) => (<option key={p.id} value={p.id}>{p.name} — ${p.amountUsd.toFixed(0)}</option>))}
+                    </select>
+                  </div>
+                )}
+                {!hasCard && cards.length === 0 && <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">Connect a card above before enabling auto top-up.</p>}
+                {autoPrefs.lastStatus === "failed" && autoPrefs.lastError && <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">Last attempt failed: {autoPrefs.lastError}</p>}
+                {autoPrefs.cooldownUntil && new Date(autoPrefs.cooldownUntil).getTime() > Date.now() && <p className="text-xs text-slate-500">Cooldown active until {new Date(autoPrefs.cooldownUntil).toLocaleString()} (prevents rapid retries)</p>}
+                {autoMsg && <p className="text-xs text-emerald-700 font-medium">{autoMsg}</p>}
+                <button onClick={saveAutoTopup} disabled={autoBusy} className="w-full bg-[#0f1f3d] hover:bg-[#1a3260] text-white font-bold py-2.5 rounded-xl text-sm disabled:opacity-50">
+                  {autoBusy ? "Saving…" : "Save auto top-up settings"}
+                </button>
+              </div>
+            </div>
+
+            <div ref={buyCreditsRef} className="bg-white border border-slate-200 rounded-2xl overflow-hidden scroll-mt-20">
+              <div className="px-5 py-4 border-b border-slate-100">
+                <h2 className="font-bold text-[#0f1f3d] flex items-center gap-2"><DollarSign className="w-4 h-4 text-[#c8991a]" />Buy credits</h2>
+                <p className="text-xs text-slate-400 mt-0.5">Choose a package — you&apos;ll pay securely via Cash App, then return here</p>
+              </div>
+              {loading ? <div className="text-center py-10 text-slate-400 text-sm">Loading plans…</div> : plans.length === 0 ? (
+                <div className="text-center py-10 text-slate-400 text-sm px-4">No credit plans are available yet. Ask your admin to create plans in Admin → Wallet.</div>
+              ) : (
+                <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {plans.map((plan) => (
+                    <button key={plan.id} onClick={() => buyPlan(plan.id)} disabled={busyPlanId === plan.id || busyCustom || busyCard} className="text-left border-2 border-slate-200 hover:border-[#c8991a] rounded-xl p-4 transition-all disabled:opacity-50 group">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <p className="font-bold text-[#0f1f3d] group-hover:text-[#c8991a]">{plan.name}</p>
+                          {plan.description && <p className="text-xs text-slate-500 mt-0.5">{plan.description}</p>}
+                        </div>
+                        <span className="text-lg font-black text-emerald-600">${plan.amountUsd.toFixed(0)}</span>
+                      </div>
+                      <p className="text-xs text-slate-400 mt-2">{busyPlanId === plan.id ? "Opening checkout…" : `${plan.credits.toFixed(0)} credits · Pay with Cash App →`}</p>
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div className="px-5 py-4 border-t border-slate-100 bg-slate-50/80">
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Custom amount</p>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">$</span>
+                    <input type="number" min="1" max="5000" step="0.01" value={customAmount} onChange={(e) => setCustomAmount(e.target.value)} placeholder="e.g. 75" className="w-full pl-7 pr-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#c8991a] bg-white" />
+                  </div>
+                  <button onClick={buyCustom} disabled={busyCustom || !!busyPlanId} className="flex items-center gap-1.5 bg-[#c8991a] hover:bg-[#f0b429] text-[#0f1f3d] font-bold px-4 py-2.5 rounded-xl text-sm disabled:opacity-50 whitespace-nowrap">
+                    <Plus className="w-4 h-4" />{busyCustom ? "…" : "Pay"}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white border border-slate-200 rounded-2xl p-5">
+              <h3 className="font-bold text-[#0f1f3d] mb-3 flex items-center gap-2"><Wallet className="w-4 h-4 text-[#c8991a]" />How billing works</h3>
+              <ul className="space-y-2 text-sm text-slate-600">
+                {["Pick a credit plan (or enter a custom USD amount)", "You're redirected to pay securely via Cash App", "After payment, you return here — wallet credit is applied once confirmed", "Connect a card once to enable auto top-up later"].map((t, i) => (
+                  <li key={i} className="flex items-start gap-2">
+                    <span className="w-5 h-5 bg-[#c8991a] text-white rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">{i + 1}</span>{t}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+              <div className="px-5 py-4 border-b border-slate-100"><h3 className="font-bold text-[#0f1f3d]">Quick Actions</h3></div>
+              <div className="divide-y divide-slate-100">
+                {[
+                  { icon: <CreditCard className="w-4 h-4" />, color: "bg-violet-100 text-violet-600", title: "Add Payment Method", sub: "Securely add a new card", onClick: () => scrollTo(paymentCardRef) },
+                  { icon: <DollarSign className="w-4 h-4" />, color: "bg-emerald-100 text-emerald-600", title: "Buy Credits", sub: "Choose a credit package", onClick: () => scrollTo(buyCreditsRef) },
+                  { icon: <Settings2 className="w-4 h-4" />, color: "bg-amber-100 text-amber-600", title: "Auto Top-up Settings", sub: "Manage your preferences", onClick: () => scrollTo(autoTopupRef) },
+                  { icon: <HistoryIcon className="w-4 h-4" />, color: "bg-blue-100 text-blue-600", title: "Billing History", sub: "View invoices & receipts", onClick: () => scrollTo(historyRef) },
+                ].map((a) => (
+                  <button key={a.title} onClick={a.onClick} className="w-full flex items-center gap-3 px-5 py-3.5 hover:bg-slate-50 text-left">
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${a.color}`}>{a.icon}</div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-slate-800">{a.title}</p>
+                      <p className="text-xs text-slate-400 truncate">{a.sub}</p>
+                    </div>
+                    <ChevronDown className="w-4 h-4 text-slate-300 -rotate-90 flex-shrink-0" />
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-white border border-slate-200 rounded-2xl p-5">
+              <h3 className="font-bold text-[#0f1f3d] mb-3">Wallet Overview</h3>
+              <div className="space-y-2.5 text-sm">
+                <div className="flex items-center justify-between"><span className="text-slate-500">Total Credits</span><span className="font-bold text-slate-800">{balance.toFixed(0)}</span></div>
+                <div className="flex items-center justify-between"><span className="text-slate-500">Available Credits</span><span className="font-bold text-slate-800">{balance.toFixed(0)}</span></div>
+                <div className="flex items-center justify-between"><span className="text-slate-500">Pending Credits</span><span className="font-bold text-slate-800">{pendingCredits.toFixed(0)}</span></div>
+                <div className="flex items-center justify-between pt-2.5 border-t border-slate-100"><span className="text-slate-500">Total Spent</span><span className="font-bold text-slate-800">${totalSpent.toFixed(2)}</span></div>
+              </div>
+              <p className="text-xs text-emerald-600 font-medium mt-3 flex items-center gap-1.5"><CheckCircle className="w-3.5 h-3.5" /> Credits never expire</p>
+            </div>
+
+            <div className="bg-[#0f1f3d] rounded-2xl p-5 text-white relative overflow-hidden">
+              <Sparkles className="w-5 h-5 text-[#c8991a] mb-2" />
+              <h3 className="font-bold mb-1">Get More, Save More</h3>
+              <p className="text-xs text-slate-300 mb-4">Buy larger credit packs and get better value for your money.</p>
+              <button onClick={() => scrollTo(buyCreditsRef)} className="bg-white text-[#0f1f3d] text-xs font-bold px-4 py-2 rounded-lg hover:bg-slate-100">Buy Credits</button>
             </div>
           </div>
         </div>
 
-        {/* History */}
-        <div id="history" className="bg-white border border-slate-200 rounded-2xl overflow-hidden scroll-mt-6">
+        <div ref={historyRef} className="bg-white border border-slate-200 rounded-2xl overflow-hidden mt-6 scroll-mt-20">
           <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-            <h3 className="font-bold text-[#0f1f3d]">Transaction history</h3>
-            <button onClick={() => fetchAll()} className="text-xs text-slate-500 hover:text-slate-800 flex items-center gap-1">
-              <RefreshCw className="w-3.5 h-3.5" /> Refresh
-            </button>
+            <h3 className="font-bold text-[#0f1f3d]">Recent Transactions</h3>
+            <button onClick={() => fetchAll()} className="text-xs text-slate-500 hover:text-slate-800 flex items-center gap-1"><RefreshCw className="w-3.5 h-3.5" /> Refresh</button>
           </div>
-          {loading ? (
-            <div className="text-center py-8 text-slate-400 text-sm">Loading…</div>
-          ) : transactions.length === 0 ? (
-            <div className="text-center py-12 text-slate-400">
-              <DollarSign className="w-8 h-8 mx-auto mb-2 text-slate-300" />
-              <p>No transactions yet</p>
-            </div>
+          {loading ? <div className="text-center py-8 text-slate-400 text-sm">Loading…</div> : transactions.length === 0 ? (
+            <div className="text-center py-12 text-slate-400"><DollarSign className="w-8 h-8 mx-auto mb-2 text-slate-300" /><p>No transactions yet</p></div>
           ) : (
             transactions.map((tx) => (
               <div key={tx.id} className="px-5 py-4 border-b border-slate-100 last:border-0 flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${TYPE_COLORS[tx.type] ?? "bg-slate-100 text-slate-600"}`}>
-                    {TYPE_ICONS[tx.type] ?? <DollarSign className="w-4 h-4" />}
-                  </div>
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${TYPE_COLORS[tx.type] ?? "bg-slate-100 text-slate-600"}`}>{TYPE_ICONS[tx.type] ?? <DollarSign className="w-4 h-4" />}</div>
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-slate-800 truncate">{tx.description}</p>
-                    <p className="text-xs text-slate-400" suppressHydrationWarning>
-                      {new Date(tx.createdAt).toLocaleString()}
-                    </p>
+                    <p className="text-xs text-slate-400" suppressHydrationWarning>{new Date(tx.createdAt).toLocaleString()}</p>
                   </div>
                 </div>
                 <div className="text-right flex-shrink-0">
-                  <p className={`font-bold ${POSITIVE_TYPES.has(tx.type) ? "text-green-600" : "text-red-600"}`}>
-                    {POSITIVE_TYPES.has(tx.type) ? "+" : "-"}${Number(tx.amount).toFixed(2)}
-                  </p>
-                  {tx.status === "confirmed" && (
-                    <p className="text-xs text-slate-400">Balance: ${Number(tx.balanceAfter).toFixed(2)}</p>
-                  )}
+                  <p className={`font-bold ${tx.type === "topup" || tx.type === "refund" || tx.type === "release" ? "text-green-600" : "text-red-600"}`}>{tx.type === "topup" || tx.type === "refund" ? "+" : "-"}${Number(tx.amount).toFixed(2)}</p>
+                  {tx.status === "confirmed" && <p className="text-xs text-slate-400">Balance: ${Number(tx.balanceAfter).toFixed(2)}</p>}
                   {tx.status === "pending" && <span className="text-xs text-amber-600 font-medium">Pending</span>}
                   {tx.status === "failed" && <span className="text-xs text-red-600 font-medium">Failed</span>}
                   {tx.status === "cancelled" && <span className="text-xs text-slate-500 font-medium">Cancelled</span>}
@@ -709,70 +572,10 @@ function WalletPageInner() {
             ))
           )}
         </div>
-          </div>
 
-          {/* RIGHT column */}
-          <div className="space-y-6">
-            {/* Quick Actions */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-5">
-              <h3 className="font-bold text-[#0f1f3d] mb-3">Quick Actions</h3>
-              <div className="divide-y divide-slate-100">
-                {[
-                  { id: "buy-credits", label: "Buy Credits", sub: "Choose a credit package", icon: <Plus className="w-4 h-4" />, bg: "bg-purple-100 text-purple-600" },
-                  { id: "auto-topup", label: "Auto Top-up Settings", sub: "Manage your preferences", icon: <RefreshCw className="w-4 h-4" />, bg: "bg-emerald-100 text-emerald-600" },
-                  { id: "history", label: "Billing History", sub: "View invoices & receipts", icon: <Clock className="w-4 h-4" />, bg: "bg-amber-100 text-amber-600" },
-                ].map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => scrollTo(item.id)}
-                    className="w-full flex items-center gap-3 py-3 text-left hover:bg-slate-50 -mx-1 px-1 rounded-lg transition-colors"
-                  >
-                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${item.bg}`}>{item.icon}</div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-slate-800">{item.label}</p>
-                      <p className="text-xs text-slate-400">{item.sub}</p>
-                    </div>
-                    <span className="text-slate-300">›</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Wallet Overview */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-5">
-              <h3 className="font-bold text-[#0f1f3d] mb-3">Wallet Overview</h3>
-              <div className="space-y-2.5 text-sm">
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-500">Available Credits</span>
-                  <span className="font-bold text-slate-800">{balance.toFixed(0)}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-500">Pending Credits</span>
-                  <span className="font-bold text-slate-800">{pendingCredits.toFixed(0)}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-500">Total Spent</span>
-                  <span className="font-bold text-slate-800">${totalSpent.toFixed(2)}</span>
-                </div>
-              </div>
-              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center gap-1.5 text-xs text-slate-400">
-                <CheckCircle className="w-3.5 h-3.5" /> Credits never expire
-              </div>
-            </div>
-
-            {/* Promo */}
-            <div className="bg-[#0f1f3d] rounded-2xl p-5 text-white">
-              <p className="font-bold">Get More, Save More</p>
-              <p className="text-xs text-slate-300 mt-1.5">Buy larger credit packs and get better value for your money.</p>
-              <button
-                onClick={() => scrollTo("buy-credits")}
-                className="mt-4 bg-white text-[#0f1f3d] font-bold text-sm px-4 py-2 rounded-xl hover:bg-slate-100"
-              >
-                Buy Credits
-              </button>
-            </div>
-          </div>
-        </div>
+        <p className="text-center text-xs text-slate-400 mt-6 flex items-center justify-center gap-1.5">
+          <Zap className="w-3.5 h-3.5" /> Your payments are secure and encrypted. Need help? <a href="/contact" className="text-[#c8991a] font-medium hover:underline">Contact support</a>
+        </p>
       </div>
     </div>
   );

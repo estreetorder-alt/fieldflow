@@ -48,7 +48,7 @@ export default function AgentRegisterPage() {
 
   if (done) {
     return (
-      <div className="min-h-screen bg-white">
+      <div className="min-h-screen bg-white pt-20">
         <PublicNav />
         <div className="min-h-[80vh] flex items-center justify-center px-4 py-16">
           <div className="w-full max-w-lg">
@@ -78,7 +78,7 @@ export default function AgentRegisterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white pt-20">
       <PublicNav />
 
       <section className="bg-white py-10 px-4">

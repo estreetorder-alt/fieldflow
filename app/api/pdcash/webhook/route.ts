@@ -1,77 +1,45 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyPdCashWebhook } from "@/lib/pdcash";
-import {
-  claimWebhookEvent,
-  confirmWalletTopup,
-  failWalletTopup,
-} from "@/lib/walletBilling";
+import { verifyPdCashWebhookSignature, pdcashString } from "@/lib/pdcash";
+import { claimWebhookEvent, confirmWalletTopup, failWalletTopup } from "@/lib/walletBilling";
 import { getUserById } from "@/lib/db";
 import { sendPaymentConfirmationEmail } from "@/lib/email";
-import { clearAutoTopupCooldownOnSuccess } from "@/lib/walletBilling";
-
-type JsonRecord = Record<string, unknown>;
-
-function asRecord(v: unknown): JsonRecord {
-  return v && typeof v === "object" ? (v as JsonRecord) : {};
-}
 
 /**
- * pd.cash webhook endpoint.
- *
- * Register this URL in your pd.cash dashboard:
- *   https://yourdomain.com/api/pdcash/webhook
- *
- * Expected event shape from pd.cash:
- * {
- *   id: "evt_...",
- *   type: "payment.completed" | "payment.failed",
- *   data: {
- *     id: "pay_...",
- *     amount: 50.00,          // USD
- *     status: "completed",
- *     metadata: {
- *       tx_id: "wtx-...",
- *       user_id: "...",
- *       purpose: "plan_topup" | "custom_topup",
- *     }
- *   }
- * }
+ * Receives payment status webhooks from pd.cash.
+ * ⚠️ See lib/pdcash.ts — field names below (event, invoice_id, order_id,
+ * amount) follow pd.cash's publicly documented "representative" payload
+ * shape. Confirm against your actual pd.cash dashboard/docs and adjust
+ * the field lookups below if their real payload differs.
  */
 export async function POST(request: NextRequest) {
-  const bodyText = await request.text();
-
-  // Verify signature
-  const verified = verifyPdCashWebhook(bodyText, request.headers);
+  const verified = verifyPdCashWebhookSignature(request);
   if (!verified.ok) {
-    console.error("[pdcash webhook] signature verification failed:", verified.error);
     return NextResponse.json({ error: verified.error }, { status: 400 });
   }
 
-  let event: JsonRecord;
+  let event: Record<string, unknown>;
   try {
-    event = JSON.parse(bodyText) as JsonRecord;
+    event = (await request.json()) as Record<string, unknown>;
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const eventType = String(event.type ?? "");
-  const eventId = String(event.id ?? "");
-  const data = asRecord(event.data);
-  const metadata = asRecord(data.metadata);
-  const paymentId = typeof data.id === "string" ? data.id : null;
+  const eventType = pdcashString(event, "event") || pdcashString(event, "type");
+  const paymentId =
+    pdcashString(event, "invoice_id") || pdcashString(event, "payment_id") || pdcashString(event, "id");
+  const txId = pdcashString(event, "order_id") || pdcashString(event, "reference") || pdcashString(event, "txId");
 
-  const txId = String(metadata.tx_id ?? "");
-  const userId = String(metadata.user_id ?? "");
-  const purpose = String(metadata.purpose ?? "custom_topup");
+  if (!txId) {
+    return NextResponse.json({ error: "Missing order/reference id in webhook payload" }, { status: 400 });
+  }
 
-  // Idempotency: ignore duplicate deliveries
+  // Idempotency: duplicate deliveries return 200 without re-processing
   try {
     const claim = await claimWebhookEvent({
-      eventId,
-      eventType,
-      paymentId,
-      userId: userId || null,
-      purpose: purpose || null,
+      eventId: paymentId || txId,
+      eventType: eventType || "pdcash.unknown",
+      paymentId: paymentId || null,
+      purpose: "pdcash_topup",
       payload: event,
     });
     if (!claim.isNew) {
@@ -83,37 +51,22 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    if (eventType === "payment.completed") {
-      if (!txId) {
-        console.warn("[pdcash webhook] payment.completed missing tx_id in metadata", metadata);
-        return NextResponse.json({ received: true });
-      }
-
-      const result = await confirmWalletTopup({ txId, whopPaymentId: paymentId });
-
+    if (eventType === "payment.completed" || eventType === "completed" || eventType === "payment.success") {
+      const result = await confirmWalletTopup({ txId, whopPaymentId: paymentId || null });
       if (result.credited && result.userId) {
-        // Clear auto top-up cooldown if this was an auto top-up
-        if (purpose === "auto_topup") {
-          await clearAutoTopupCooldownOnSuccess(result.userId);
-        }
-
-        // Send confirmation email
         const user = await getUserById(result.userId);
         if (user?.email) {
           await sendPaymentConfirmationEmail(
             { email: user.email, name: user.name },
-            result.amount ?? Number(data.amount ?? 0),
-            purpose === "auto_topup" ? "Auto Top-up" : "Wallet Top-up",
+            result.amount ?? 0,
+            "Wallet Top-up",
           );
         }
       }
-    } else if (eventType === "payment.failed") {
-      if (txId) {
-        const msg = String(data.failure_reason ?? data.error ?? "Payment failed");
-        await failWalletTopup(txId, msg, paymentId);
-      }
+    } else if (eventType === "payment.failed" || eventType === "failed") {
+      await failWalletTopup(txId, "pd.cash reported payment failed", paymentId || null);
     }
-    // Other event types: acknowledge without error so pd.cash doesn't retry
+    // Unknown event types: still 200 so pd.cash does not retry forever
   } catch (err) {
     console.error(`[pdcash webhook] handler error for ${eventType}`, err);
     return NextResponse.json({ error: "Handler failed" }, { status: 500 });

@@ -266,6 +266,44 @@ export async function failWalletTopup(txId: string, failureMessage: string, whop
     .in("status", ["pending"]);
 }
 
+/**
+ * Admin-only: manually credit a vendor's wallet immediately (no checkout,
+ * no webhook). Used for reconciliation when an automated payment (pd.cash
+ * or otherwise) fails to confirm on its own — the admin records the note
+ * for an audit trail and the credit applies right away.
+ */
+export async function adminManualCredit(opts: {
+  userId: string;
+  amount: number;
+  note: string;
+  adminId: string;
+}): Promise<{ txId: string; newBalance: number }> {
+  const amount = Math.round(Number(opts.amount) * 100) / 100;
+  if (!Number.isFinite(amount) || amount <= 0) throw new Error("Amount must be greater than 0");
+  if (!opts.note?.trim()) throw new Error("A note is required for manual credit entries");
+
+  const txId = `wtx-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+  const current = await getWalletBalance(opts.userId);
+  const newBalance = current + amount;
+
+  const { error } = await supabase.from("wallet_transactions").insert({
+    id: txId,
+    user_id: opts.userId,
+    type: "topup",
+    purpose: "admin_manual",
+    amount,
+    balance_after: newBalance,
+    description: `Manual credit by admin — ${opts.note.trim()}`,
+    status: "confirmed",
+    confirmed_at: new Date().toISOString(),
+    metadata: { admin_id: opts.adminId, note: opts.note.trim() },
+  });
+  if (error) throw new Error(error.message);
+
+  await supabase.from("users").update({ wallet_balance: newBalance }).eq("id", opts.userId);
+  return { txId, newBalance };
+}
+
 export async function claimWebhookEvent(opts: {
   eventId: string;
   eventType: string;

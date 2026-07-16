@@ -1,9 +1,140 @@
 @import "tailwindcss";
 
+@theme {
+  --font-display: var(--font-space-grotesk), sans-serif;
+  --font-sans: var(--font-inter), sans-serif;
+}
+
 :root {
+  --warm-bg: #FAF6EF;
+  --warm-bg-alt: #F3EBDD;
+  --warm-card: #FFFFFF;
+  --warm-ink: #2A2320;
+  --warm-ink-soft: #6B5D52;
+  --warm-accent: #C2410C;
+  --warm-accent-soft: #EA580C;
+  --warm-gold: #B45309;
+  --warm-border: #E7DBCB;
+
+  /* Legacy navy/gold vars kept for any not-yet-migrated component */
   --navy: #0f1f3d;
   --navy-light: #1a3260;
   --gold: #c8991a;
   --gold-light: #f0b429;
   --cream: #faf8f3;
+}
+
+body {
+  background-color: var(--warm-bg);
+  color: var(--warm-ink);
+  font-feature-settings: "rlig" 1, "calt" 1;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-space-grotesk), sans-serif;
+}
+
+.font-display {
+  font-family: var(--font-space-grotesk), sans-serif;
+}
+
+/* Warm glass / soft card */
+.glass-card {
+  background-color: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid var(--warm-border);
+  box-shadow: 0 10px 40px -12px rgba(120, 80, 40, 0.15);
+}
+
+.soft-card {
+  background-color: var(--warm-card);
+  border: 1px solid var(--warm-border);
+  box-shadow: 0 8px 30px -10px rgba(120, 80, 40, 0.12);
+}
+
+.text-gradient {
+  background: linear-gradient(120deg, #C2410C, #EA580C, #B45309);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+.warm-gradient-bg {
+  background: linear-gradient(135deg, #FAF6EF 0%, #F3EBDD 50%, #F7E9D5 100%);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background-color: #F3EBDD;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #D8C4AC;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: #C2410C;
+}
+
+::selection {
+  background-color: #EA580C;
+  color: #ffffff;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* Animations */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 30px -8px rgba(234, 88, 12, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 55px -6px rgba(234, 88, 12, 0.55);
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 4s ease-in-out infinite;
+}
+
+/* Editorial marquee */
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-marquee {
+  animation: marquee 30s linear infinite;
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

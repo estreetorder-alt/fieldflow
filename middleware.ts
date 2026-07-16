@@ -22,7 +22,7 @@ export function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
   const host = request.headers.get("host") ?? "";
 
-  // Payment providers redirect to https tunnel (required). Login cookies are on localhost.
+  // Whop redirects to https ngrok (required). Login cookies are on localhost.
   // Bounce wallet/billing return URLs back to local app immediately.
   const local = localAppOrigin();
   if (local && isTunnelHost(host) && pathname.startsWith("/client")) {
@@ -31,11 +31,7 @@ export function middleware(request: NextRequest) {
 
   // Allow public paths
   if (PUBLIC.some(p => pathname.startsWith(p))) return NextResponse.next();
-  if (
-    pathname.startsWith("/_next") ||
-    pathname.startsWith("/api/whop/webhook") ||
-    pathname.startsWith("/api/pdcash/webhook")
-  ) return NextResponse.next();
+  if (pathname.startsWith("/_next") || pathname.startsWith("/api/whop/webhook")) return NextResponse.next();
 
   const userId = request.cookies.get("user_id")?.value;
   const userRole = request.cookies.get("user_role")?.value;

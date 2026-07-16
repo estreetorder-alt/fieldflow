@@ -1,301 +1,394 @@
 "use client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 import {
-  Camera, ChevronRight, MapPin, Star, CheckCircle, DollarSign,
-  Clock, Shield, Zap, Users, Car, Building2, Home, ClipboardList, Play,
+  Camera, ArrowRight, MapPin, Star, CheckCircle, DollarSign,
+  Clock, Shield, Zap, Users, Car, Building2, Home as HomeIcon, ClipboardList, CheckCircle2,
 } from "lucide-react";
 import PublicNav from "./components/PublicNav";
 import PublicFooter from "./components/PublicFooter";
+import Hero3D from "./components/Hero3D";
+import { Button } from "./components/ui/button";
 
-const TESTIMONIALS = [
-  { name:"Arthur M.", city:"Jacksonville, FL", text:"We placed an order at 12:20 PM and received the photographs at 1:25 PM — that's 65 minutes! It saved me an 8-hour round trip drive." },
-  { name:"Will T.", city:"Marietta, GA", text:"Significantly cheaper than competitors, covers more areas, and so much faster. This is the only platform I use now." },
-  { name:"Kelly R.", city:"California", text:"I went from putting 200+ miles on my car each week doing BPOs to next to nothing. Cannot thank this company enough." },
-  { name:"Bruce K.", city:"Keller Williams", text:"I am now in the BPO business full time with 3 employees. I could not have reached this level without Snapect." },
+const STATS = [
+  { value: "2,400+", label: "Orders Completed" },
+  { value: "87%", label: "Done in 24hrs" },
+  { value: "45+", label: "Service Types" },
+  { value: "35", label: "States Covered" },
 ];
 
 const SERVICES = [
-  { icon:<Home className="w-5 h-5"/>, name:"BPO / REO Photo Sets", desc:"3–8 photo exterior sets" },
-  { icon:<Car className="w-5 h-5"/>, name:"Vehicle Inspections", desc:"Car, motorcycle, RV, boat" },
-  { icon:<Building2 className="w-5 h-5"/>, name:"Property Inspections", desc:"Pre-sale, REO, insurance, disaster" },
-  { icon:<MapPin className="w-5 h-5"/>, name:"Occupancy Checks", desc:"Occupied / vacant verification" },
-  { icon:<Camera className="w-5 h-5"/>, name:"Videography", desc:"Full walkthrough + aerial drone" },
-  { icon:<ClipboardList className="w-5 h-5"/>, name:"Commercial & Rental", desc:"Move-in/out, office, retail" },
+  { icon: HomeIcon, name: "BPO / REO Photo Sets", desc: "3–8 photo exterior sets" },
+  { icon: Car, name: "Vehicle Inspections", desc: "Car, motorcycle, RV, boat" },
+  { icon: Building2, name: "Property Inspections", desc: "Pre-sale, REO, insurance, disaster" },
+  { icon: MapPin, name: "Occupancy Checks", desc: "Occupied / vacant verification" },
+  { icon: Camera, name: "Videography", desc: "Full walkthrough + aerial drone" },
+  { icon: ClipboardList, name: "Commercial & Rental", desc: "Move-in/out, office, retail" },
 ];
 
 const STEPS = [
-  { n:"01", title:"Enter the Address", desc:"Type the property or vehicle address. Validated instantly via Mapbox. Coverage checked automatically." },
-  { n:"02", title:"Choose Your Service", desc:"45+ predefined services with clear shot lists. Or customize your own order." },
-  { n:"03", title:"Review Offers", desc:"Field agents send offers on your order within minutes. Accept the offer you like — it is paid straight from your wallet." },
-  { n:"04", title:"Add Date Stamp", desc:"Optional complimentary date stamp burned into every photo — ideal for BPO, legal, and insurance use." },
-  { n:"05", title:"Pay & Submit", desc:"Pay securely via Whop. Order dispatched to your nearest highest-graded agent within seconds." },
+  { n: "01", title: "Enter the Address", desc: "Type the property or vehicle address. Validated instantly via Mapbox. Coverage checked automatically." },
+  { n: "02", title: "Choose Your Service", desc: "45+ predefined services with clear shot lists. Or customize your own order." },
+  { n: "03", title: "Review Offers", desc: "Field agents send offers on your order within minutes. Accept the offer you like — it is paid straight from your wallet." },
+  { n: "04", title: "Add Date Stamp", desc: "Optional complimentary date stamp burned into every photo — ideal for BPO, legal, and insurance use." },
+  { n: "05", title: "Pay & Submit", desc: "Pay securely. Order dispatched to your nearest highest-graded agent within seconds." },
+];
+
+const FEATURES = [
+  { icon: Shield, title: "Verified & Graded Agents", desc: "Every agent submits a 7-photo sample set before approval. Grades are based on quality, speed, and reliability. Highest-graded agents get priority dispatch." },
+  { icon: Zap, title: "Auto-Dispatch in Seconds", desc: "Orders are dispatched to the highest-graded available agent in your ZIP within seconds. No manual assignment, no delays." },
+  { icon: Clock, title: "87% Done Within 24 Hours", desc: "Orders before 10 AM local time are completed by next business day. Rush options are available when you need them." },
+  { icon: DollarSign, title: "You Pick the Offer", desc: "Agents send offers on every order. You review them and accept the one that works — funds come straight from your wallet, no checkout forms." },
+  { icon: Camera, title: "30-Day Photo Storage", desc: "Photos delivered by email instantly and stored securely for 30 days. Download, select, or email photos from your dashboard." },
+  { icon: Users, title: "Multi-User Accounts", desc: "Create employee sub-accounts. Each employee can place orders tracked to your billing. Ideal for BPO companies with large teams." },
+];
+
+const TESTIMONIALS = [
+  { name: "Arthur M.", city: "Jacksonville, FL", text: "We placed an order at 12:20 PM and received the photographs at 1:25 PM — that's 65 minutes! It saved me an 8-hour round trip drive." },
+  { name: "Will T.", city: "Marietta, GA", text: "Significantly cheaper than competitors, covers more areas, and so much faster. This is the only platform I use now." },
+  { name: "Kelly R.", city: "California", text: "I went from putting 200+ miles on my car each week doing BPOs to next to nothing. Cannot thank this company enough." },
+  { name: "Bruce K.", city: "Keller Williams", text: "I am now in the BPO business full time with 3 employees. I could not have reached this level without Snapect." },
 ];
 
 const TRUSTED_BY = ["Johnson Realty LLC", "Midwest Property Group", "First National Bank", "CoreLogic Partners", "Asset Management Co.", "Premier REO Services"];
+
+const MARQUEE_ITEMS = ["Exterior Photo Sets", "Interior Condition Reports", "Occupancy Checks", "Vehicle Inspections", "BPO Support", "REO Field Services", "Nationwide Network"];
+
+const AGENT_PERKS = ["No photography license required", "Set your own ZIP code coverage", "Respond to orders 9 AM–6 PM local time", "Weekly PayPal payout — we cover the fees"];
 
 export default function HomePage() {
   const router = useRouter();
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen warm-gradient-bg">
       <PublicNav />
 
-      {/* ── HERO — full-bleed background image like PrimeInspect ── */}
-      <section className="relative min-h-[90vh] flex flex-col justify-center overflow-hidden">
-        {/* Background image overlay */}
-        <div
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-          style={{
-            backgroundImage: `url('https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=1600&q=80')`,
-          }}
-          aria-hidden="true"
-        />
-        {/* Dark gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-r from-white/97 via-white/90 to-white/60" aria-hidden="true"/>
+      {/* ── HERO ── */}
+      <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-20">
+        <div className="absolute top-24 -left-24 w-96 h-96 rounded-full bg-[#EA580C]/10 blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 right-0 w-[500px] h-[500px] rounded-full bg-[#F59E0B]/10 blur-3xl pointer-events-none" />
 
-        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 py-24">
-          <div className="max-w-2xl">
-            {/* Badge */}
-            <div className="inline-flex items-center gap-2 bg-[#c8991a]/20 border border-[#c8991a]/50 text-[#c8991a] text-sm font-semibold px-4 py-1.5 rounded-full mb-8">
-              <Star className="w-3.5 h-3.5 fill-current" aria-hidden="true"/>
-              <span>America&apos;s Trusted Field Inspection Platform</span>
-            </div>
+        <div className="relative z-10 container mx-auto px-6 py-16">
+          <div className="grid lg:grid-cols-2 gap-16 items-center">
+            <motion.div initial={{ opacity: 0, x: -50 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.8, ease: "easeOut" }}>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#C2410C]/10 border border-[#C2410C]/20 text-[#C2410C] text-sm font-medium mb-6"
+              >
+                <Star className="w-3.5 h-3.5 fill-current" />
+                America&apos;s Trusted Field Inspection Platform
+              </motion.div>
 
-            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-extrabold text-[#0f1f3d] leading-tight mb-6 tracking-tight">
-              BPO &amp; REO<br />
-              <span className="text-[#c8991a]">Photo Sets</span><br />
-              <span className="text-4xl sm:text-5xl lg:text-6xl font-bold text-slate-700">Delivered in Hours</span>
-            </h1>
+              <h1 className="text-5xl lg:text-7xl font-bold mb-6 leading-tight">
+                <span className="text-[#2A2320]">BPO &amp; REO</span>
+                <br />
+                <span className="text-gradient">Photo Sets</span>
+                <br />
+                <span className="text-[#2A2320]">Delivered in Hours</span>
+              </h1>
 
-            <p className="text-xl text-slate-600 mb-4 leading-relaxed">
-              45+ services · Verified local agents · 35 states · 87% of orders done within 24 hours
-            </p>
-            <p className="text-slate-400 text-sm mb-10">
-              Vehicle inspections · Property assessments · Occupancy checks · Videography
-            </p>
+              <p className="text-xl text-[#4A403A] mb-8 leading-relaxed max-w-2xl">
+                45+ services · Verified local agents · 35 states · 87% of orders done within 24 hours. Vehicle inspections, property assessments, occupancy checks, and videography.
+              </p>
 
-            <div className="flex flex-col sm:flex-row gap-4">
-              <button
-                onClick={() => router.push("/register/client")}
-                className="bg-[#c8991a] hover:bg-[#f0b429] text-[#0f1f3d] font-bold px-8 py-4 rounded-xl text-lg transition-all shadow-lg hover:shadow-[#c8991a]/30 hover:shadow-xl flex items-center justify-center gap-2">
-                Order an Inspection
-                <ChevronRight className="w-5 h-5" aria-hidden="true"/>
-              </button>
-              <Link
-                href="/services"
-                className="border-2 border-slate-300 hover:border-[#c8991a] text-[#0f1f3d] hover:text-[#c8991a] bg-white/70 font-semibold px-8 py-4 rounded-xl text-lg transition-all flex items-center justify-center gap-2 backdrop-blur-sm">
-                <Play className="w-5 h-5" aria-hidden="true"/>
-                View All Services
-              </Link>
-            </div>
-          </div>
-        </div>
-
-        {/* Floating stats cards */}
-        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 pb-12">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-2xl">
-            {[
-              { val:"2,400+", label:"Orders Completed" },
-              { val:"87%",    label:"Done in 24hrs" },
-              { val:"45+",    label:"Service Types" },
-              { val:"35",     label:"States" },
-            ].map(s=>(
-              <div key={s.label} className="bg-slate-100 backdrop-blur-md border border-slate-300 rounded-xl px-4 py-3 text-center">
-                <div className="text-2xl font-extrabold text-[#c8991a]">{s.val}</div>
-                <div className="text-xs text-slate-600 mt-0.5">{s.label}</div>
+              <div className="flex flex-col sm:flex-row gap-4 mb-12">
+                <Button size="lg" className="group" onClick={() => router.push("/register/client")}>
+                  Order an Inspection
+                  <ArrowRight className="group-hover:translate-x-1 transition-transform" size={18} />
+                </Button>
+                <Link href="/services">
+                  <Button size="lg" variant="outline">View All Services</Button>
+                </Link>
               </div>
-            ))}
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+                {STATS.map((stat, index) => (
+                  <motion.div key={stat.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.4 + index * 0.1 }}>
+                    <div className="text-3xl font-bold text-gradient">{stat.value}</div>
+                    <div className="text-sm text-[#8A7A6C] mt-1">{stat.label}</div>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.8, delay: 0.3 }} className="relative">
+              <div className="relative h-[560px] rounded-2xl overflow-hidden soft-card animate-pulse-glow bg-[#2A2320]">
+                <Hero3D />
+              </div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 50 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 0.6 }}
+                className="absolute -bottom-6 -left-6 soft-card p-6 rounded-xl max-w-xs animate-float"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-full bg-[#C2410C]/10 flex items-center justify-center">
+                    <CheckCircle2 className="text-[#C2410C]" />
+                  </div>
+                  <div>
+                    <div className="text-[#2A2320] font-semibold">Dispatched in Seconds</div>
+                    <div className="text-[#8A7A6C] text-sm">Highest-graded agent, automatically</div>
+                  </div>
+                </div>
+              </motion.div>
+            </motion.div>
           </div>
         </div>
       </section>
 
-      {/* ── TRUSTED BY bar ── */}
-      <section className="bg-slate-50 py-5 px-4 border-y border-slate-200" aria-label="Trusted by companies">
+      {/* ── Editorial Marquee ── */}
+      <section className="py-8 bg-[#2A2320] overflow-hidden">
+        <div className="flex whitespace-nowrap animate-marquee">
+          {[...MARQUEE_ITEMS, ...MARQUEE_ITEMS].map((item, i) => (
+            <span key={i} className="mx-8 text-2xl font-bold text-[#F3EBDD]/80 uppercase tracking-wider flex items-center gap-8">
+              {item}
+              <span className="text-[#EA580C]">✦</span>
+            </span>
+          ))}
+        </div>
+      </section>
+
+      {/* ── TRUSTED BY ── */}
+      <section className="py-10 px-4 bg-[#FAF6EF] border-b border-[#E7DBCB]">
         <div className="max-w-6xl mx-auto">
-          <p className="text-center text-slate-500 text-xs uppercase tracking-widest mb-4 font-semibold">Trusted by property managers &amp; REO companies nationwide</p>
+          <p className="text-center text-[#8A7A6C] text-xs uppercase tracking-widest mb-5 font-semibold">Trusted by property managers &amp; REO companies nationwide</p>
           <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-10">
-            {TRUSTED_BY.map(name=>(
-              <span key={name} className="text-slate-400 font-bold text-sm tracking-wide opacity-60 hover:opacity-100 transition-opacity">{name}</span>
+            {TRUSTED_BY.map((name) => (
+              <span key={name} className="text-[#6B5D52] font-bold text-sm tracking-wide opacity-60 hover:opacity-100 transition-opacity">{name}</span>
             ))}
           </div>
         </div>
       </section>
 
       {/* ── SERVICES ── */}
-      <section className="py-20 px-4 bg-[#faf8f3]" id="services" aria-labelledby="services-heading">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-14">
-            <p className="text-[#c8991a] font-bold text-sm uppercase tracking-widest mb-2">45+ Services Available</p>
-            <h2 id="services-heading" className="text-3xl sm:text-4xl font-extrabold text-[#0f1f3d] mb-4">45+ Services. One Simple Flow.</h2>
-            <p className="text-slate-500 max-w-xl mx-auto text-lg">Pick a service, enter the address, and place your order. Verified field agents send offers within minutes — you choose the one that works.</p>
-          </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {SERVICES.map(s=>(
-              <div key={s.name} className="bg-white border border-slate-200 rounded-2xl p-6 hover:border-[#c8991a] hover:shadow-lg transition-all group cursor-default">
-                <div className="flex items-start justify-between gap-3 mb-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-white text-[#c8991a] rounded-xl flex items-center justify-center group-hover:bg-[#c8991a] group-hover:text-[#0f1f3d] transition-colors flex-shrink-0" aria-hidden="true">{s.icon}</div>
-                    <h3 className="font-bold text-[#0f1f3d] leading-tight">{s.name}</h3>
-                  </div>
+      <section className="py-32 relative">
+        <div className="relative container mx-auto px-6">
+          <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="text-center mb-16">
+            <span className="text-[#C2410C] font-semibold tracking-widest uppercase text-sm">45+ Services Available</span>
+            <h2 className="text-4xl lg:text-6xl font-bold mb-6 mt-3">
+              <span className="text-[#2A2320]">One Simple </span>
+              <span className="text-gradient">Flow</span>
+            </h2>
+            <p className="text-xl text-[#6B5D52] max-w-2xl mx-auto">
+              Pick a service, enter the address, and place your order. Verified field agents send offers within minutes — you choose the one that works.
+            </p>
+          </motion.div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {SERVICES.map((service, index) => (
+              <motion.div
+                key={service.name}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, delay: index * 0.08 }}
+                whileHover={{ scale: 1.02, y: -6 }}
+                className="soft-card rounded-2xl p-6 transition-all duration-300 hover:shadow-2xl group"
+              >
+                <div className="w-12 h-12 rounded-xl bg-[#C2410C]/10 flex items-center justify-center mb-4 group-hover:bg-[#C2410C] transition-colors">
+                  <service.icon className="w-6 h-6 text-[#C2410C] group-hover:text-white transition-colors" />
                 </div>
-                <p className="text-sm text-slate-500 ml-13">{s.desc}</p>
-              </div>
+                <h3 className="text-lg font-bold text-[#2A2320] mb-1 group-hover:text-[#C2410C] transition-colors">{service.name}</h3>
+                <p className="text-[#6B5D52] text-sm">{service.desc}</p>
+              </motion.div>
             ))}
           </div>
-          <div className="text-center mt-10">
-            <Link href="/services"
-              className="inline-flex items-center gap-2 bg-[#0f1f3d] hover:bg-[#1a3260] text-white font-bold px-8 py-4 rounded-xl transition-colors shadow-md">
-              See All 45+ Services &amp; Pricing <ChevronRight className="w-4 h-4" aria-hidden="true"/>
+
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6, delay: 0.3 }} className="text-center mt-12">
+            <Link href="/services">
+              <Button size="lg">
+                See All 45+ Services &amp; Pricing
+                <ArrowRight size={18} />
+              </Button>
             </Link>
-          </div>
+          </motion.div>
         </div>
       </section>
 
       {/* ── HOW IT WORKS ── */}
-      <section className="py-20 px-4 bg-white" id="how-it-works" aria-labelledby="how-heading">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-14">
-            <p className="text-[#c8991a] font-bold text-sm uppercase tracking-widest mb-2">Simple Process</p>
-            <h2 id="how-heading" className="text-3xl sm:text-4xl font-extrabold text-[#0f1f3d] mb-3">How It Works</h2>
-            <p className="text-slate-500 text-lg">From order to delivered photos in as little as 6 hours</p>
-          </div>
+      <section className="py-32 bg-[#F3EBDD]">
+        <div className="container mx-auto px-6 max-w-4xl">
+          <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="text-center mb-16">
+            <span className="text-[#C2410C] font-semibold tracking-widest uppercase text-sm">Simple Process</span>
+            <h2 className="text-4xl lg:text-6xl font-bold mb-4 mt-3">
+              <span className="text-[#2A2320]">How </span>
+              <span className="text-gradient">It Works</span>
+            </h2>
+            <p className="text-xl text-[#6B5D52]">From order to delivered photos in as little as 6 hours</p>
+          </motion.div>
+
           <div className="space-y-4">
-            {STEPS.map((s,i)=>(
-              <div key={s.n} className="flex gap-5 items-start bg-[#faf8f3] border border-slate-200 rounded-2xl p-6 hover:border-[#c8991a] hover:shadow-md transition-all">
-                <div className="w-14 h-14 bg-white text-[#c8991a] rounded-xl flex items-center justify-center text-xl font-black flex-shrink-0 shadow-md" aria-hidden="true">{s.n}</div>
-                <div className="pt-1">
-                  <h3 className="font-bold text-[#0f1f3d] text-lg mb-1">{s.title}</h3>
-                  <p className="text-slate-500 text-sm leading-relaxed">{s.desc}</p>
+            {STEPS.map((step, index) => (
+              <motion.div
+                key={step.n}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, delay: index * 0.08 }}
+                className="flex gap-5 items-start soft-card rounded-2xl p-6 hover:shadow-xl transition-all"
+              >
+                <div className="text-4xl font-bold text-[#C2410C]/25 flex-shrink-0 w-16">{step.n}</div>
+                <div>
+                  <h3 className="font-bold text-[#2A2320] text-lg mb-1">{step.title}</h3>
+                  <p className="text-[#6B5D52] text-sm leading-relaxed">{step.desc}</p>
                 </div>
-              </div>
+              </motion.div>
             ))}
           </div>
-          <div className="mt-8 p-5 bg-white rounded-2xl text-center" role="note">
-            <p className="text-[#c8991a] font-bold mb-1 flex items-center justify-center gap-2">
-              <Zap className="w-4 h-4" aria-hidden="true"/>After you submit:
+
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5 }} className="mt-8 soft-card rounded-2xl p-6 text-center">
+            <p className="text-[#C2410C] font-bold mb-1 flex items-center justify-center gap-2">
+              <Zap size={16} /> After you submit:
             </p>
-            <p className="text-slate-600 text-sm">The highest-graded field agent nearest to the property is dispatched automatically. Real-time status updates. Photos delivered by email and stored for 30 days.</p>
-          </div>
+            <p className="text-[#6B5D52] text-sm">The highest-graded field agent nearest to the property is dispatched automatically. Real-time status updates. Photos delivered by email and stored for 30 days.</p>
+          </motion.div>
         </div>
       </section>
 
       {/* ── FEATURES ── */}
-      <section className="py-20 px-4 bg-[#faf8f3]" aria-labelledby="features-heading">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-14">
-            <p className="text-[#c8991a] font-bold text-sm uppercase tracking-widest mb-2">Why Choose Snapect</p>
-            <h2 id="features-heading" className="text-3xl sm:text-4xl font-extrabold text-[#0f1f3d]">Built for Property Professionals</h2>
-          </div>
-          <div className="grid md:grid-cols-3 gap-6">
-            {[
-              { icon:<Shield className="w-6 h-6"/>, title:"Verified & Graded Agents", desc:"Every agent submits a 7-photo sample set before approval. Grades are based on quality, speed, and reliability. Highest-graded agents get priority dispatch." },
-              { icon:<Zap className="w-6 h-6"/>, title:"Auto-Dispatch in Seconds", desc:"Orders are dispatched to the highest-graded available agent in your ZIP within seconds. No manual assignment, no delays." },
-              { icon:<Clock className="w-6 h-6"/>, title:"87% Done Within 24 Hours", desc:"Orders before 10 AM local time are completed by next business day. Rush options are available when you need them." },
-              { icon:<DollarSign className="w-6 h-6"/>, title:"You Pick the Offer", desc:"Agents send offers on every order. You review them and accept the one that works — funds come straight from your wallet, no checkout forms." },
-              { icon:<Camera className="w-6 h-6"/>, title:"30-Day Photo Storage", desc:"Photos delivered by email instantly and stored securely for 30 days. Download, select, or email photos from your dashboard." },
-              { icon:<Users className="w-6 h-6"/>, title:"Multi-User Accounts", desc:"Create employee sub-accounts. Each employee can place orders tracked to your billing. Ideal for BPO companies with large teams." },
-            ].map(f=>(
-              <div key={f.title} className="bg-white border border-slate-200 rounded-2xl p-6 hover:border-[#c8991a] hover:shadow-lg transition-all">
-                <div className="w-12 h-12 bg-white text-[#c8991a] rounded-xl flex items-center justify-center mb-4" aria-hidden="true">{f.icon}</div>
-                <h3 className="font-bold text-[#0f1f3d] mb-2">{f.title}</h3>
-                <p className="text-slate-500 text-sm leading-relaxed">{f.desc}</p>
-              </div>
+      <section className="py-32">
+        <div className="container mx-auto px-6">
+          <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="text-center mb-16">
+            <span className="text-[#C2410C] font-semibold tracking-widest uppercase text-sm">Why Choose Snapect</span>
+            <h2 className="text-4xl lg:text-6xl font-bold mb-4 mt-3">
+              <span className="text-[#2A2320]">Built for Property </span>
+              <span className="text-gradient">Professionals</span>
+            </h2>
+          </motion.div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {FEATURES.map((f, index) => (
+              <motion.div
+                key={f.title}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, delay: index * 0.06 }}
+                whileHover={{ y: -6 }}
+                className="soft-card rounded-2xl p-6 transition-all duration-300 hover:shadow-2xl"
+              >
+                <div className="w-12 h-12 rounded-xl bg-[#C2410C]/10 flex items-center justify-center mb-4">
+                  <f.icon className="w-6 h-6 text-[#C2410C]" />
+                </div>
+                <h3 className="font-bold text-[#2A2320] mb-2">{f.title}</h3>
+                <p className="text-[#6B5D52] text-sm leading-relaxed">{f.desc}</p>
+              </motion.div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── HERO 2 — Full bleed property image ── */}
-      <section className="relative py-32 px-4 overflow-hidden" aria-labelledby="cta2-heading">
-        <div
-          className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: `url('https://images.unsplash.com/photo-1582407947304-fd86f028f716?w=1600&q=80')` }}
-          aria-hidden="true"
-        />
-        <div className="absolute inset-0 bg-white/85" aria-hidden="true"/>
-        <div className="relative z-10 max-w-3xl mx-auto text-center text-[#0f1f3d]">
-          <p className="text-[#c8991a] font-bold text-sm uppercase tracking-widest mb-3">Coverage Nationwide</p>
-          <h2 id="cta2-heading" className="text-3xl sm:text-4xl font-extrabold mb-5">35 States · 8,500+ Cities · 150+ Verified Agents</h2>
-          <p className="text-slate-600 text-lg mb-8">Check if we have agents in your area before placing an order. Most ZIPs covered same-day.</p>
-          <Link href="/coverage"
-            className="inline-flex items-center gap-2 bg-[#c8991a] hover:bg-[#f0b429] text-[#0f1f3d] font-bold px-8 py-4 rounded-xl text-lg transition-colors shadow-lg">
-            Check Coverage Area <ChevronRight className="w-5 h-5" aria-hidden="true"/>
+      {/* ── COVERAGE CTA ── */}
+      <section className="py-24 px-6 relative overflow-hidden">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          whileInView={{ opacity: 1, scale: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="relative container mx-auto max-w-3xl text-center soft-card rounded-3xl p-12 md:p-16"
+        >
+          <span className="text-[#C2410C] font-semibold tracking-widest uppercase text-sm">Coverage Nationwide</span>
+          <h2 className="text-3xl lg:text-5xl font-bold mb-5 mt-3 text-[#2A2320]">35 States · 8,500+ Cities · 150+ Verified Agents</h2>
+          <p className="text-[#6B5D52] text-lg mb-8">Check if we have agents in your area before placing an order. Most ZIPs covered same-day.</p>
+          <Link href="/coverage">
+            <Button size="lg">
+              Check Coverage Area
+              <ArrowRight size={18} />
+            </Button>
           </Link>
-        </div>
+        </motion.div>
       </section>
 
       {/* ── TESTIMONIALS ── */}
-      <section className="py-20 px-4 bg-white" aria-labelledby="testimonials-heading">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-14">
-            <p className="text-[#c8991a] font-bold text-sm uppercase tracking-widest mb-2">Vendor Stories</p>
-            <h2 id="testimonials-heading" className="text-3xl sm:text-4xl font-extrabold text-[#0f1f3d]">Trusted Since 2008</h2>
-            <p className="text-slate-400 mt-2">Real clients. Real results.</p>
-          </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {TESTIMONIALS.map(t=>(
-              <figure key={t.name} className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-                <div className="flex mb-3" aria-label="5 stars">
-                  {[1,2,3,4,5].map(i=><Star key={i} className="w-4 h-4 text-[#c8991a] fill-current" aria-hidden="true"/>)}
+      <section className="py-32">
+        <div className="container mx-auto px-6">
+          <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="text-center mb-16">
+            <span className="text-[#C2410C] font-semibold tracking-widest uppercase text-sm">Vendor Stories</span>
+            <h2 className="text-4xl lg:text-6xl font-bold mb-4 mt-3">
+              <span className="text-[#2A2320]">Trusted </span>
+              <span className="text-gradient">Since 2008</span>
+            </h2>
+            <p className="text-xl text-[#6B5D52]">Real clients. Real results.</p>
+          </motion.div>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {TESTIMONIALS.map((t, index) => (
+              <motion.div
+                key={t.name}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, delay: index * 0.08 }}
+                whileHover={{ y: -6 }}
+                className="soft-card rounded-2xl p-6 transition-all duration-300 hover:shadow-2xl"
+              >
+                <div className="flex gap-1 mb-3">
+                  {[1, 2, 3, 4, 5].map((i) => (<Star key={i} className="w-4 h-4 fill-[#EA580C] text-[#EA580C]" />))}
                 </div>
-                <blockquote><p className="text-slate-600 text-sm leading-relaxed mb-4">&ldquo;{t.text}&rdquo;</p></blockquote>
-                <figcaption>
-                  <p className="text-[#0f1f3d] font-semibold text-sm">{t.name}</p>
-                  <p className="text-slate-500 text-xs">{t.city}</p>
-                </figcaption>
-              </figure>
+                <p className="text-[#4A403A] text-sm leading-relaxed mb-4">&ldquo;{t.text}&rdquo;</p>
+                <div>
+                  <p className="text-[#2A2320] font-semibold text-sm">{t.name}</p>
+                  <p className="text-[#8A7A6C] text-xs">{t.city}</p>
+                </div>
+              </motion.div>
             ))}
           </div>
         </div>
       </section>
 
       {/* ── AGENT CTA ── */}
-      <section className="py-16 px-4 bg-[#faf8f3] border-y border-slate-200" aria-labelledby="agent-cta-heading">
-        <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8">
-          <div>
-            <p className="text-[#c8991a] font-bold text-sm uppercase tracking-widest mb-2">Field Agent Opportunities</p>
-            <h2 id="agent-cta-heading" className="text-2xl font-extrabold text-[#0f1f3d] mb-2">Earn As Much As You Can. Work Your Schedule.</h2>
-            <p className="text-slate-500 text-sm max-w-lg">Paid every Friday via PayPal. Only local jobs. No equipment needed — just your smartphone. 3-minute application.</p>
-            <ul className="mt-4 space-y-1.5">
-              {["No photography license required","Set your own ZIP code coverage","Respond to orders 9 AM–6 PM local time","Weekly PayPal payout — we cover the fees"].map(p=>(
-                <li key={p} className="flex items-center gap-2 text-sm text-slate-600">
-                  <CheckCircle className="w-4 h-4 text-[#c8991a] flex-shrink-0" aria-hidden="true"/>{p}
+      <section className="py-20 px-6 bg-[#F3EBDD] border-y border-[#E7DBCB]">
+        <div className="container mx-auto max-w-5xl flex flex-col md:flex-row items-center justify-between gap-10">
+          <motion.div initial={{ opacity: 0, x: -20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }}>
+            <span className="text-[#C2410C] font-semibold tracking-widest uppercase text-sm">Field Agent Opportunities</span>
+            <h2 className="text-2xl lg:text-3xl font-bold text-[#2A2320] mb-2 mt-3">Earn As Much As You Can. Work Your Schedule.</h2>
+            <p className="text-[#6B5D52] text-sm max-w-lg mb-4">Paid every Friday via PayPal. Only local jobs. No equipment needed — just your smartphone. 3-minute application.</p>
+            <ul className="space-y-1.5">
+              {AGENT_PERKS.map((p) => (
+                <li key={p} className="flex items-center gap-2 text-sm text-[#4A403A]">
+                  <CheckCircle className="w-4 h-4 text-[#C2410C] flex-shrink-0" />{p}
                 </li>
               ))}
             </ul>
-          </div>
-          <div className="flex-shrink-0 text-center">
-            <Link href="/work"
-              className="inline-flex items-center gap-2 bg-[#c8991a] hover:bg-[#f0b429] text-[#0f1f3d] font-bold px-8 py-4 rounded-xl text-lg transition-colors shadow-lg whitespace-nowrap">
-              Join Our Team <ChevronRight className="w-5 h-5" aria-hidden="true"/>
+          </motion.div>
+          <motion.div initial={{ opacity: 0, x: 20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="flex-shrink-0 text-center">
+            <Link href="/work">
+              <Button size="lg">
+                Join Our Team
+                <ArrowRight size={18} />
+              </Button>
             </Link>
-            <p className="text-xs text-slate-400 mt-3">Free to join — no application fee</p>
-          </div>
+            <p className="text-xs text-[#8A7A6C] mt-3">Free to join — no application fee</p>
+          </motion.div>
         </div>
       </section>
 
       {/* ── FINAL CTA ── */}
-      <section className="relative py-24 px-4 overflow-hidden" aria-labelledby="final-cta-heading">
-        <div
-          className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: `url('https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=1600&q=80')` }}
-          aria-hidden="true"
-        />
-        <div className="absolute inset-0 bg-[#c8991a]/90" aria-hidden="true"/>
-        <div className="relative z-10 max-w-2xl mx-auto text-center">
-          <h2 id="final-cta-heading" className="text-3xl sm:text-4xl font-extrabold text-[#0f1f3d] mb-4">Ready to Place Your First Order?</h2>
-          <p className="text-[#0f1f3d]/80 mb-8 text-lg">Create a free account. First order dispatched within seconds of submission.</p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <button onClick={() => router.push("/register/client")}
-              className="bg-white hover:bg-slate-100 text-[#0f1f3d] font-bold px-8 py-4 rounded-xl text-lg transition-colors shadow-lg inline-flex items-center justify-center gap-2">
-              New Vendor Signup <ChevronRight className="w-5 h-5" aria-hidden="true"/>
-            </button>
-            <Link href="/contact"
-              className="border-2 border-[#0f1f3d] text-[#0f1f3d] hover:bg-white hover:text-[#0f1f3d] font-semibold px-8 py-4 rounded-xl text-lg transition-colors inline-flex items-center justify-center">
-              Contact Us
-            </Link>
-          </div>
+      <section className="py-32 px-6 relative overflow-hidden">
+        <div className="relative container mx-auto px-0">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="rounded-3xl p-12 md:p-20 text-center max-w-4xl mx-auto"
+            style={{ background: "linear-gradient(135deg, #C2410C, #EA580C)" }}
+          >
+            <h2 className="text-4xl lg:text-6xl font-bold mb-6 text-white">Ready to Place Your First Order?</h2>
+            <p className="text-xl text-white/90 mb-10 max-w-2xl mx-auto">Create a free account. First order dispatched within seconds of submission.</p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Button size="lg" variant="secondary" className="min-w-[200px] bg-white text-[#C2410C] hover:bg-[#FAF6EF]" onClick={() => router.push("/register/client")}>
+                New Vendor Signup
+              </Button>
+              <Link href="/contact">
+                <Button size="lg" className="min-w-[200px] bg-[#2A2320] text-white hover:bg-[#1C1917]">Contact Us</Button>
+              </Link>
+            </div>
+          </motion.div>
         </div>
       </section>
 

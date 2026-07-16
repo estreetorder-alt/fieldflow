@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createSetupCheckout, isWhopConfigured } from "@/lib/whop";
 import { listPaymentMethods } from "@/lib/walletBilling";
 
-/**
- * GET — list saved cards for the logged-in client.
- * (Legacy endpoint — card saving is no longer supported; returns empty list.)
- */
+/** GET — list saved cards for the logged-in client. */
 export async function GET(request: NextRequest) {
   const userId = request.cookies.get("user_id")?.value;
   const userRole = request.cookies.get("user_role")?.value;
@@ -20,8 +18,9 @@ export async function GET(request: NextRequest) {
 }
 
 /**
- * POST — previously started a Whop card-save flow.
- * Payment method saving is no longer supported; payments go directly through pd.cash.
+ * POST — start Whop setup checkout to save a card (no charge).
+ * Body: { purpose?: "connect_card" | "add_card" }
+ * Returns: { success: true, checkout_url }
  */
 export async function POST(request: NextRequest) {
   const userId = request.cookies.get("user_id")?.value;
@@ -30,11 +29,40 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Clients only" }, { status: 403 });
   }
 
-  return NextResponse.json(
-    {
-      error:
-        "Saved cards are no longer supported. Please use the pd.cash payment link to top up your wallet directly.",
-    },
-    { status: 410 },
-  );
+  if (!isWhopConfigured()) {
+    return NextResponse.json({ error: "Payments are not configured" }, { status: 503 });
+  }
+
+  let purpose: "connect_card" | "add_card" = "connect_card";
+  try {
+    const body = await request.json().catch(() => ({}));
+    if (body?.purpose === "add_card") purpose = "add_card";
+  } catch {
+    /* empty body ok */
+  }
+
+  try {
+    const { checkoutUrl, checkoutId } = await createSetupCheckout({
+      purpose,
+      redirectPath: `/client/wallet?card=${purpose === "add_card" ? "added" : "connected"}`,
+      metadata: {
+        account_id: userId,
+        userId,
+        purpose,
+      },
+    });
+
+    return NextResponse.json({
+      success: true,
+      checkout_url: checkoutUrl,
+      url: checkoutUrl,
+      checkoutId,
+    });
+  } catch (err) {
+    console.error("[wallet/connect-card] Whop setup failed", err);
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Failed to start card setup" },
+      { status: 502 },
+    );
+  }
 }

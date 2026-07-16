@@ -35,7 +35,7 @@ export default function ClientRegisterPage() {
 
   if (step === "payment") {
     return (
-      <div className="min-h-screen bg-white">
+      <div className="min-h-screen bg-white pt-20">
         <PublicNav />
         <div className="min-h-[80vh] flex items-center justify-center px-4 py-16">
           <div className="w-full max-w-lg">
@@ -61,7 +61,7 @@ export default function ClientRegisterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white pt-20">
       <PublicNav />
       <div className="bg-white py-12 px-4">
         <div className="max-w-5xl mx-auto grid md:grid-cols-2 gap-12 items-center">

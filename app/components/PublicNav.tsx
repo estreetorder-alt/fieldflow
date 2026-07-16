@@ -1,71 +1,115 @@
 "use client";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useState } from "react";
-import { Menu, X } from "lucide-react";
 import Image from "next/image";
+import { motion, AnimatePresence } from "framer-motion";
+import { Menu, X } from "lucide-react";
+import { useState } from "react";
+import { usePathname } from "next/navigation";
+import { Button } from "./ui/button";
 
 const NAV_LINKS = [
-  { href: "/",                label: "Home" },
-  { href: "/coverage",        label: "Coverage Area" },
-  { href: "/services",        label: "Services" },
-  { href: "/register/client", label: "New Vendor Signup" },
-  { href: "/work",            label: "Join Our Team" },
-  { href: "/contact",         label: "Contact" },
+  { href: "/", label: "Home" },
+  { href: "/coverage", label: "Coverage Area" },
+  { href: "/services", label: "Services" },
+  { href: "/register/client", label: "New Vendor Signup", highlight: true },
+  { href: "/work", label: "Join Our Team" },
+  { href: "/contact", label: "Contact" },
 ];
 
 export default function PublicNav() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  const isActive = (href: string) => href === "/" ? pathname === "/" : pathname.startsWith(href);
+  const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
 
   return (
-    <nav className="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm" role="navigation" aria-label="Main navigation">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6">
-        <div className="h-16 flex items-center justify-between gap-4">
+    <motion.header
+      initial={{ y: -100, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ duration: 0.6, ease: "easeOut" }}
+      className="fixed top-0 left-0 right-0 z-50 bg-[#FAF6EF]/85 backdrop-blur-xl border-b border-[#E7DBCB]"
+      role="navigation"
+      aria-label="Main navigation"
+    >
+      <div className="container mx-auto px-6 py-3">
+        <div className="flex items-center justify-between gap-4">
           <Link href="/" className="flex items-center flex-shrink-0" aria-label="Snapect Home">
-            <Image src="/snapect-logo.png" alt="Snapect" width={140} height={44} className="h-11 w-auto object-contain" priority/>
+            <motion.div whileHover={{ scale: 1.05 }}>
+              <Image src="/snapect-logo.png" alt="Snapect" width={140} height={44} className="h-10 w-auto object-contain" priority />
+            </motion.div>
           </Link>
-          <div className="hidden lg:flex items-center gap-1 flex-1 justify-center">
-            {NAV_LINKS.map((l) => (
-              <Link key={l.href} href={l.href}
-                className={`px-3 py-2 rounded-md text-sm font-medium transition-all whitespace-nowrap ${
-                  isActive(l.href)
-                    ? "text-[#0f1f3d] bg-[#c8991a]/10 font-bold"
-                    : "text-slate-600 hover:text-[#0f1f3d] hover:bg-slate-100"
-                }`}>
-                {l.label}
-              </Link>
-            ))}
-          </div>
+
+          <nav className="hidden lg:flex items-center gap-1">
+            {NAV_LINKS.map((link) => {
+              const active = isActive(link.href);
+              if (link.highlight) {
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${
+                      active ? "bg-[#C2410C] text-white" : "bg-[#F3EBDD] text-[#2A2320] border border-[#E7DBCB] hover:bg-[#EADCC8]"
+                    }`}
+                  >
+                    {link.label}
+                  </Link>
+                );
+              }
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={`px-3 py-2 text-sm font-medium transition-colors ${
+                    active ? "text-[#C2410C]" : "text-[#6B5D52] hover:text-[#C2410C]"
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              );
+            })}
+          </nav>
+
           <div className="hidden lg:flex items-center gap-2 flex-shrink-0">
-            <Link href="/login" className="px-5 py-2 text-sm font-bold text-white bg-[#0f1f3d] hover:bg-[#1a3260] rounded-lg transition-colors whitespace-nowrap">
-              Login
+            <Link href="/login">
+              <Button size="sm" className="bg-[#2A2320] text-white hover:bg-[#1C1917]">
+                Login
+              </Button>
             </Link>
           </div>
-          <button onClick={() => setOpen(!open)} className="lg:hidden text-slate-600 hover:text-slate-900 p-1" aria-label="Toggle menu">
-            {open ? <X className="w-6 h-6"/> : <Menu className="w-6 h-6"/>}
+
+          <button onClick={() => setOpen(!open)} className="lg:hidden text-[#2A2320] hover:text-[#C2410C] transition-colors" aria-label="Toggle menu">
+            {open ? <X size={24} /> : <Menu size={24} />}
           </button>
         </div>
+
+        <AnimatePresence>
+          {open && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="lg:hidden pt-4 pb-6 space-y-3 overflow-hidden"
+            >
+              {NAV_LINKS.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => setOpen(false)}
+                  className={`block transition-colors ${
+                    link.highlight ? "text-[#C2410C] font-semibold" : "text-[#6B5D52] hover:text-[#C2410C]"
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              ))}
+              <div className="flex flex-col gap-3 pt-4 border-t border-[#E7DBCB]">
+                <Link href="/login" onClick={() => setOpen(false)}>
+                  <Button className="w-full bg-[#2A2320] text-white hover:bg-[#1C1917]">Login</Button>
+                </Link>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
-      {open && (
-        <div className="lg:hidden border-t border-slate-100 bg-white px-4 py-3 space-y-1">
-          {NAV_LINKS.map((l) => (
-            <Link key={l.href} href={l.href} onClick={() => setOpen(false)}
-              className={`block px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                isActive(l.href) ? "bg-[#c8991a]/10 text-[#0f1f3d] font-bold" : "text-slate-600 hover:bg-slate-100"
-              }`}>
-              {l.label}
-            </Link>
-          ))}
-          <div className="pt-2 border-t border-slate-100">
-            <Link href="/login" onClick={() => setOpen(false)}
-              className="block text-center bg-white text-[#0f1f3d] font-bold px-4 py-2.5 rounded-lg text-sm mt-2">
-              Login
-            </Link>
-          </div>
-        </div>
-      )}
-    </nav>
+    </motion.header>
   );
 }
