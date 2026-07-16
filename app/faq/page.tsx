@@ -40,13 +40,13 @@ export default function FaqPage() {
   const current = CATS.find(c=>c.id===cat)!;
 
   return (
-    <div className="min-h-screen bg-white pt-20">
+    <div className="min-h-screen bg-[#FAF6EF] pt-20">
       <PublicNav />
-      <section className="bg-white text-[#0f1f3d] py-14 px-4">
+      <section className="bg-white text-[#2A2320] py-14 px-4">
         <div className="max-w-3xl mx-auto text-center">
-          <HelpCircle className="w-12 h-12 text-[#c8991a] mx-auto mb-4"/>
+          <HelpCircle className="w-12 h-12 text-[#C2410C] mx-auto mb-4"/>
           <h1 className="text-4xl font-extrabold mb-2">Frequently Asked Questions</h1>
-          <p className="text-slate-600 text-sm">Orders, coverage, employees, fees, and joining as a field agent</p>
+          <p className="text-[#6B5D52] text-sm">Orders, coverage, employees, fees, and joining as a field agent</p>
         </div>
       </section>
 
@@ -55,7 +55,7 @@ export default function FaqPage() {
           <aside className="bg-white rounded-2xl overflow-hidden">
             {CATS.map(c=>(
               <button key={c.id} onClick={()=>{setCat(c.id);setOpen(null);}}
-                className={`w-full text-left px-4 py-3 text-sm font-semibold border-b border-white/5 last:border-0 transition-colors ${cat===c.id?"bg-[#c8991a] text-[#0f1f3d]":"text-slate-200 hover:bg-slate-100"}`}>
+                className={`w-full text-left px-4 py-3 text-sm font-semibold border-b border-white/5 last:border-0 transition-colors ${cat===c.id?"bg-[#C2410C] text-[#2A2320]":"text-slate-200 hover:bg-[#EADCC8]"}`}>
                 {c.label}
               </button>
             ))}
@@ -63,18 +63,18 @@ export default function FaqPage() {
 
           <div className="space-y-3">
             {current.items.map(item=>(
-              <div key={item.q} className="border border-slate-200 rounded-xl overflow-hidden">
+              <div key={item.q} className="border border-[#E7DBCB] rounded-xl overflow-hidden">
                 <button onClick={()=>setOpen(open===item.q?null:item.q)}
-                  className="w-full flex items-center justify-between gap-3 px-4 py-3.5 text-left hover:bg-slate-50">
-                  <span className="font-bold text-[#0f1f3d] text-sm">{item.q}</span>
-                  {open===item.q?<ChevronUp className="w-4 h-4 text-[#c8991a] flex-shrink-0"/>:<ChevronDown className="w-4 h-4 text-slate-400 flex-shrink-0"/>}
+                  className="w-full flex items-center justify-between gap-3 px-4 py-3.5 text-left hover:bg-[#F3EBDD]">
+                  <span className="font-bold text-[#2A2320] text-sm">{item.q}</span>
+                  {open===item.q?<ChevronUp className="w-4 h-4 text-[#C2410C] flex-shrink-0"/>:<ChevronDown className="w-4 h-4 text-[#A99885] flex-shrink-0"/>}
                 </button>
                 {open===item.q&&(
-                  <div className="px-4 pb-4 text-sm text-slate-600 leading-relaxed border-t border-slate-100 pt-3">{item.a}</div>
+                  <div className="px-4 pb-4 text-sm text-[#6B5D52] leading-relaxed border-t border-[#F0E4D3] pt-3">{item.a}</div>
                 )}
               </div>
             ))}
-            <p className="text-xs text-slate-400 pt-2">Still stuck? <Link href="/contact" className="text-[#c8991a] font-semibold underline">Contact support</Link> — or see our <Link href="/refund-policy" className="text-[#c8991a] font-semibold underline">Refund Policy</Link>.</p>
+            <p className="text-xs text-[#A99885] pt-2">Still stuck? <Link href="/contact" className="text-[#C2410C] font-semibold underline">Contact support</Link> — or see our <Link href="/refund-policy" className="text-[#C2410C] font-semibold underline">Refund Policy</Link>.</p>
           </div>
         </div>
       </section>

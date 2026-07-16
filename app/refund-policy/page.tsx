@@ -4,13 +4,13 @@ import { ShieldCheck, Camera, Wallet, XCircle } from "lucide-react";
 
 export default function RefundPolicyPage() {
   return (
-    <div className="min-h-screen bg-white pt-20">
+    <div className="min-h-screen bg-[#FAF6EF] pt-20">
       <PublicNav />
-      <section className="bg-white text-[#0f1f3d] py-16 px-4">
+      <section className="bg-white text-[#2A2320] py-16 px-4">
         <div className="max-w-3xl mx-auto text-center">
-          <ShieldCheck className="w-12 h-12 text-[#c8991a] mx-auto mb-4"/>
+          <ShieldCheck className="w-12 h-12 text-[#C2410C] mx-auto mb-4"/>
           <h1 className="text-4xl font-extrabold mb-3">Refund Policy</h1>
-          <p className="text-slate-600">Last updated: July 2026</p>
+          <p className="text-[#6B5D52]">Last updated: July 2026</p>
         </div>
       </section>
 
@@ -30,8 +30,8 @@ export default function RefundPolicyPage() {
           </div>
 
           <div className="mb-10">
-            <h2 className="text-xl font-bold text-[#0f1f3d] mb-3 border-b border-[#c8991a]/30 pb-2">Before an agent accepts your order</h2>
-            <p className="text-slate-600 leading-relaxed">
+            <h2 className="text-xl font-bold text-[#2A2320] mb-3 border-b border-[#C2410C]/30 pb-2">Before an agent accepts your order</h2>
+            <p className="text-[#6B5D52] leading-relaxed">
               You may cancel free of charge any time before a field agent accepts your order — nothing has been
               dispatched yet, so nothing needs to be reshot or credited. Once an agent accepts, the order is
               considered active and the no-refund policy below applies.
@@ -39,34 +39,34 @@ export default function RefundPolicyPage() {
           </div>
 
           <div className="mb-10">
-            <h2 className="text-xl font-bold text-[#0f1f3d] mb-3 border-b border-[#c8991a]/30 pb-2">If something goes wrong</h2>
-            <p className="text-slate-600 leading-relaxed mb-4">
+            <h2 className="text-xl font-bold text-[#2A2320] mb-3 border-b border-[#C2410C]/30 pb-2">If something goes wrong</h2>
+            <p className="text-[#6B5D52] leading-relaxed mb-4">
               If your delivered photos are incomplete, low quality, of the wrong property, or otherwise don&apos;t
               meet the order&apos;s shot list, open a dispute from your order page within <strong>5 business days</strong> of
               delivery. Every dispute is reviewed by our team and resolved one of these ways:
             </p>
             <div className="grid sm:grid-cols-3 gap-4">
-              <div className="p-4 border border-slate-200 rounded-xl">
-                <Camera className="w-6 h-6 text-[#c8991a] mb-2"/>
-                <p className="font-bold text-[#0f1f3d] text-sm mb-1">Free Reshoot</p>
-                <p className="text-xs text-slate-500">We dispatch another agent to redo the shots at no extra cost — the most common outcome for quality issues.</p>
+              <div className="p-4 border border-[#E7DBCB] rounded-xl">
+                <Camera className="w-6 h-6 text-[#C2410C] mb-2"/>
+                <p className="font-bold text-[#2A2320] text-sm mb-1">Free Reshoot</p>
+                <p className="text-xs text-[#8A7A6C]">We dispatch another agent to redo the shots at no extra cost — the most common outcome for quality issues.</p>
               </div>
-              <div className="p-4 border border-slate-200 rounded-xl">
-                <Wallet className="w-6 h-6 text-[#c8991a] mb-2"/>
-                <p className="font-bold text-[#0f1f3d] text-sm mb-1">Wallet Credit</p>
-                <p className="text-xs text-slate-500">If a reshoot isn&apos;t practical, we credit your Snapect wallet for use toward a future order.</p>
+              <div className="p-4 border border-[#E7DBCB] rounded-xl">
+                <Wallet className="w-6 h-6 text-[#C2410C] mb-2"/>
+                <p className="font-bold text-[#2A2320] text-sm mb-1">Wallet Credit</p>
+                <p className="text-xs text-[#8A7A6C]">If a reshoot isn&apos;t practical, we credit your Snapect wallet for use toward a future order.</p>
               </div>
-              <div className="p-4 border border-slate-200 rounded-xl">
-                <ShieldCheck className="w-6 h-6 text-[#c8991a] mb-2"/>
-                <p className="font-bold text-[#0f1f3d] text-sm mb-1">Explanation</p>
-                <p className="text-xs text-slate-500">If the order was completed correctly per the shot list, we&apos;ll explain why and close the dispute.</p>
+              <div className="p-4 border border-[#E7DBCB] rounded-xl">
+                <ShieldCheck className="w-6 h-6 text-[#C2410C] mb-2"/>
+                <p className="font-bold text-[#2A2320] text-sm mb-1">Explanation</p>
+                <p className="text-xs text-[#8A7A6C]">If the order was completed correctly per the shot list, we&apos;ll explain why and close the dispute.</p>
               </div>
             </div>
           </div>
 
           <div className="mb-10">
-            <h2 className="text-xl font-bold text-[#0f1f3d] mb-3 border-b border-[#c8991a]/30 pb-2">Rush fees & add-ons</h2>
-            <p className="text-slate-600 leading-relaxed">
+            <h2 className="text-xl font-bold text-[#2A2320] mb-3 border-b border-[#C2410C]/30 pb-2">Rush fees & add-ons</h2>
+            <p className="text-[#6B5D52] leading-relaxed">
               Rush/turnaround fees are non-refundable once an agent has accepted the order, even if a dispute is
               later resolved via reshoot or credit — the fee compensates for the agent&apos;s expedited scheduling,
               which already happened.
@@ -74,8 +74,8 @@ export default function RefundPolicyPage() {
           </div>
 
           <div>
-            <h2 className="text-xl font-bold text-[#0f1f3d] mb-3 border-b border-[#c8991a]/30 pb-2">How to open a dispute</h2>
-            <p className="text-slate-600 leading-relaxed">
+            <h2 className="text-xl font-bold text-[#2A2320] mb-3 border-b border-[#C2410C]/30 pb-2">How to open a dispute</h2>
+            <p className="text-[#6B5D52] leading-relaxed">
               Log in, open the order in question from your dashboard, and select &quot;File a Dispute.&quot; Include a
               short description and, if helpful, photos showing the issue. Our team typically responds within
               1–2 business days.

@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import PublicNav from "./components/PublicNav";
 import PublicFooter from "./components/PublicFooter";
-import Hero3D from "./components/Hero3D";
+import HeroVisual from "./components/HeroVisual";
 import { Button } from "./components/ui/button";
 
 const STATS = [
@@ -115,8 +115,8 @@ export default function HomePage() {
             </motion.div>
 
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.8, delay: 0.3 }} className="relative">
-              <div className="relative h-[560px] rounded-2xl overflow-hidden soft-card animate-pulse-glow bg-[#2A2320]">
-                <Hero3D />
+              <div className="relative h-[560px] rounded-2xl overflow-hidden soft-card animate-pulse-glow bg-gradient-to-br from-[#C2410C] via-[#EA580C] to-[#B45309]">
+                <HeroVisual />
               </div>
 
               <motion.div

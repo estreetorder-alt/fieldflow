@@ -394,7 +394,7 @@ export default function AgentPage() {
                                   <div className="w-14 h-11 rounded-lg overflow-hidden bg-slate-100 flex items-center justify-center flex-shrink-0">
                                     {ph?.url?<img src={ph.url} alt={label} className="w-full h-full object-cover"/>
                                     : isUploading?<div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"/>
-                                    : <ImageIcon className="w-4 h-4 text-slate-300"/>}
+                                    : <ImageIcon className="w-4 h-4 text-[#C4AE90]"/>}
                                   </div>
                                   <div className="min-w-0 flex-1">
                                     <p className="text-xs font-semibold text-slate-700 leading-snug">{idx+1}. {label}</p>
@@ -521,7 +521,7 @@ export default function AgentPage() {
                 {/* Service picker — all services listed */}
                 <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1.5">1. Select the service</label>
                 <select value={formServiceId} onChange={e=>{setFormServiceId(e.target.value);setFormPhotos({});}}
-                  className="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 mb-4">
+                  className="w-full border border-[#D8C4AC] rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 mb-4">
                   <option value="">— Choose a service —</option>
                   {catalog.map(cat=>(
                     <optgroup key={cat.id} label={cat.label}>
@@ -533,7 +533,7 @@ export default function AgentPage() {
                 {/* Optional order link */}
                 <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1.5">2. Link to one of your jobs (optional)</label>
                 <select value={formOrderId} onChange={e=>setFormOrderId(e.target.value)}
-                  className="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 mb-4">
+                  className="w-full border border-[#D8C4AC] rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 mb-4">
                   <option value="">No order — send to Snapect only</option>
                   {myOrders.filter(o=>o.status==="in_progress").map(o=><option key={o.id} value={o.id}>{o.address}</option>)}
                 </select>
@@ -558,7 +558,7 @@ export default function AgentPage() {
                                 ph?"border-green-300 bg-green-50":"border-dashed border-blue-300 bg-white hover:border-blue-500"
                               }`}>
                               <div className="w-14 h-11 rounded-lg overflow-hidden bg-slate-100 flex items-center justify-center flex-shrink-0">
-                                {ph?<img src={ph.url} alt={label} className="w-full h-full object-cover"/>:<ImageIcon className="w-4 h-4 text-slate-300"/>}
+                                {ph?<img src={ph.url} alt={label} className="w-full h-full object-cover"/>:<ImageIcon className="w-4 h-4 text-[#C4AE90]"/>}
                               </div>
                               <div className="min-w-0 flex-1">
                                 <p className="text-xs font-semibold text-slate-700 leading-snug">{idx+1}. {label}</p>
@@ -713,7 +713,7 @@ export default function AgentPage() {
 
                 {/* ── Change password ── */}
                 <div className="mt-6 pt-5 border-t border-slate-100">
-                  <h3 className="text-sm font-bold text-slate-800 mb-2">Change Password</h3>
+                  <h3 className="text-sm font-bold text-[#2A2320] mb-2">Change Password</h3>
                   {pwMsg && (
                     <div className={`mb-2 px-3 py-2 rounded-xl text-xs ${pwMsg.ok?"bg-green-50 border border-green-200 text-green-700":"bg-red-50 border border-red-200 text-red-700"}`}>{pwMsg.text}</div>
                   )}
@@ -724,14 +724,14 @@ export default function AgentPage() {
                       className="border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"/>
                   </div>
                   <button onClick={changePassword} disabled={pwSaving}
-                    className="text-sm bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-white font-semibold px-4 py-2 rounded-xl">
+                    className="text-sm bg-[#1C1917] hover:bg-slate-700 disabled:opacity-50 text-white font-semibold px-4 py-2 rounded-xl">
                     {pwSaving?"Saving…":"Update Password"}
                   </button>
                 </div>
 
                 {/* ── Vendor feedback on completed orders ── */}
                 <div className="mt-6 pt-5 border-t border-slate-100">
-                  <h3 className="text-sm font-bold text-slate-800 mb-2 flex items-center gap-1.5">
+                  <h3 className="text-sm font-bold text-[#2A2320] mb-2 flex items-center gap-1.5">
                     <Star className="w-4 h-4 text-amber-400 fill-amber-400"/>Vendor Feedback ({myReviews.length})
                   </h3>
                   {myReviews.length===0 ? (
@@ -741,7 +741,7 @@ export default function AgentPage() {
                       {myReviews.map(rv=>(
                         <div key={rv.id} className="bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5">
                           <div className="flex items-center gap-2">
-                            <span className="flex">{[1,2,3,4,5].map(n=><Star key={n} className={`w-3.5 h-3.5 ${n<=rv.rating?"fill-amber-400 text-amber-400":"text-slate-300"}`}/>)}</span>
+                            <span className="flex">{[1,2,3,4,5].map(n=><Star key={n} className={`w-3.5 h-3.5 ${n<=rv.rating?"fill-amber-400 text-amber-400":"text-[#C4AE90]"}`}/>)}</span>
                             <span className="text-[10px] text-slate-400" suppressHydrationWarning>{etDate(rv.createdAt)}</span>
                           </div>
                           {rv.comment&&<p className="text-xs text-slate-600 mt-1 italic">&quot;{rv.comment}&quot;</p>}

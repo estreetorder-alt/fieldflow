@@ -4,13 +4,13 @@ import { Shield } from "lucide-react";
 
 export default function PrivacyPage() {
   return (
-    <div className="min-h-screen bg-white pt-20">
+    <div className="min-h-screen bg-[#FAF6EF] pt-20">
       <PublicNav />
-      <section className="bg-white text-[#0f1f3d] py-16 px-4">
+      <section className="bg-white text-[#2A2320] py-16 px-4">
         <div className="max-w-3xl mx-auto text-center">
-          <Shield className="w-12 h-12 text-[#c8991a] mx-auto mb-4"/>
+          <Shield className="w-12 h-12 text-[#C2410C] mx-auto mb-4"/>
           <h1 className="text-4xl font-extrabold mb-3">Privacy Policy</h1>
-          <p className="text-slate-600">Last updated: January 1, 2025</p>
+          <p className="text-[#6B5D52]">Last updated: January 1, 2025</p>
         </div>
       </section>
       <section className="py-16 px-4">
@@ -28,8 +28,8 @@ export default function PrivacyPage() {
             { title:"10. Contact", body:"For privacy-related questions, contact us at info@snapect.com. For legal matters, Snapect is a corporation registered in the State of Florida." },
           ].map(s=>(
             <div key={s.title} className="mb-8">
-              <h2 className="text-xl font-bold text-[#0f1f3d] mb-3 border-b border-[#c8991a]/30 pb-2">{s.title}</h2>
-              <p className="text-slate-600 leading-relaxed">{s.body}</p>
+              <h2 className="text-xl font-bold text-[#2A2320] mb-3 border-b border-[#C2410C]/30 pb-2">{s.title}</h2>
+              <p className="text-[#6B5D52] leading-relaxed">{s.body}</p>
             </div>
           ))}
         </div>

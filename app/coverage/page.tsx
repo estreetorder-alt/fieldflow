@@ -25,9 +25,9 @@ function ZipChecker() {
         <input value={zip} onChange={e=>setZip(e.target.value.replace(/\D/g,"").slice(0,5))}
           placeholder="Enter ZIP code…" maxLength={5}
           onKeyDown={e=>{ if(e.key==="Enter") check(); }}
-          className="flex-1 border border-slate-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#c8991a] focus:border-transparent"/>
+          className="flex-1 border border-[#D8C4AC] rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#C2410C] focus:border-transparent"/>
         <button onClick={check} disabled={loading||zip.length!==5}
-          className="flex items-center gap-2 bg-[#c8991a] hover:bg-[#f0b429] disabled:opacity-50 text-[#0f1f3d] font-bold px-5 py-3 rounded-xl text-sm transition-colors">
+          className="flex items-center gap-2 bg-[#C2410C] hover:bg-[#EA580C] disabled:opacity-50 text-[#2A2320] font-bold px-5 py-3 rounded-xl text-sm transition-colors">
           <Search className="w-4 h-4"/>{loading?"…":"Check"}
         </button>
       </div>
@@ -56,60 +56,60 @@ const STATES = [
 
 export default function CoveragePage() {
   return (
-    <div className="min-h-screen bg-white pt-20">
+    <div className="min-h-screen bg-[#FAF6EF] pt-20">
       <PublicNav />
 
-      <section className="bg-white text-[#0f1f3d] py-20 px-4">
+      <section className="bg-white text-[#2A2320] py-20 px-4">
         <div className="max-w-3xl mx-auto text-center">
-          <p className="text-[#c8991a] font-bold text-sm uppercase tracking-wider mb-3">35 States · 8,500+ Cities</p>
+          <p className="text-[#C2410C] font-bold text-sm uppercase tracking-wider mb-3">35 States · 8,500+ Cities</p>
           <h1 className="text-4xl sm:text-5xl font-extrabold mb-5 leading-tight">Coverage Area</h1>
-          <p className="text-xl text-slate-600 max-w-xl mx-auto mb-8">We're growing fast. Check if your ZIP code is covered right now.</p>
-          <div className="max-w-lg mx-auto bg-slate-100 border border-slate-300 rounded-2xl p-5 backdrop-blur-sm">
+          <p className="text-xl text-[#6B5D52] max-w-xl mx-auto mb-8">We're growing fast. Check if your ZIP code is covered right now.</p>
+          <div className="max-w-lg mx-auto bg-[#EADCC8] border border-[#D8C4AC] rounded-2xl p-5 backdrop-blur-sm">
             <ZipChecker />
           </div>
         </div>
       </section>
 
       {/* Stats */}
-      <section className="bg-[#c8991a] py-4 px-4">
-        <div className="max-w-4xl mx-auto grid grid-cols-3 gap-6 text-center text-[#0f1f3d]">
+      <section className="bg-[#C2410C] py-4 px-4">
+        <div className="max-w-4xl mx-auto grid grid-cols-3 gap-6 text-center text-[#2A2320]">
           {[["35","States Covered"],["8,500+","Cities"],["150+","Verified Agents"]].map(([v,l])=>(
             <div key={l}><div className="text-2xl font-extrabold">{v}</div><div className="text-xs font-medium opacity-75">{l}</div></div>
           ))}
         </div>
       </section>
 
-      <section className="py-16 px-4 bg-[#faf8f3]">
+      <section className="py-16 px-4 bg-[#FAF6EF]">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-10">
-            <p className="text-[#c8991a] font-bold text-sm uppercase tracking-wider mb-2">Active Coverage</p>
-            <h2 className="text-2xl font-bold text-[#0f1f3d] mb-3">States We Serve</h2>
-            <p className="text-slate-500">We have active agents in these states. Coverage varies by ZIP — use the checker above.</p>
+            <p className="text-[#C2410C] font-bold text-sm uppercase tracking-wider mb-2">Active Coverage</p>
+            <h2 className="text-2xl font-bold text-[#2A2320] mb-3">States We Serve</h2>
+            <p className="text-[#8A7A6C]">We have active agents in these states. Coverage varies by ZIP — use the checker above.</p>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
             {STATES.map(state=>(
-              <div key={state} className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-2.5 hover:border-[#c8991a] transition-colors">
-                <CheckCircle className="w-3.5 h-3.5 text-[#c8991a] flex-shrink-0"/>
-                <span className="text-sm text-slate-700 font-medium">{state}</span>
+              <div key={state} className="flex items-center gap-2 bg-white border border-[#E7DBCB] rounded-xl px-3 py-2.5 hover:border-[#C2410C] transition-colors">
+                <CheckCircle className="w-3.5 h-3.5 text-[#C2410C] flex-shrink-0"/>
+                <span className="text-sm text-[#4A403A] font-medium">{state}</span>
               </div>
             ))}
           </div>
-          <p className="text-center text-slate-400 text-sm mt-6">Alaska, Hawaii, and remaining states — coming soon. <Link href="/contact" className="text-[#c8991a] font-semibold hover:underline">Request coverage</Link></p>
+          <p className="text-center text-[#A99885] text-sm mt-6">Alaska, Hawaii, and remaining states — coming soon. <Link href="/contact" className="text-[#C2410C] font-semibold hover:underline">Request coverage</Link></p>
         </div>
       </section>
 
       <section className="py-16 px-4 bg-white">
         <div className="max-w-4xl mx-auto grid sm:grid-cols-2 gap-8 items-center">
-          <div className="text-[#0f1f3d]">
-            <p className="text-[#c8991a] font-bold text-sm uppercase tracking-wider mb-3">Expand Our Network</p>
+          <div className="text-[#2A2320]">
+            <p className="text-[#C2410C] font-bold text-sm uppercase tracking-wider mb-3">Expand Our Network</p>
             <h2 className="text-2xl font-bold mb-4">Become the First Agent in Your Area</h2>
-            <p className="text-slate-600 mb-6 leading-relaxed">If we don't have coverage in your ZIP, you could be the first Snapect agent there. Early agents in new areas get priority on all orders.</p>
+            <p className="text-[#6B5D52] mb-6 leading-relaxed">If we don't have coverage in your ZIP, you could be the first Snapect agent there. Early agents in new areas get priority on all orders.</p>
             <ul className="space-y-2 mb-6">
               {["Earn as much as you can","First-in-area priority routing","Flexible hours — work when you want","Paid every Friday via PayPal"].map(b=>(
-                <li key={b} className="flex items-center gap-2 text-sm text-slate-600"><CheckCircle className="w-4 h-4 text-[#c8991a]"/>{b}</li>
+                <li key={b} className="flex items-center gap-2 text-sm text-[#6B5D52]"><CheckCircle className="w-4 h-4 text-[#C2410C]"/>{b}</li>
               ))}
             </ul>
-            <Link href="/register/agent" className="inline-flex items-center gap-2 bg-[#c8991a] hover:bg-[#f0b429] text-[#0f1f3d] font-bold px-6 py-3 rounded-xl transition-colors">
+            <Link href="/register/agent" className="inline-flex items-center gap-2 bg-[#C2410C] hover:bg-[#EA580C] text-[#2A2320] font-bold px-6 py-3 rounded-xl transition-colors">
               Apply as Field Agent <ChevronRight className="w-4 h-4"/>
             </Link>
           </div>
@@ -120,10 +120,10 @@ export default function CoveragePage() {
               { icon:<Users className="w-6 h-6"/>, title:"Rotation System", desc:"Multiple agents in same ZIP share orders fairly — higher grade = more orders" },
               { icon:<CheckCircle className="w-6 h-6"/>, title:"Weekly Payout", desc:"Get paid every Friday via PayPal for all completed & approved orders" },
             ].map(c=>(
-              <div key={c.title} className="bg-slate-50 rounded-xl p-4">
-                <div className="text-[#c8991a] mb-2">{c.icon}</div>
-                <h3 className="font-bold text-[#0f1f3d] text-sm mb-1">{c.title}</h3>
-                <p className="text-slate-400 text-xs">{c.desc}</p>
+              <div key={c.title} className="bg-[#F3EBDD] rounded-xl p-4">
+                <div className="text-[#C2410C] mb-2">{c.icon}</div>
+                <h3 className="font-bold text-[#2A2320] text-sm mb-1">{c.title}</h3>
+                <p className="text-[#A99885] text-xs">{c.desc}</p>
               </div>
             ))}
           </div>

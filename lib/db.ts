@@ -930,40 +930,7 @@ export async function getAgentApplications(): Promise<Record<string,unknown>[]> 
     .select("*").order("created_at", { ascending: false });
   return (data ?? []) as Record<string,unknown>[];
 }
-export async function manualWalletAdjustment(opts: {
-  userId: string;
-  amount: number;
-  direction: "credit" | "debit";
-  note: string;
-  adminId: string;
-  adminName: string;
-}): Promise<{ newBalance: number }> {
-  const amount = Math.round(Number(opts.amount) * 100) / 100;
-  if (!Number.isFinite(amount) || amount <= 0) throw new Error("Amount must be greater than 0");
 
-  const current = await getWalletBalance(opts.userId);
-  const signedAmount = opts.direction === "credit" ? amount : -amount;
-  const newBalance = Math.max(0, current + signedAmount);
-
-  const txId = `wtx-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
-  const label = opts.direction === "credit" ? "Manual credit" : "Manual debit";
-
-  await supabase.from("users").update({ wallet_balance: newBalance }).eq("id", opts.userId);
-  await supabase.from("wallet_transactions").insert({
-    id: txId,
-    user_id: opts.userId,
-    type: opts.direction === "credit" ? "topup" : "deduction",
-    purpose: "admin_manual",
-    amount: amount,
-    balance_after: newBalance,
-    description: `${label} by ${opts.adminName} - ${opts.note || "no note"}`,
-    status: "confirmed",
-    confirmed_at: new Date().toISOString(),
-    metadata: { admin_id: opts.adminId, admin_name: opts.adminName, note: opts.note ?? "" },
-  });
-
-  return { newBalance };
-}
 // ── Disputes (no cash refunds — reshoot / wallet credit / rejected) ──
 
 export interface Dispute {

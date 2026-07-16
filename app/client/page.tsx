@@ -450,7 +450,7 @@ function ClientPageInner() {
             )}
           </div>
 
-          <div className={`hidden lg:flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-full border flex-shrink-0 ${liveConnected?"border-emerald-400/40 text-emerald-600":"border-slate-300 text-slate-400"}`}>
+          <div className={`hidden lg:flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-full border flex-shrink-0 ${liveConnected?"border-emerald-400/40 text-emerald-600":"border-[#D8C4AC] text-slate-400"}`}>
             {liveConnected?<Wifi className="w-3 h-3"/>:<WifiOff className="w-3 h-3"/>}{liveConnected?"Live":"Connecting…"}
           </div>
         </div>
@@ -565,7 +565,7 @@ function ClientPageInner() {
             </div>
 
             {/* Mini stats */}
-            <div className="bg-white border border-slate-200 rounded-2xl divide-y divide-slate-100">
+            <div className="bg-white border border-slate-200 rounded-2xl divide-y divide-[#F0E4D3]">
               {[{label:"Total Orders",val:stats.total,color:"text-[#0f1f3d]"},{label:"Pending",val:stats.pending,color:"text-amber-600"},{label:"In Progress",val:stats.inProgress,color:"text-blue-600"},{label:"Completed",val:stats.completed,color:"text-green-600"}].map(s=>(
                 <div key={s.label} className="flex items-center justify-between px-4 py-2.5">
                   <span className="text-xs text-slate-500">{s.label}</span>
@@ -605,7 +605,7 @@ function ClientPageInner() {
                   <div className="text-center py-12 text-slate-400"><Users className="w-8 h-8 mx-auto mb-2 text-slate-600"/><p>No employee accounts yet</p></div>
                 ) : subAccounts.map(s=>(
                   <div key={s.id} className="px-6 py-4 border-b border-slate-100 last:border-0 flex items-center justify-between">
-                    <div><p className="font-medium text-slate-800">{s.name}</p><p className="text-xs text-slate-500">{s.email}</p></div>
+                    <div><p className="font-medium text-[#2A2320]">{s.name}</p><p className="text-xs text-slate-500">{s.email}</p></div>
                     <span className="text-xs text-slate-400" suppressHydrationWarning>{etDate(s.createdAt)}</span>
                   </div>
                 ))}
@@ -648,7 +648,7 @@ function ClientPageInner() {
                     <div className="px-5 py-3 border-b border-slate-100">
                       <h2 className="text-sm font-extrabold text-[#0f1f3d]">Latest Order Comments <span className="font-medium text-slate-400">(last two days)</span></h2>
                     </div>
-                    <div className="max-h-56 overflow-y-auto divide-y divide-slate-100">
+                    <div className="max-h-56 overflow-y-auto divide-y divide-[#F0E4D3]">
                       {latestComments.map(c=>(
                         <div key={c.key} className="px-4 py-2.5 flex items-start gap-3">
                           <button onClick={()=>setDismissedComments(prev=>new Set(prev).add(c.key))}
@@ -786,7 +786,7 @@ function ClientPageInner() {
                                             <div className="flex-1">
                                               <div className="flex items-center gap-2">
                                                 <User className="w-3.5 h-3.5 text-slate-400"/>
-                                                <span className="text-sm font-semibold text-slate-800">Bid placed by {anonBidder(bid.agentId)}</span>
+                                                <span className="text-sm font-semibold text-[#2A2320]">Bid placed by {anonBidder(bid.agentId)}</span>
                                                 {bid.agentRating&&<span className="text-xs text-amber-600">★ {bid.agentRating.toFixed(1)}</span>}
                                               </div>
                                               {bid.message&&<p className="text-xs text-slate-500 mt-0.5">"{bid.message}"</p>}
@@ -837,7 +837,7 @@ function ClientPageInner() {
                                           const isSel = selSet.has(ph.id);
                                           return (
                                             <button key={ph.id} onClick={()=>togglePhotoSel(order.id,ph.id)}
-                                              className={`relative aspect-video rounded-xl overflow-hidden border-2 transition-all ${isSel?"border-[#c8991a]":"border-slate-200 hover:border-slate-300"}`}>
+                                              className={`relative aspect-video rounded-xl overflow-hidden border-2 transition-all ${isSel?"border-[#c8991a]":"border-slate-200 hover:border-[#D8C4AC]"}`}>
                                               {ph.url?.startsWith("data:") ? <img src={ph.url} alt={ph.description} className="w-full h-full object-cover"/>
                                               : <div className="w-full h-full bg-slate-100 flex items-center justify-center"><Camera className="w-5 h-5 text-slate-400"/></div>}
                                               <div className={`absolute top-1.5 right-1.5 ${isSel?"text-[#c8991a]":"text-[#0f1f3d]/70"}`}>
@@ -860,7 +860,7 @@ function ClientPageInner() {
                       {filteredOrders.length>visibleCount&&(
                         <div className="px-5 py-4 text-right border-t border-slate-100">
                           <button onClick={()=>setVisibleCount(c=>c+10)}
-                            className="text-sm font-semibold text-[#0f1f3d] border border-slate-300 hover:border-[#c8991a] hover:text-[#c8991a] px-4 py-2 rounded-xl transition-colors">
+                            className="text-sm font-semibold text-[#0f1f3d] border border-[#D8C4AC] hover:border-[#c8991a] hover:text-[#c8991a] px-4 py-2 rounded-xl transition-colors">
                             Load More Orders…
                           </button>
                         </div>
