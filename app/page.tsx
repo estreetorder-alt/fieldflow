@@ -6,9 +6,9 @@ import {
   Camera, ArrowRight, MapPin, Star, CheckCircle, DollarSign,
   Clock, Shield, Zap, Users, Car, Building2, Home as HomeIcon, ClipboardList, CheckCircle2,
 } from "lucide-react";
+import Image from "next/image";
 import PublicNav from "./components/PublicNav";
 import PublicFooter from "./components/PublicFooter";
-import HeroVisual from "./components/HeroVisual";
 import { Button } from "./components/ui/button";
 
 const STATS = [
@@ -19,12 +19,12 @@ const STATS = [
 ];
 
 const SERVICES = [
-  { icon: HomeIcon, name: "BPO / REO Photo Sets", desc: "3–8 photo exterior sets" },
-  { icon: Car, name: "Vehicle Inspections", desc: "Car, motorcycle, RV, boat" },
-  { icon: Building2, name: "Property Inspections", desc: "Pre-sale, REO, insurance, disaster" },
-  { icon: MapPin, name: "Occupancy Checks", desc: "Occupied / vacant verification" },
-  { icon: Camera, name: "Videography", desc: "Full walkthrough + aerial drone" },
-  { icon: ClipboardList, name: "Commercial & Rental", desc: "Move-in/out, office, retail" },
+  { icon: HomeIcon, name: "BPO / REO Photo Sets", desc: "3–8 photo exterior sets", image: "https://images.unsplash.com/photo-1511452885600-a3d2c9148a31" },
+  { icon: Car, name: "Vehicle Inspections", desc: "Car, motorcycle, RV, boat", image: "https://images.unsplash.com/photo-1625047509248-ec889cbff17f" },
+  { icon: Building2, name: "Property Inspections", desc: "Pre-sale, REO, insurance, disaster", image: "https://images.unsplash.com/photo-1493809842364-78817add7ffb" },
+  { icon: MapPin, name: "Occupancy Checks", desc: "Occupied / vacant verification", image: "https://images.unsplash.com/photo-1583847268964-b28dc8f51f92" },
+  { icon: Camera, name: "Videography", desc: "Full walkthrough + aerial drone", image: "https://images.unsplash.com/photo-1511452885600-a3d2c9148a31" },
+  { icon: ClipboardList, name: "Commercial & Rental", desc: "Move-in/out, office, retail", image: "https://images.unsplash.com/photo-1493809842364-78817add7ffb" },
 ];
 
 const STEPS = [
@@ -45,10 +45,10 @@ const FEATURES = [
 ];
 
 const TESTIMONIALS = [
-  { name: "Arthur M.", city: "Jacksonville, FL", text: "We placed an order at 12:20 PM and received the photographs at 1:25 PM — that's 65 minutes! It saved me an 8-hour round trip drive." },
-  { name: "Will T.", city: "Marietta, GA", text: "Significantly cheaper than competitors, covers more areas, and so much faster. This is the only platform I use now." },
-  { name: "Kelly R.", city: "California", text: "I went from putting 200+ miles on my car each week doing BPOs to next to nothing. Cannot thank this company enough." },
-  { name: "Bruce K.", city: "Keller Williams", text: "I am now in the BPO business full time with 3 employees. I could not have reached this level without Snapect." },
+  { name: "Arthur M.", city: "Jacksonville, FL", text: "We placed an order at 12:20 PM and received the photographs at 1:25 PM — that's 65 minutes! It saved me an 8-hour round trip drive.", avatar: "https://images.pexels.com/photos/6326287/pexels-photo-6326287.jpeg" },
+  { name: "Will T.", city: "Marietta, GA", text: "Significantly cheaper than competitors, covers more areas, and so much faster. This is the only platform I use now.", avatar: "https://images.unsplash.com/photo-1704375611931-8438a4e4945d" },
+  { name: "Kelly R.", city: "California", text: "I went from putting 200+ miles on my car each week doing BPOs to next to nothing. Cannot thank this company enough.", avatar: "https://images.unsplash.com/photo-1645677040449-17dc9f184003" },
+  { name: "Bruce K.", city: "Keller Williams", text: "I am now in the BPO business full time with 3 employees. I could not have reached this level without Snapect.", avatar: "https://images.pexels.com/photos/6326287/pexels-photo-6326287.jpeg" },
 ];
 
 const TRUSTED_BY = ["Johnson Realty LLC", "Midwest Property Group", "First National Bank", "CoreLogic Partners", "Asset Management Co.", "Premier REO Services"];
@@ -115,8 +115,14 @@ export default function HomePage() {
             </motion.div>
 
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.8, delay: 0.3 }} className="relative">
-              <div className="relative h-[560px] rounded-2xl overflow-hidden soft-card animate-pulse-glow bg-gradient-to-br from-[#C2410C] via-[#EA580C] to-[#B45309]">
-                <HeroVisual />
+              <div className="relative h-[560px] rounded-2xl overflow-hidden soft-card p-3 animate-pulse-glow">
+                <Image
+                  src="https://images.unsplash.com/photo-1704375611931-8438a4e4945d"
+                  alt="Field inspection agent at work"
+                  fill
+                  priority
+                  className="object-cover rounded-xl"
+                />
               </div>
 
               <motion.div
@@ -187,13 +193,24 @@ export default function HomePage() {
                 viewport={{ once: true }}
                 transition={{ duration: 0.6, delay: index * 0.08 }}
                 whileHover={{ scale: 1.02, y: -6 }}
-                className="soft-card rounded-2xl p-6 transition-all duration-300 hover:shadow-2xl group"
+                className="soft-card rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-2xl group"
               >
-                <div className="w-12 h-12 rounded-xl bg-[#C2410C]/10 flex items-center justify-center mb-4 group-hover:bg-[#C2410C] transition-colors">
-                  <service.icon className="w-6 h-6 text-[#C2410C] group-hover:text-white transition-colors" />
+                <div className="relative h-40 overflow-hidden">
+                  <Image
+                    src={service.image}
+                    alt={service.name}
+                    fill
+                    className="object-cover transition-transform duration-500 group-hover:scale-110"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#2A2320]/60 to-transparent" />
+                  <div className="absolute bottom-3 left-3 w-10 h-10 rounded-xl bg-white/90 flex items-center justify-center">
+                    <service.icon className="w-5 h-5 text-[#C2410C]" />
+                  </div>
                 </div>
-                <h3 className="text-lg font-bold text-[#2A2320] mb-1 group-hover:text-[#C2410C] transition-colors">{service.name}</h3>
-                <p className="text-[#6B5D52] text-sm">{service.desc}</p>
+                <div className="p-6">
+                  <h3 className="text-lg font-bold text-[#2A2320] mb-1 group-hover:text-[#C2410C] transition-colors">{service.name}</h3>
+                  <p className="text-[#6B5D52] text-sm">{service.desc}</p>
+                </div>
               </motion.div>
             ))}
           </div>
@@ -330,9 +347,14 @@ export default function HomePage() {
                   {[1, 2, 3, 4, 5].map((i) => (<Star key={i} className="w-4 h-4 fill-[#EA580C] text-[#EA580C]" />))}
                 </div>
                 <p className="text-[#4A403A] text-sm leading-relaxed mb-4">&ldquo;{t.text}&rdquo;</p>
-                <div>
-                  <p className="text-[#2A2320] font-semibold text-sm">{t.name}</p>
-                  <p className="text-[#8A7A6C] text-xs">{t.city}</p>
+                <div className="flex items-center gap-3">
+                  <div className="relative w-9 h-9 rounded-full overflow-hidden flex-shrink-0">
+                    <Image src={t.avatar} alt={t.name} fill className="object-cover" />
+                  </div>
+                  <div>
+                    <p className="text-[#2A2320] font-semibold text-sm">{t.name}</p>
+                    <p className="text-[#8A7A6C] text-xs">{t.city}</p>
+                  </div>
                 </div>
               </motion.div>
             ))}
