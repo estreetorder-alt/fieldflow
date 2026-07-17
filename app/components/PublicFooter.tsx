@@ -20,7 +20,7 @@ export default function PublicFooter() {
           >
             <Image src="/snapect-logo.png" alt="Snapect" width={150} height={48} className="h-12 w-auto object-contain" />
             <p className="text-[#6B5D52] text-sm leading-relaxed mb-4 mt-4 max-w-xs">
-              America&apos;s trusted field inspection and photo documentation platform. 45+ services, 35 states, verified agents.
+              America&apos;s trusted field inspection and photo documentation platform. 35 states, verified agents.
             </p>
             <div className="space-y-1.5 text-sm text-[#6B5D52] mb-4">
               <p className="flex items-center gap-2"><Mail size={14} className="text-[#C2410C]" /> info@snapect.com</p>
@@ -41,7 +41,7 @@ export default function PublicFooter() {
               <li><Link href="/services" className="text-[#6B5D52] hover:text-[#C2410C] transition-colors text-sm">Vehicle Inspections</Link></li>
               <li><Link href="/services" className="text-[#6B5D52] hover:text-[#C2410C] transition-colors text-sm">Property Inspections</Link></li>
               <li><Link href="/services" className="text-[#6B5D52] hover:text-[#C2410C] transition-colors text-sm">Videography</Link></li>
-              <li><Link href="/services" className="text-[#6B5D52] hover:text-[#C2410C] transition-colors text-sm">All 45+ Services</Link></li>
+              <li><Link href="/services" className="text-[#6B5D52] hover:text-[#C2410C] transition-colors text-sm">All Services</Link></li>
             </ul>
           </motion.div>
 

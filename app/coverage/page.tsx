@@ -3,17 +3,17 @@ import { useState } from "react";
 import PublicNav from "../components/PublicNav";
 import PublicFooter from "../components/PublicFooter";
 import Link from "next/link";
-import { MapPin, CheckCircle, ChevronRight, Search, AlertTriangle, Users, Zap } from "lucide-react";
+import { MapPin, CheckCircle, AlertTriangle, Search } from "lucide-react";
 
 function ZipChecker() {
   const [zip, setZip] = useState("");
-  const [result, setResult] = useState<{covered:boolean;agentCount:number}|null>(null);
+  const [result, setResult] = useState<{ covered: boolean; agentCount: number } | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function check() {
     if (zip.length !== 5) return;
     setLoading(true);
-    const r = await fetch("/api/coverage-check", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({zip}) });
+    const r = await fetch("/api/coverage-check", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ zip }) });
     const d = await r.json();
     setResult(d);
     setLoading(false);
@@ -21,37 +21,67 @@ function ZipChecker() {
 
   return (
     <div>
-      <div className="flex gap-2">
-        <input value={zip} onChange={e=>setZip(e.target.value.replace(/\D/g,"").slice(0,5))}
-          placeholder="Enter ZIP code…" maxLength={5}
-          onKeyDown={e=>{ if(e.key==="Enter") check(); }}
-          className="flex-1 border border-[#D8C4AC] rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#C2410C] focus:border-transparent"/>
-        <button onClick={check} disabled={loading||zip.length!==5}
-          className="flex items-center gap-2 bg-[#C2410C] hover:bg-[#EA580C] disabled:opacity-50 text-[#2A2320] font-bold px-5 py-3 rounded-xl text-sm transition-colors">
-          <Search className="w-4 h-4"/>{loading?"…":"Check"}
+      <div className="flex gap-3 max-w-xl mx-auto">
+        <div className="relative flex-1">
+          <MapPin className="w-4 h-4 text-[#A99885] absolute left-4 top-1/2 -translate-y-1/2" />
+          <input
+            value={zip}
+            onChange={(e) => setZip(e.target.value.replace(/\D/g, "").slice(0, 5))}
+            placeholder="Enter ZIP code"
+            maxLength={5}
+            onKeyDown={(e) => { if (e.key === "Enter") check(); }}
+            className="w-full bg-white border border-[#E7DBCB] rounded-full pl-11 pr-4 py-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#C2410C]"
+          />
+        </div>
+        <button
+          onClick={check}
+          disabled={loading || zip.length !== 5}
+          className="flex items-center gap-2 bg-[#C2410C] hover:bg-[#EA580C] disabled:opacity-50 text-white font-bold px-6 py-3.5 rounded-full text-sm transition-colors whitespace-nowrap"
+        >
+          <Search className="w-4 h-4" />{loading ? "…" : "Check"}
         </button>
       </div>
       {result && (
-        <div className={`mt-3 flex items-center gap-3 p-4 rounded-xl text-sm font-medium border ${result.covered?"bg-green-50 text-green-800 border-green-200":"bg-amber-50 text-amber-800 border-amber-200"}`}>
-          {result.covered
-            ? <><CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0"/>
-                <span><strong>Coverage confirmed!</strong> {result.agentCount} verified agent{result.agentCount!==1?"s":""} available in ZIP {zip}.{" "}
-                <Link href="/register/client" className="underline font-bold">Order now →</Link></span></>
-            : <><AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0"/>
-                <span><strong>No agents yet</strong> in ZIP {zip}. Your order will be queued — we're expanding coverage daily.{" "}
-                <Link href="/register/agent" className="underline font-bold">Become the first agent here →</Link></span></>}
+        <div className={`mt-4 max-w-xl mx-auto flex items-center gap-3 p-4 rounded-xl text-sm font-medium border ${result.covered ? "bg-green-50 text-green-800 border-green-200" : "bg-amber-50 text-amber-800 border-amber-200"}`}>
+          {result.covered ? (
+            <>
+              <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0" />
+              <span><strong>Great! We service your area.</strong> {result.agentCount} agent{result.agentCount !== 1 ? "s" : ""} available nearby. <Link href="/register/client" className="underline font-bold">Order now →</Link></span>
+            </>
+          ) : (
+            <>
+              <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+              <span><strong>No agents yet</strong> in ZIP {zip}. Your order will be queued. <Link href="/register/agent" className="underline font-bold">Become the first agent here →</Link></span>
+            </>
+          )}
         </div>
       )}
     </div>
   );
 }
 
+// Ordered by population/coverage prominence, matching the live coverage map
 const STATES = [
-  "Alabama","Arizona","Arkansas","California","Colorado","Connecticut","Delaware","Florida","Georgia",
-  "Idaho","Illinois","Indiana","Iowa","Kansas","Kentucky","Louisiana","Maryland","Massachusetts",
-  "Michigan","Minnesota","Mississippi","Missouri","Montana","Nebraska","Nevada","New Jersey",
-  "New Mexico","New York","North Carolina","Ohio","Oklahoma","Oregon","Pennsylvania","South Carolina",
-  "Tennessee","Texas","Utah","Virginia","Washington","Wisconsin",
+  "California", "Texas", "Florida", "New York", "Pennsylvania",
+  "Illinois", "Ohio", "Georgia", "North Carolina", "Michigan",
+  "New Jersey", "Virginia", "Washington", "Arizona", "Massachusetts",
+  "Tennessee", "Indiana", "Missouri", "Maryland", "Wisconsin",
+  "Colorado", "Minnesota", "South Carolina", "Alabama", "Louisiana",
+  "Kentucky", "Oregon", "Oklahoma", "Connecticut", "Utah",
+  "Iowa", "Nevada", "Arkansas", "Mississippi", "Kansas",
+];
+
+// Rough relative positions for a decorative US coverage map (no external map dependency)
+const MAP_DOTS = [
+  { top: "18%", left: "8%" },   // WA
+  { top: "62%", left: "6%" },   // LA CA
+  { top: "78%", left: "13%" },  // AZ
+  { top: "40%", left: "34%" },  // CO
+  { top: "38%", left: "58%" },  // Chicago/IL
+  { top: "72%", left: "48%" },  // TX
+  { top: "78%", left: "68%" },  // GA/South
+  { top: "28%", left: "76%" },  // NY/MA
+  { top: "34%", left: "72%" },  // PA
 ];
 
 export default function CoveragePage() {
@@ -59,75 +89,54 @@ export default function CoveragePage() {
     <div className="min-h-screen bg-[#FAF6EF] pt-20">
       <PublicNav />
 
-      <section className="bg-white text-[#2A2320] py-20 px-4">
-        <div className="max-w-3xl mx-auto text-center">
-          <p className="text-[#C2410C] font-bold text-sm uppercase tracking-wider mb-3">35 States · 8,500+ Cities</p>
-          <h1 className="text-4xl sm:text-5xl font-extrabold mb-5 leading-tight">Coverage Area</h1>
-          <p className="text-xl text-[#6B5D52] max-w-xl mx-auto mb-8">We're growing fast. Check if your ZIP code is covered right now.</p>
-          <div className="max-w-lg mx-auto bg-[#EADCC8] border border-[#D8C4AC] rounded-2xl p-5 backdrop-blur-sm">
-            <ZipChecker />
-          </div>
+      <section className="py-16 px-4 text-center">
+        <h1 className="text-4xl sm:text-5xl font-extrabold mb-5 leading-tight">
+          <span className="text-[#2A2320]">Nationwide </span>
+          <span className="text-[#C2410C]">Coverage</span>
+        </h1>
+        <p className="text-lg text-[#6B5D52] max-w-2xl mx-auto mb-10">
+          Our network of professional field agents covers 35+ states with rapid response times. Check if we service your area.
+        </p>
+        <ZipChecker />
+      </section>
+
+      {/* Decorative coverage map */}
+      <section className="px-4 max-w-6xl mx-auto">
+        <div className="relative h-[420px] rounded-3xl overflow-hidden bg-[#1C1917] border border-[#2A2320]">
+          <div className="absolute inset-0 opacity-40" style={{
+            backgroundImage: "linear-gradient(#3A322C 1px, transparent 1px), linear-gradient(90deg, #3A322C 1px, transparent 1px)",
+            backgroundSize: "40px 40px",
+          }} />
+          {MAP_DOTS.map((pos, i) => (
+            <span
+              key={i}
+              className="absolute w-3.5 h-3.5 rounded-full bg-[#EA580C] shadow-[0_0_12px_rgba(234,88,12,0.8)]"
+              style={{ top: pos.top, left: pos.left }}
+            />
+          ))}
+          <div className="absolute bottom-4 left-4 text-[#6B5D52] text-xs font-medium">Coverage map — 35+ states</div>
         </div>
       </section>
 
-      {/* Stats */}
-      <section className="bg-[#C2410C] py-4 px-4">
-        <div className="max-w-4xl mx-auto grid grid-cols-3 gap-6 text-center text-[#2A2320]">
-          {[["35","States Covered"],["8,500+","Cities"],["150+","Verified Agents"]].map(([v,l])=>(
-            <div key={l}><div className="text-2xl font-extrabold">{v}</div><div className="text-xs font-medium opacity-75">{l}</div></div>
+      <section className="py-20 px-4">
+        <div className="max-w-5xl mx-auto text-center mb-10">
+          <h2 className="text-3xl font-extrabold mb-3">
+            <span className="text-[#2A2320]">States We </span>
+            <span className="text-[#C2410C]">Serve</span>
+          </h2>
+          <p className="text-[#6B5D52]">Professional agents ready to serve you across these states</p>
+        </div>
+        <div className="max-w-5xl mx-auto grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+          {STATES.map((state) => (
+            <div key={state} className="flex items-center gap-2 bg-white border border-[#E7DBCB] rounded-xl px-4 py-3.5 hover:border-[#C2410C] hover:shadow-sm transition-all">
+              <MapPin className="w-4 h-4 text-[#C2410C] flex-shrink-0" />
+              <span className="text-sm text-[#2A2320] font-medium">{state}</span>
+            </div>
           ))}
         </div>
-      </section>
-
-      <section className="py-16 px-4 bg-[#FAF6EF]">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-10">
-            <p className="text-[#C2410C] font-bold text-sm uppercase tracking-wider mb-2">Active Coverage</p>
-            <h2 className="text-2xl font-bold text-[#2A2320] mb-3">States We Serve</h2>
-            <p className="text-[#8A7A6C]">We have active agents in these states. Coverage varies by ZIP — use the checker above.</p>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
-            {STATES.map(state=>(
-              <div key={state} className="flex items-center gap-2 bg-white border border-[#E7DBCB] rounded-xl px-3 py-2.5 hover:border-[#C2410C] transition-colors">
-                <CheckCircle className="w-3.5 h-3.5 text-[#C2410C] flex-shrink-0"/>
-                <span className="text-sm text-[#4A403A] font-medium">{state}</span>
-              </div>
-            ))}
-          </div>
-          <p className="text-center text-[#A99885] text-sm mt-6">Alaska, Hawaii, and remaining states — coming soon. <Link href="/contact" className="text-[#C2410C] font-semibold hover:underline">Request coverage</Link></p>
-        </div>
-      </section>
-
-      <section className="py-16 px-4 bg-white">
-        <div className="max-w-4xl mx-auto grid sm:grid-cols-2 gap-8 items-center">
-          <div className="text-[#2A2320]">
-            <p className="text-[#C2410C] font-bold text-sm uppercase tracking-wider mb-3">Expand Our Network</p>
-            <h2 className="text-2xl font-bold mb-4">Become the First Agent in Your Area</h2>
-            <p className="text-[#6B5D52] mb-6 leading-relaxed">If we don't have coverage in your ZIP, you could be the first Snapect agent there. Early agents in new areas get priority on all orders.</p>
-            <ul className="space-y-2 mb-6">
-              {["Earn as much as you can","First-in-area priority routing","Flexible hours — work when you want","Paid every Friday via PayPal"].map(b=>(
-                <li key={b} className="flex items-center gap-2 text-sm text-[#6B5D52]"><CheckCircle className="w-4 h-4 text-[#C2410C]"/>{b}</li>
-              ))}
-            </ul>
-            <Link href="/register/agent" className="inline-flex items-center gap-2 bg-[#C2410C] hover:bg-[#EA580C] text-[#2A2320] font-bold px-6 py-3 rounded-xl transition-colors">
-              Apply as Field Agent <ChevronRight className="w-4 h-4"/>
-            </Link>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            {[
-              { icon:<MapPin className="w-6 h-6"/>, title:"Set Your ZIPs", desc:"Choose exactly which ZIP codes you want to cover in your dashboard" },
-              { icon:<Zap className="w-6 h-6"/>, title:"Auto-Dispatched", desc:"Orders in your ZIPs are sent to you automatically based on your grade" },
-              { icon:<Users className="w-6 h-6"/>, title:"Rotation System", desc:"Multiple agents in same ZIP share orders fairly — higher grade = more orders" },
-              { icon:<CheckCircle className="w-6 h-6"/>, title:"Weekly Payout", desc:"Get paid every Friday via PayPal for all completed & approved orders" },
-            ].map(c=>(
-              <div key={c.title} className="bg-[#F3EBDD] rounded-xl p-4">
-                <div className="text-[#C2410C] mb-2">{c.icon}</div>
-                <h3 className="font-bold text-[#2A2320] text-sm mb-1">{c.title}</h3>
-                <p className="text-[#A99885] text-xs">{c.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
+        <p className="text-center text-[#A99885] text-sm mt-8">
+          Don&apos;t see your state? <Link href="/contact" className="text-[#C2410C] font-semibold hover:underline">Request coverage</Link>
+        </p>
       </section>
 
       <PublicFooter />

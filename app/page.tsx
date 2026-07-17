@@ -14,7 +14,7 @@ import { Button } from "./components/ui/button";
 const STATS = [
   { value: "2,400+", label: "Orders Completed" },
   { value: "87%", label: "Done in 24hrs" },
-  { value: "45+", label: "Service Types" },
+  { value: "150+", label: "Verified Agents" },
   { value: "35", label: "States Covered" },
 ];
 
@@ -29,7 +29,7 @@ const SERVICES = [
 
 const STEPS = [
   { n: "01", title: "Enter the Address", desc: "Type the property or vehicle address. Validated instantly via Mapbox. Coverage checked automatically." },
-  { n: "02", title: "Choose Your Service", desc: "45+ predefined services with clear shot lists. Or customize your own order." },
+  { n: "02", title: "Choose Your Service", desc: "Browse our services with clear shot lists. Or customize your own order." },
   { n: "03", title: "Review Offers", desc: "Field agents send offers on your order within minutes. Accept the offer you like — it is paid straight from your wallet." },
   { n: "04", title: "Add Date Stamp", desc: "Optional complimentary date stamp burned into every photo — ideal for BPO, legal, and insurance use." },
   { n: "05", title: "Pay & Submit", desc: "Pay securely. Order dispatched to your nearest highest-graded agent within seconds." },
@@ -91,7 +91,7 @@ export default function HomePage() {
               </h1>
 
               <p className="text-xl text-[#4A403A] mb-8 leading-relaxed max-w-2xl">
-                45+ services · Verified local agents · 35 states · 87% of orders done within 24 hours. Vehicle inspections, property assessments, occupancy checks, and videography.
+                Verified local agents · 35 states · 87% of orders done within 24 hours. Vehicle inspections, property assessments, occupancy checks, and videography.
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4 mb-12">
@@ -174,7 +174,7 @@ export default function HomePage() {
       <section className="py-32 relative">
         <div className="relative container mx-auto px-6">
           <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="text-center mb-16">
-            <span className="text-[#C2410C] font-semibold tracking-widest uppercase text-sm">45+ Services Available</span>
+            <span className="text-[#C2410C] font-semibold tracking-widest uppercase text-sm">Services Available</span>
             <h2 className="text-4xl lg:text-6xl font-bold mb-6 mt-3">
               <span className="text-[#2A2320]">One Simple </span>
               <span className="text-gradient">Flow</span>
@@ -218,7 +218,7 @@ export default function HomePage() {
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6, delay: 0.3 }} className="text-center mt-12">
             <Link href="/services">
               <Button size="lg">
-                See All 45+ Services &amp; Pricing
+                See All Services & Pricing
                 <ArrowRight size={18} />
               </Button>
             </Link>

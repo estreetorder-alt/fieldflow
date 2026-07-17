@@ -1,285 +1,140 @@
 "use client";
-import { useState } from "react";
+import Link from "next/link";
+import Image from "next/image";
 import PublicNav from "../components/PublicNav";
 import PublicFooter from "../components/PublicFooter";
-import { CheckCircle, DollarSign, Clock, MapPin, Star, Camera, ChevronRight, Send, Users, Smartphone, Award, AlertTriangle, Search } from "lucide-react";
+import { ArrowRight, Smartphone, MapPin, Camera, DollarSign, Clock, TrendingUp } from "lucide-react";
 
-const PERKS = [
-  { icon:<DollarSign className="w-6 h-6"/>, title:"Earn As Much As You Can", desc:"Earn based on service complexity. Vehicle inspections from $45, full property assessments up to $300+. Paid every Friday via PayPal." },
-  { icon:<Clock className="w-6 h-6"/>, title:"Flexible Schedule", desc:"You set your availability. Accept jobs that fit your calendar. No minimums, no quotas — work when you want." },
-  { icon:<MapPin className="w-6 h-6"/>, title:"Only Local Jobs", desc:"You set your ZIP codes. Only orders in your coverage area appear in your feed. No long drives or multi-state routing." },
-  { icon:<Smartphone className="w-6 h-6"/>, title:"Just Your Smartphone", desc:"No special equipment needed. Accept, document, and complete jobs entirely through the Snapect agent portal." },
-  { icon:<Award className="w-6 h-6"/>, title:"Grade-Based Priority", desc:"Higher-graded agents get first pick of orders. Build your grade by completing orders on time with quality photos." },
-  { icon:<Users className="w-6 h-6"/>, title:"Our Pledge to You", desc:"We treat you as a professional. Consistent work, clear communication, and prompt weekly payments — every time." },
+const EARNING_TIERS = [
+  { label: "Part-Time", amount: "Flexible", suffix: "income", note: "20-30 jobs / month" },
+  { label: "Regular", amount: "Steady", suffix: "income", note: "50-70 jobs / month" },
+  { label: "Full-Time", amount: "Maximum", suffix: "income", note: "100+ jobs / month" },
 ];
 
 const STEPS = [
-  { n:"01", title:"Enter Your ZIP & Apply", desc:"Fill out the short form below. Provide your ZIP code so we can verify coverage in your area. Takes about 3 minutes." },
-  { n:"02", title:"Submit 7-Photo Sample Set", desc:"Within 48 hours of registering, upload a sample set of 7 photos of any house following our shot list. This is required — do not register if you cannot submit within 48 hours." },
-  { n:"03", title:"Admin Review (1–2 Business Days)", desc:"Our team reviews your sample set within 2 business days. We'll contact you by email with our decision — do not call the office to check status." },
-  { n:"04", title:"Start Accepting Orders", desc:"Once approved, set your ZIP code coverage and go Available. Orders in your area appear in your dashboard. Respond within 3 hours (9 AM–6 PM local time)." },
-  { n:"05", title:"Get Paid Every Friday", desc:"Completed and approved orders go to your payments page. We send payment every Friday via PayPal — we cover the PayPal fees." },
+  { icon: Smartphone, title: "Download the App", desc: "Get started with our mobile app for iOS and Android" },
+  { icon: MapPin, title: "Set Your Area", desc: "Choose your coverage zones and availability" },
+  { icon: Camera, title: "Accept Jobs", desc: "Browse and accept inspection jobs near you" },
+  { icon: DollarSign, title: "Get Paid", desc: "Complete inspections and receive fast, reliable payouts" },
 ];
 
-const TESTIMONIALS = [
-  { name:"Sarah M.", city:"Ohio", text:"The first 2 weeks were slow — about 3 orders the first week, 8 the second. But by week 4 I was earning $600/week. Easy work and they pay on Friday as promised." },
-  { name:"James T.", city:"Texas", text:"Saved me from a bad RV purchase. My agent took photos that revealed issues left off the listing. This service is invaluable." },
-  { name:"Kelly R.", city:"California", text:"I went from putting 200+ miles on my car each week to next to nothing. The most one contractor made was over $800 in a single week!" },
+const BENEFITS = [
+  { icon: Clock, title: "Flexible Schedule", desc: "Work when you want, as much as you want" },
+  { icon: DollarSign, title: "Competitive Pay", desc: "Rewarding compensation for every inspection completed" },
+  { icon: TrendingUp, title: "Growth Opportunities", desc: "Increase your earnings with performance bonuses" },
+  { icon: MapPin, title: "Local Work", desc: "Jobs near you, minimizing travel time" },
 ];
 
 export default function WorkPage() {
-  const [form, setForm] = useState({ name:"", email:"", phone:"", zip:"", city:"", state:"", experience:"", why:"" });
-  const [submitted, setSubmitted] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [zipCoverage, setZipCoverage] = useState<{covered:boolean;agentCount:number}|null>(null);
-  const [checkingZip, setCheckingZip] = useState(false);
-
-  function set(k: string) { return (e: React.ChangeEvent<HTMLInputElement|HTMLTextAreaElement|HTMLSelectElement>) => setForm(f=>({...f,[k]:e.target.value})); }
-
-  async function checkZip(zip: string) {
-    if (zip.length !== 5) return;
-    setCheckingZip(true);
-    const r = await fetch("/api/coverage-check", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({zip}) });
-    const d = await r.json();
-    setZipCoverage(d);
-    setCheckingZip(false);
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault(); setLoading(true);
-    try {
-      const r = await fetch("/api/applications", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-      const d = await r.json();
-      if (!r.ok) { alert(d.error ?? "Submission failed. Please try again."); setLoading(false); return; }
-      setSubmitted(true);
-    } catch { alert("Network error. Please try again."); }
-    setLoading(false);
-  }
-
   return (
     <div className="min-h-screen bg-[#FAF6EF] pt-20">
       <PublicNav />
 
-      {/* Hero */}
-      <section className="bg-white text-[#2A2320] py-20 px-4">
-        <div className="max-w-3xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 bg-[#C2410C]/20 border border-[#C2410C]/40 text-[#C2410C] text-sm font-semibold px-4 py-1.5 rounded-full mb-6">
-            <Star className="w-3.5 h-3.5 fill-current"/>Always Hiring · 150+ Active Agents
+      <section className="py-16 px-4">
+        <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-12 items-center">
+          <div>
+            <span className="inline-block bg-[#FCEEE3] text-[#C2410C] text-sm font-semibold px-4 py-1.5 rounded-full mb-5">
+              Join 2,000+ Active Agents
+            </span>
+            <h1 className="text-4xl sm:text-5xl font-extrabold mb-5 leading-tight">
+              <span className="text-[#2A2320]">Earn on Your </span>
+              <span className="text-[#C2410C]">Own Terms</span>
+            </h1>
+            <p className="text-lg text-[#6B5D52] mb-8 max-w-md">
+              Become a Snapect field agent and turn your smartphone into a money-making tool. Flexible hours, competitive pay, and consistent work in your local area.
+            </p>
+            <Link
+              href="/register/agent"
+              className="inline-flex items-center gap-2 bg-[#C2410C] hover:bg-[#EA580C] text-white font-bold px-7 py-3.5 rounded-full transition-colors"
+            >
+              Apply Now <ArrowRight className="w-4 h-4" />
+            </Link>
           </div>
-          <h1 className="text-4xl sm:text-5xl font-extrabold mb-5 leading-tight">Join Our Field Agent Network</h1>
-          <p className="text-xl text-[#6B5D52] max-w-2xl mx-auto leading-relaxed mb-8">
-            Earn as much as you can conducting property and vehicle inspections in your area. No real estate license required. Get paid every Friday via PayPal.
-          </p>
-          <a href="#apply" className="inline-flex items-center gap-2 bg-[#C2410C] hover:bg-[#EA580C] text-[#2A2320] font-bold px-8 py-4 rounded-xl text-lg transition-colors shadow-lg">
-            Apply Now — 3 Minutes <ChevronRight className="w-5 h-5"/>
-          </a>
+          <div className="relative h-[400px] rounded-2xl overflow-hidden">
+            <Image
+              src="https://images.unsplash.com/photo-1704375611931-8438a4e4945d"
+              alt="Field agent photographing with smartphone"
+              fill
+              priority
+              className="object-cover"
+            />
+          </div>
         </div>
       </section>
 
-      {/* Stats */}
-      <section className="bg-[#C2410C] py-4 px-4">
-        <div className="max-w-4xl mx-auto grid grid-cols-2 sm:grid-cols-4 gap-6 text-center text-[#2A2320]">
-          {[["Earn As Much","As You Can"],["Every Friday","Payout Day"],["150+","Active Agents"],["2,400+","Jobs Completed"]].map(([v,l])=>(
-            <div key={l}><div className="text-2xl font-extrabold">{v}</div><div className="text-xs font-medium opacity-75">{l}</div></div>
+      <section className="py-20 px-4 bg-[#F3EBDD]">
+        <div className="max-w-5xl mx-auto text-center mb-12">
+          <h2 className="text-3xl font-extrabold mb-3">
+            <span className="text-[#2A2320]">Earning </span>
+            <span className="text-[#C2410C]">Potential</span>
+          </h2>
+          <p className="text-[#6B5D52]">Your income scales with your effort</p>
+        </div>
+        <div className="max-w-4xl mx-auto grid sm:grid-cols-3 gap-6">
+          {EARNING_TIERS.map((t) => (
+            <div key={t.label} className="bg-white rounded-2xl p-8 text-center border border-[#E7DBCB]">
+              <p className="text-xs font-semibold text-[#8A7A6C] uppercase tracking-wide mb-2">{t.label}</p>
+              <p className="text-2xl font-extrabold mb-1">
+                <span className="text-[#C2410C]">{t.amount}</span>{" "}
+                <span className="text-[#2A2320]">{t.suffix}</span>
+              </p>
+              <p className="text-sm text-[#8A7A6C]">{t.note}</p>
+            </div>
           ))}
         </div>
       </section>
 
-      {/* 48hr Warning */}
-      <section className="py-6 px-4 bg-amber-50 border-b border-amber-200">
-        <div className="max-w-3xl mx-auto flex items-start gap-3">
-          <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5"/>
-          <div>
-            <p className="font-bold text-amber-900">Important: Please read before registering</p>
-            <p className="text-sm text-amber-800 mt-1">You must submit a 7-photo sample set within <strong>48 hours</strong> of creating your account. Failure to submit on time results in automatic rejection. If you missed the deadline, do not re-register — log into your existing account and request reactivation. Do not call our office to check approval status; we will contact you by email within 2 business days.</p>
-          </div>
+      <section className="py-20 px-4">
+        <div className="max-w-5xl mx-auto text-center mb-12">
+          <h2 className="text-3xl font-extrabold">
+            <span className="text-[#2A2320]">Get Started in </span>
+            <span className="text-[#C2410C]">4 Steps</span>
+          </h2>
         </div>
-      </section>
-
-      {/* Perks */}
-      <section className="py-20 px-4 bg-[#FAF6EF]">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-14">
-            <p className="text-[#C2410C] font-bold text-sm uppercase tracking-wider mb-2">Why Agents Choose Snapect</p>
-            <h2 className="text-3xl font-bold text-[#2A2320] mb-3">Flexible Work. Real Income.</h2>
-          </div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {PERKS.map(p=>(
-              <div key={p.title} className="bg-white border border-[#E7DBCB] rounded-2xl p-6 hover:border-[#C2410C] transition-colors">
-                <div className="w-12 h-12 bg-white text-[#C2410C] rounded-xl flex items-center justify-center mb-4">{p.icon}</div>
-                <h3 className="font-bold text-[#2A2320] mb-2">{p.title}</h3>
-                <p className="text-[#8A7A6C] text-sm leading-relaxed">{p.desc}</p>
+        <div className="max-w-5xl mx-auto grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {STEPS.map((s) => (
+            <div key={s.title} className="bg-white border border-[#E7DBCB] rounded-2xl p-6 text-center">
+              <div className="w-14 h-14 rounded-full bg-[#FCEEE3] flex items-center justify-center mx-auto mb-4">
+                <s.icon className="w-6 h-6 text-[#C2410C]" />
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* How it works */}
-      <section className="py-20 px-4 bg-white">
-        <div className="max-w-3xl mx-auto">
-          <div className="text-center mb-14">
-            <p className="text-[#C2410C] font-bold text-sm uppercase tracking-wider mb-2">The Process</p>
-            <h2 className="text-3xl font-bold text-[#2A2320] mb-3">From Application to First Paycheck</h2>
-          </div>
-          <div className="space-y-4">
-            {STEPS.map(s=>(
-              <div key={s.n} className="flex gap-5 items-start bg-[#FAF6EF] border border-[#E7DBCB] rounded-2xl p-5">
-                <div className="w-12 h-12 bg-white text-[#C2410C] rounded-xl flex items-center justify-center text-lg font-black flex-shrink-0">{s.n}</div>
-                <div>
-                  <h3 className="font-bold text-[#2A2320] mb-1">{s.title}</h3>
-                  <p className="text-[#8A7A6C] text-sm leading-relaxed">{s.desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Agent rules */}
-      <section className="py-16 px-4 bg-[#FAF6EF] border-y border-[#E7DBCB]">
-        <div className="max-w-3xl mx-auto">
-          <div className="grid sm:grid-cols-2 gap-6">
-            <div className="bg-white border border-[#E7DBCB] rounded-2xl p-5">
-              <h3 className="font-bold text-[#2A2320] mb-3">Requirements</h3>
-              <ul className="space-y-2">
-                {["Smartphone with camera (iOS or Android)","Reliable vehicle & valid driver's license","Pass a standard background check","18+ years old, authorized to work in US","Available 9 AM–6 PM in your local time zone","Respond to job offers within 3 hours","Complete orders within 30 hours (or as specified)"].map(r=>(
-                  <li key={r} className="flex items-start gap-2 text-sm text-[#6B5D52]"><CheckCircle className="w-4 h-4 text-[#C2410C] flex-shrink-0 mt-0.5"/>{r}</li>
-                ))}
-              </ul>
+              <h3 className="font-bold text-[#2A2320] mb-2">{s.title}</h3>
+              <p className="text-sm text-[#6B5D52]">{s.desc}</p>
             </div>
-            <div className="bg-white border border-[#1C1917] rounded-2xl p-5 text-[#2A2320]">
-              <h3 className="font-bold text-[#C2410C] mb-3">How Orders Work</h3>
-              <ul className="space-y-2 text-sm text-[#6B5D52]">
-                {["Set your available ZIP codes in your profile","When available, you receive email notifications for nearby orders","Review the offer — compensation shown upfront","Accept or decline within 3 hours (9 AM–6 PM local)","If no response, order is reassigned to next agent","Multiple agents in same ZIP = rotating priority by grade","Higher grade = more orders & higher-value jobs","Images reviewed by our team before payment approved","Payment released every Friday via PayPal"].map(r=>(
-                  <li key={r} className="flex items-start gap-2"><span className="text-[#C2410C] font-bold mt-0.5">→</span>{r}</li>
-                ))}
-              </ul>
-            </div>
-          </div>
+          ))}
         </div>
       </section>
 
-      {/* Testimonials */}
-      <section className="py-16 px-4 bg-white">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-10">
-            <p className="text-[#C2410C] font-bold text-sm uppercase tracking-wider mb-2">Agent Stories</p>
-            <h2 className="text-2xl font-bold text-[#2A2320]">What Our Agents Say</h2>
-          </div>
-          <div className="grid sm:grid-cols-3 gap-5">
-            {TESTIMONIALS.map(t=>(
-              <div key={t.name} className="bg-[#F3EBDD] rounded-2xl p-5">
-                <div className="flex mb-3">{[1,2,3,4,5].map(i=><Star key={i} className="w-4 h-4 text-[#C2410C] fill-current"/>)}</div>
-                <p className="text-[#6B5D52] text-sm leading-relaxed mb-4">"{t.text}"</p>
-                <p className="text-[#2A2320] font-semibold text-sm">{t.name}</p>
-                <p className="text-[#8A7A6C] text-xs">{t.city}</p>
-              </div>
-            ))}
-          </div>
+      <section className="py-20 px-4 bg-[#F3EBDD]">
+        <div className="max-w-5xl mx-auto text-center mb-12">
+          <h2 className="text-3xl font-extrabold">
+            <span className="text-[#2A2320]">Agent </span>
+            <span className="text-[#C2410C]">Benefits</span>
+          </h2>
         </div>
-      </section>
-
-      {/* Application Form */}
-      <section id="apply" className="py-20 px-4 bg-[#FAF6EF] border-t border-[#E7DBCB]">
-        <div className="max-w-2xl mx-auto">
-          <div className="text-center mb-10">
-            <p className="text-[#C2410C] font-bold text-sm uppercase tracking-wider mb-2">Apply Today</p>
-            <h2 className="text-3xl font-bold text-[#2A2320] mb-3">Start Your Application</h2>
-            <p className="text-[#8A7A6C]">Takes 3 minutes. We'll follow up within 48 hours.</p>
-          </div>
-
-          {submitted ? (
-            <div className="bg-white border border-[#C2410C] rounded-2xl p-12 text-center">
-              <div className="w-16 h-16 bg-[#C2410C]/10 rounded-full flex items-center justify-center mx-auto mb-4"><CheckCircle className="w-8 h-8 text-[#C2410C]"/></div>
-              <h3 className="text-2xl font-bold text-[#2A2320] mb-2">Application Received!</h3>
-              <p className="text-[#8A7A6C] max-w-sm mx-auto">A member of our agent team will reach out within 48 hours. Remember to prepare your 7-photo sample set — you'll need to upload it within 48 hours of account creation.</p>
+        <div className="max-w-5xl mx-auto grid sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
+          {BENEFITS.map((b) => (
+            <div key={b.title} className="bg-white border border-[#E7DBCB] rounded-2xl p-6">
+              <b.icon className="w-6 h-6 text-[#C2410C] mb-4" />
+              <h3 className="font-bold text-[#2A2320] mb-1.5">{b.title}</h3>
+              <p className="text-sm text-[#6B5D52]">{b.desc}</p>
             </div>
-          ) : (
-            <form onSubmit={handleSubmit} className="bg-white border border-[#E7DBCB] rounded-2xl p-8 shadow-sm space-y-5">
-              {/* Free signup notice */}
-              <div className="p-4 bg-white rounded-xl flex items-center justify-between">
-                <div>
-                  <p className="font-bold text-[#2A2320] text-sm">Application Fee</p>
-                  <p className="text-xs text-[#A99885] mt-0.5">Free — no cost to apply or join</p>
-                </div>
-                <span className="text-2xl font-black text-[#C2410C]">$0</span>
-              </div>
+          ))}
+        </div>
 
-              <div className="grid sm:grid-cols-2 gap-5">
-                <div>
-                  <label className="block text-sm font-medium text-[#2A2320] mb-1.5">Full Name *</label>
-                  <input required name="name" value={form.name} onChange={set("name")} placeholder="Jane Smith"
-                    className="w-full border border-[#D8C4AC] rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#C2410C]"/>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-[#2A2320] mb-1.5">Email *</label>
-                  <input required type="email" name="email" value={form.email} onChange={set("email")} placeholder="jane@email.com"
-                    className="w-full border border-[#D8C4AC] rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#C2410C]"/>
-                </div>
-              </div>
-              <div className="grid sm:grid-cols-2 gap-5">
-                <div>
-                  <label className="block text-sm font-medium text-[#2A2320] mb-1.5">Phone *</label>
-                  <input required name="phone" value={form.phone} onChange={set("phone")} placeholder="555-123-4567"
-                    className="w-full border border-[#D8C4AC] rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#C2410C]"/>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-[#2A2320] mb-1.5">Your ZIP Code *</label>
-                  <div className="relative">
-                    <input required name="zip" value={form.zip} onChange={e=>{set("zip")(e);if(e.target.value.length===5)checkZip(e.target.value);}}
-                      placeholder="60601" maxLength={5}
-                      className="w-full border border-[#D8C4AC] rounded-xl px-3 py-2.5 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-[#C2410C]"/>
-                    {checkingZip && <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A99885] animate-pulse"/>}
-                  </div>
-                  {zipCoverage && (
-                    <p className={`text-xs mt-1 ${zipCoverage.covered?"text-green-600":"text-amber-600"}`}>
-                      {zipCoverage.covered ? `✓ We have ${zipCoverage.agentCount} agent(s) in this area — good fit!` : "⚠ No agents in this ZIP yet — yours could be the first!"}
-                    </p>
-                  )}
-                </div>
-              </div>
-              <div className="grid sm:grid-cols-2 gap-5">
-                <div>
-                  <label className="block text-sm font-medium text-[#2A2320] mb-1.5">City *</label>
-                  <input required name="city" value={form.city} onChange={set("city")} placeholder="Chicago"
-                    className="w-full border border-[#D8C4AC] rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#C2410C]"/>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-[#2A2320] mb-1.5">State *</label>
-                  <input required name="state" value={form.state} onChange={set("state")} placeholder="Illinois"
-                    className="w-full border border-[#D8C4AC] rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#C2410C]"/>
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-[#2A2320] mb-1.5">Relevant Experience</label>
-                <select name="experience" value={form.experience} onChange={set("experience")}
-                  className="w-full border border-[#D8C4AC] rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#C2410C] bg-white">
-                  <option value="">Select one…</option>
-                  <option value="none">No experience</option>
-                  <option value="photography">Photography / Videography</option>
-                  <option value="real-estate">Real Estate or Property Management</option>
-                  <option value="construction">Construction or Contracting</option>
-                  <option value="inspection">Home Inspection</option>
-                  <option value="other">Other</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-[#2A2320] mb-1.5">Why do you want to join? *</label>
-                <textarea required name="why" value={form.why} onChange={set("why")} rows={3}
-                  placeholder="Tell us about yourself and what interests you about field work…"
-                  className="w-full border border-[#D8C4AC] rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#C2410C] resize-none"/>
-              </div>
-              <button type="submit" disabled={loading}
-                className="w-full bg-[#C2410C] hover:bg-[#EA580C] disabled:opacity-60 text-[#2A2320] font-bold py-3 rounded-xl transition-colors flex items-center justify-center gap-2">
-                {loading ? <span className="animate-pulse">Submitting…</span> : <><Send className="w-4 h-4"/>Submit Application</>}
-              </button>
-              <p className="text-xs text-center text-[#A99885]">By applying you agree to our <a href="/terms" className="underline">Terms of Service</a>. Agent signup is completely free.</p>
-            </form>
-          )}
+        <div className="max-w-2xl mx-auto bg-white border border-[#E7DBCB] rounded-3xl p-12 text-center shadow-sm">
+          <h2 className="text-2xl sm:text-3xl font-extrabold mb-3">
+            <span className="text-[#2A2320]">Start Earning </span>
+            <span className="text-[#C2410C]">Today</span>
+          </h2>
+          <p className="text-[#6B5D52] mb-8">
+            Join our growing network of professional field agents and start earning on your schedule.
+          </p>
+          <Link
+            href="/register/agent"
+            className="inline-flex items-center gap-2 bg-[#C2410C] hover:bg-[#EA580C] text-white font-bold px-7 py-3.5 rounded-full transition-colors"
+          >
+            Apply to Become an Agent <ArrowRight className="w-4 h-4" />
+          </Link>
         </div>
       </section>
 
