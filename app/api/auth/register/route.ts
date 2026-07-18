@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getUserByEmail, createUser } from "@/lib/db";
 import { sendWelcomeEmail } from "@/lib/email";
 import { hashPassword } from "@/lib/password";
+import { sendSlackNotification } from "@/lib/slack";
 
 export async function POST(request: NextRequest) {
   const userId = request.cookies.get("user_id")?.value;
@@ -41,6 +42,26 @@ export async function POST(request: NextRequest) {
 
   // Send welcome email
   await sendWelcomeEmail({ email: newUser.email, name: newUser.name, role: newUser.role });
+
+  // Notify Slack — only for public signups (vendor/agent forms), not admin-created accounts
+  if (!adminCreate) {
+    if (newUser.role === "agent") {
+      await sendSlackNotification("🚗 New Field Agent Application", {
+        Name: name,
+        Email: email,
+        Phone: phone ?? "",
+        "ZIP / Coverage": coverageZone ?? zip ?? "",
+        Vehicle: vehicle ?? "",
+      });
+    } else {
+      await sendSlackNotification("🏢 New Vendor Signup", {
+        Name: name,
+        Email: email,
+        Phone: phone ?? "",
+        Company: company ?? "",
+      });
+    }
+  }
 
   if (adminCreate) {
     // Admin-created users are immediately active

@@ -65,7 +65,7 @@ export default function AgentRegisterPage() {
                   <p className="font-bold text-amber-900 text-sm mb-1">⚠️ Next Steps</p>
                   <p className="text-amber-800 text-xs leading-relaxed">1. Log in to your agent dashboard<br/>2. Upload your 7-photo sample set within 48 hours<br/>3. Start receiving job offers in your coverage area</p>
                 </div>
-                <Link href="/login" className="block w-full text-center bg-[#C2410C] hover:bg-[#EA580C] text-[#2A2320] font-bold py-3 rounded-xl">
+                <Link href="/login" className="block w-full text-center bg-[#C2410C] hover:bg-[#EA580C] text-white font-bold py-3 rounded-xl">
                   Log In →
                 </Link>
               </div>
@@ -81,87 +81,94 @@ export default function AgentRegisterPage() {
     <div className="min-h-screen bg-[#FAF6EF] pt-20">
       <PublicNav />
 
-      <section className="bg-white py-10 px-4">
-        <div className="max-w-4xl mx-auto">
-          {/* Warning banner */}
-          <div className="bg-amber-400/10 border border-amber-400/40 rounded-2xl p-4 mb-8 flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5"/>
-            <div className="text-sm text-amber-200">
-              <span className="font-bold text-amber-300">Read before registering: </span>
-              You must submit a 7-photo sample set within <strong>48 hours</strong> of account creation or your application will be automatically rejected. If you already registered and missed the deadline, do not register again — log in and request reactivation.
-            </div>
+      <div className="grid md:grid-cols-2 min-h-[calc(100vh-80px)]">
+        {/* Left panel — solid orange, matches reference */}
+        <div className="relative overflow-hidden px-8 sm:px-14 py-16 flex flex-col justify-center bg-[#C2410C]">
+          <span className="inline-block w-fit bg-white/15 text-white text-sm font-semibold px-4 py-1.5 rounded-full mb-6 border border-white/20">
+            Agent Registration
+          </span>
+          <h1 className="text-3xl sm:text-4xl font-extrabold mb-5 leading-tight text-white">
+            Turn Your Smartphone Into a Money-Making Tool
+          </h1>
+          <p className="text-white/80 text-base mb-10 max-w-sm leading-relaxed">
+            Join thousands of field agents earning flexible income on their own schedule.
+          </p>
+          <div className="space-y-5">
+            {[
+              { icon: <DollarSign className="w-5 h-5" />, title: "Rewarding Income", text: "Full-time earning potential" },
+              { icon: <Camera className="w-5 h-5" />, title: "No Special Equipment", text: "Just your smartphone" },
+              { icon: <MapPin className="w-5 h-5" />, title: "Work Locally", text: "Jobs near your location" },
+            ].map((f) => (
+              <div key={f.title} className="flex items-start gap-3.5">
+                <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center text-white flex-shrink-0">{f.icon}</div>
+                <div>
+                  <p className="font-bold text-white text-sm">{f.title}</p>
+                  <p className="text-white/70 text-xs mt-0.5">{f.text}</p>
+                </div>
+              </div>
+            ))}
           </div>
+        </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
-            {/* Perks sidebar */}
-            <div className="text-[#2A2320]">
-              <p className="text-[#C2410C] font-bold text-sm uppercase tracking-wider mb-3">Why Join</p>
-              <h1 className="text-2xl font-extrabold mb-5 leading-tight">Become a Field Agent</h1>
-              <ul className="space-y-4">
-                {[
-                  { icon:<DollarSign className="w-4 h-4"/>, text:"Earn as much as you can, paid every Friday via PayPal" },
-                  { icon:<MapPin className="w-4 h-4"/>, text:"Only local jobs — set your own ZIP codes" },
-                  { icon:<Camera className="w-4 h-4"/>, text:"Just your smartphone — no equipment needed" },
-                  { icon:<CheckCircle className="w-4 h-4"/>, text:"No real estate license required" },
-                  { icon:<Car className="w-4 h-4"/>, text:"Work your own hours, flexible schedule" },
-                ].map(({icon,text})=>(
-                  <li key={text} className="flex items-start gap-2.5 text-[#6B5D52] text-sm">
-                    <span className="text-[#C2410C] flex-shrink-0 mt-0.5">{icon}</span>{text}
-                  </li>
-                ))}
-              </ul>
-              <div className="mt-6 p-4 bg-[#F3EBDD] rounded-xl">
-                <p className="text-[#C2410C] font-bold text-sm mb-2">Signup</p>
-                <p className="text-4xl font-black text-[#2A2320] mb-1">Free</p>
-                <p className="text-[#A99885] text-xs">No application fee. Create your account and start browsing jobs right away.</p>
-              </div>
+        {/* Right panel — white, multi-step form */}
+        <div className="bg-white px-6 sm:px-14 py-12 flex flex-col justify-center">
+          <div className="max-w-md w-full mx-auto">
+            <h2 className="text-2xl font-extrabold text-[#2A2320] mb-1">Become an Agent</h2>
+            <p className="text-[#8A7A6C] text-sm mb-6">Start earning on your own schedule</p>
+
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 mb-6 flex items-start gap-2.5">
+              <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-amber-800">
+                Submit a 7-photo sample set within <strong>48 hours</strong> of registering or your application is auto-rejected. Already registered and missed it? Log in and request reactivation instead of re-registering.
+              </p>
             </div>
 
-            {/* Form */}
-            <div className="md:col-span-2 bg-white rounded-2xl shadow-xl p-8">
-              {/* Step progress */}
-              <div className="flex items-center justify-between mb-8">
-                {STEPS.map((s,i)=>(
-                  <div key={s} className="flex items-center">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all ${i<step?"bg-[#C2410C] text-[#2A2320]":i===step?"bg-white text-[#C2410C]":"bg-[#EADCC8] text-[#A99885]"}`}>
-                      {i<step?<CheckCircle className="w-4 h-4"/>:i+1}
-                    </div>
-                    <span className={`ml-1.5 text-xs font-medium hidden sm:block ${i===step?"text-[#2A2320]":"text-[#A99885]"}`}>{s}</span>
-                    {i<STEPS.length-1&&<div className={`mx-2 h-0.5 w-8 sm:w-12 ${i<step?"bg-[#C2410C]":"bg-slate-200"}`}/>}
+            <div className="flex items-center justify-between mb-7">
+              {STEPS.map((s, i) => (
+                <div key={s} className="flex items-center">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all ${i < step ? "bg-[#C2410C] text-white" : i === step ? "bg-[#FCEEE3] text-[#C2410C] border-2 border-[#C2410C]" : "bg-[#EADCC8] text-[#A99885]"}`}>
+                    {i < step ? <CheckCircle className="w-4 h-4" /> : i + 1}
                   </div>
-                ))}
-              </div>
+                  <span className={`ml-1.5 text-xs font-medium hidden sm:block ${i === step ? "text-[#2A2320]" : "text-[#A99885]"}`}>{s}</span>
+                  {i < STEPS.length - 1 && <div className={`mx-2 h-0.5 w-6 sm:w-10 ${i < step ? "bg-[#C2410C]" : "bg-[#EADCC8]"}`} />}
+                </div>
+              ))}
+            </div>
 
-              {error&&<div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl">{error}</div>}
+            {error && <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl">{error}</div>}
 
-              {step===0&&(
+            {step===0&&(
                 <div className="space-y-4">
-                  <h2 className="font-bold text-[#2A2320] text-lg mb-4">Personal Information</h2>
                   <div>
-                    <label className="block text-sm font-medium text-[#4A403A] mb-1">Full Name *</label>
+                    <label className="block text-sm font-medium text-[#4A403A] mb-1">Full Name</label>
                     <div className="relative"><User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A99885]"/>
-                      <input required value={form.name} onChange={set("name")} placeholder="Jane Smith" className={inp}/></div>
+                      <input required value={form.name} onChange={set("name")} placeholder="John Doe" className={inp}/></div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-[#4A403A] mb-1">Email</label>
+                    <div className="relative"><Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A99885]"/>
+                      <input required type="email" value={form.email} onChange={set("email")} placeholder="you@example.com" className={inp}/></div>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-sm font-medium text-[#4A403A] mb-1">Email *</label>
-                      <div className="relative"><Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A99885]"/>
-                        <input required type="email" value={form.email} onChange={set("email")} placeholder="you@email.com" className={inp}/></div>
+                      <label className="block text-sm font-medium text-[#4A403A] mb-1">Phone</label>
+                      <div className="relative"><Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A99885]"/>
+                        <input required value={form.phone} onChange={set("phone")} placeholder="Phone" className={inp}/></div>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-[#4A403A] mb-1">Phone *</label>
-                      <div className="relative"><Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A99885]"/>
-                        <input required value={form.phone} onChange={set("phone")} placeholder="555-0100" className={inp}/></div>
+                      <label className="block text-sm font-medium text-[#4A403A] mb-1">Location</label>
+                      <div className="relative"><MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A99885]"/>
+                        <input value={form.coverageZone} onChange={set("coverageZone")} placeholder="City" className={inp}/></div>
                     </div>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-[#4A403A] mb-1">Short Bio (optional)</label>
                     <div className="relative"><FileText className="absolute left-3 top-3 w-4 h-4 text-[#A99885]"/>
-                      <textarea value={form.bio} onChange={set("bio")} rows={3} placeholder="Tell clients about your experience and availability…"
+                      <textarea value={form.bio} onChange={set("bio")} rows={2} placeholder="Tell clients about your experience and availability…"
                         className="w-full pl-9 pr-3 py-2.5 border border-[#D8C4AC] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#C2410C] focus:border-transparent resize-none"/></div>
                   </div>
                   <button onClick={()=>{ if(!form.name||!form.email||!form.phone){setError("Name, email and phone required");return;} setError("");setStep(1); }}
-                    className="w-full bg-[#C2410C] hover:bg-[#EA580C] text-[#2A2320] font-bold py-3 rounded-xl flex items-center justify-center gap-2">
+                    className="w-full bg-[#C2410C] hover:bg-[#EA580C] text-white font-bold py-3.5 rounded-full flex items-center justify-center gap-2 transition-colors mt-2">
                     Continue <ArrowRight className="w-4 h-4"/>
                   </button>
                 </div>
@@ -207,7 +214,7 @@ export default function AgentRegisterPage() {
                   <div className="flex gap-3">
                     <button onClick={()=>setStep(0)} className="flex-1 border border-[#D8C4AC] text-[#6B5D52] font-semibold py-3 rounded-xl hover:bg-[#F3EBDD]">Back</button>
                     <button onClick={()=>{ if(!form.coverageZone||!form.vehicle||!form.zip){setError("All fields required");return;} setError("");setStep(2); }}
-                      className="flex-1 bg-[#C2410C] hover:bg-[#EA580C] text-[#2A2320] font-bold py-3 rounded-xl flex items-center justify-center gap-2">
+                      className="flex-1 bg-[#C2410C] hover:bg-[#EA580C] text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2">
                       Continue <ArrowRight className="w-4 h-4"/>
                     </button>
                   </div>
@@ -234,7 +241,7 @@ export default function AgentRegisterPage() {
                   <div className="flex gap-3">
                     <button onClick={()=>setStep(1)} className="flex-1 border border-[#D8C4AC] text-[#6B5D52] font-semibold py-3 rounded-xl hover:bg-[#F3EBDD]">Back</button>
                     <button onClick={()=>{ if(!form.password||form.password.length<8){setError("Password min 8 chars");return;} if(form.password!==form.confirm){setError("Passwords don't match");return;} setError("");setStep(3); }}
-                      className="flex-1 bg-[#C2410C] hover:bg-[#EA580C] text-[#2A2320] font-bold py-3 rounded-xl flex items-center justify-center gap-2">
+                      className="flex-1 bg-[#C2410C] hover:bg-[#EA580C] text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2">
                       Continue <ArrowRight className="w-4 h-4"/>
                     </button>
                   </div>
@@ -267,16 +274,15 @@ export default function AgentRegisterPage() {
                   <div className="flex gap-3">
                     <button onClick={()=>setStep(2)} className="flex-1 border border-[#D8C4AC] text-[#6B5D52] font-semibold py-3 rounded-xl hover:bg-[#F3EBDD]">Back</button>
                     <button onClick={submit} disabled={loading || !agreed}
-                      className="flex-1 bg-[#C2410C] hover:bg-[#EA580C] disabled:opacity-50 text-[#2A2320] font-bold py-3 rounded-xl flex items-center justify-center gap-2">
+                      className="flex-1 bg-[#C2410C] hover:bg-[#EA580C] disabled:opacity-50 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2">
                       {loading?"Submitting…":<><span>Create Agent Account</span><ArrowRight className="w-4 h-4"/></>}
                     </button>
                   </div>
                 </div>
               )}
-            </div>
           </div>
         </div>
-      </section>
+      </div>
 
       <PublicFooter />
     </div>

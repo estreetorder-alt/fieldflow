@@ -4,6 +4,7 @@ import PublicNav from "../components/PublicNav";
 import PublicFooter from "../components/PublicFooter";
 import Link from "next/link";
 import { MapPin, CheckCircle, AlertTriangle, Search } from "lucide-react";
+import CoverageMap from "../components/CoverageMap";
 
 function ZipChecker() {
   const [zip, setZip] = useState("");
@@ -71,19 +72,6 @@ const STATES = [
   "Iowa", "Nevada", "Arkansas", "Mississippi", "Kansas",
 ];
 
-// Rough relative positions for a decorative US coverage map (no external map dependency)
-const MAP_DOTS = [
-  { top: "18%", left: "8%" },   // WA
-  { top: "62%", left: "6%" },   // LA CA
-  { top: "78%", left: "13%" },  // AZ
-  { top: "40%", left: "34%" },  // CO
-  { top: "38%", left: "58%" },  // Chicago/IL
-  { top: "72%", left: "48%" },  // TX
-  { top: "78%", left: "68%" },  // GA/South
-  { top: "28%", left: "76%" },  // NY/MA
-  { top: "34%", left: "72%" },  // PA
-];
-
 export default function CoveragePage() {
   return (
     <div className="min-h-screen bg-[#FAF6EF] pt-20">
@@ -100,21 +88,10 @@ export default function CoveragePage() {
         <ZipChecker />
       </section>
 
-      {/* Decorative coverage map */}
+      {/* Live 3D coverage map */}
       <section className="px-4 max-w-6xl mx-auto">
-        <div className="relative h-[420px] rounded-3xl overflow-hidden bg-[#1C1917] border border-[#2A2320]">
-          <div className="absolute inset-0 opacity-40" style={{
-            backgroundImage: "linear-gradient(#3A322C 1px, transparent 1px), linear-gradient(90deg, #3A322C 1px, transparent 1px)",
-            backgroundSize: "40px 40px",
-          }} />
-          {MAP_DOTS.map((pos, i) => (
-            <span
-              key={i}
-              className="absolute w-3.5 h-3.5 rounded-full bg-[#EA580C] shadow-[0_0_12px_rgba(234,88,12,0.8)]"
-              style={{ top: pos.top, left: pos.left }}
-            />
-          ))}
-          <div className="absolute bottom-4 left-4 text-[#6B5D52] text-xs font-medium">Coverage map — 35+ states</div>
+        <div className="relative h-[420px] rounded-3xl overflow-hidden border border-[#2A2320] bg-[#1C1917]">
+          <CoverageMap />
         </div>
       </section>
 
