@@ -119,6 +119,7 @@ function ClientPageInner() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [visibleCount, setVisibleCount] = useState(10);
   const [navMenu, setNavMenu] = useState<"orders"|"settings"|null>(null);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [announcement, setAnnouncement] = useState<{id:number;message:string}|null>(null);
   const [quickView, setQuickView] = useState<string|null>(null);
 
@@ -356,106 +357,180 @@ function ClientPageInner() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* ── Top nav — navy bar with dropdown menus (Velocity structure) ── */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm" onMouseLeave={()=>setNavMenu(null)}>
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2.5 flex-shrink-0">
-            <img src="/snapect-logo.png" alt="Snapect" className="h-8 w-auto object-contain" onError={e=>{(e.target as HTMLImageElement).style.display="none";}}/>
-            <span className="font-extrabold text-[#0f1f3d] tracking-tight hidden sm:inline">Snapect</span>
-            <span className="text-[10px] bg-[#c8991a] text-[#0f1f3d] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">Vendor Portal</span>
-          </div>
-
-          <nav className="flex items-center gap-0.5 text-sm">
-            <button onClick={()=>{setTab("orders");window.scrollTo({top:0,behavior:"smooth"});}}
-              className="flex items-center gap-1.5 text-slate-700 hover:text-[#0f1f3d] hover:bg-slate-100 px-3 py-2 rounded-lg font-medium transition-colors">
-              <HomeIcon className="w-4 h-4"/><span className="hidden md:inline">Home</span>
-            </button>
-
-            {/* Orders dropdown */}
-            <div className="relative">
-              <button onClick={()=>setNavMenu(navMenu==="orders"?null:"orders")} onMouseEnter={()=>setNavMenu("orders")}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg font-medium transition-colors ${navMenu==="orders"?"bg-slate-100 text-[#0f1f3d]":"text-slate-700 hover:text-[#0f1f3d] hover:bg-slate-100"}`}>
-                <List className="w-4 h-4"/><span className="hidden md:inline">Orders</span><ChevronDown className="w-3.5 h-3.5"/>
-              </button>
-              {navMenu==="orders"&&(
-                <div className="absolute left-0 top-full mt-1 w-56 bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden py-1">
-                  <Link href="/client/order" className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 hover:text-[#0f1f3d]"><Plus className="w-4 h-4"/>Place An Order</Link>
-                  <Link href="/client/multi-order" className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 hover:text-[#0f1f3d]"><Package className="w-4 h-4"/>Place Multi Orders</Link>
-                  <button onClick={()=>{setTab("orders");setNavMenu(null);document.getElementById("order-ledger")?.scrollIntoView({behavior:"smooth"});}} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 hover:text-[#0f1f3d] text-left"><List className="w-4 h-4"/>View Orders</button>
-                  <Link href="/coverage" className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 hover:text-[#0f1f3d]"><MapPin className="w-4 h-4"/>View Coverage Map</Link>
-                  <Link href="/contact" className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 hover:text-[#0f1f3d]"><DollarSign className="w-4 h-4"/>Request a Quote</Link>
-                </div>
-              )}
-            </div>
-
-            {/* Settings dropdown */}
-            <div className="relative">
-              <button onClick={()=>setNavMenu(navMenu==="settings"?null:"settings")} onMouseEnter={()=>setNavMenu("settings")}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg font-medium transition-colors ${navMenu==="settings"?"bg-slate-100 text-[#0f1f3d]":"text-slate-700 hover:text-[#0f1f3d] hover:bg-slate-100"}`}>
-                <Users className="w-4 h-4"/><span className="hidden md:inline">Settings</span><ChevronDown className="w-3.5 h-3.5"/>
-              </button>
-              {navMenu==="settings"&&(
-                <div className="absolute left-0 top-full mt-1 w-56 bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden py-1">
-                  <button onClick={()=>{openClientProfile();setNavMenu(null);}} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 hover:text-[#0f1f3d] text-left">
-                    <User className="w-4 h-4"/>My Profile
-                  </button>
-                  <button onClick={()=>{setTab("subaccounts");setNavMenu(null);}} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 hover:text-[#0f1f3d] text-left">
-                    <Users className="w-4 h-4"/>Manage Employees
-                  </button>
-                  <Link href="/client/wallet" className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 hover:text-[#0f1f3d]"><CreditCard className="w-4 h-4"/>Wallet &amp; Billing</Link>
-                  <Link href="/refund-policy" className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 hover:text-[#0f1f3d]"><Shield className="w-4 h-4"/>Refund Policy</Link>
-                </div>
-              )}
-            </div>
-
-            <Link href="/client/wallet" className="flex items-center gap-1.5 text-slate-700 hover:text-[#0f1f3d] hover:bg-slate-100 px-3 py-2 rounded-lg font-medium transition-colors">
-              <DollarSign className="w-4 h-4"/><span className="hidden md:inline">Invoices</span>
-            </Link>
-            <Link href="/faq" className="flex items-center gap-1.5 text-slate-700 hover:text-[#0f1f3d] hover:bg-slate-100 px-3 py-2 rounded-lg font-medium transition-colors">
-              <Info className="w-4 h-4"/><span className="hidden md:inline">FAQ</span>
-            </Link>
-            <button onClick={logout} className="flex items-center gap-1.5 text-slate-600 hover:text-red-300 hover:bg-slate-100 px-3 py-2 rounded-lg font-medium transition-colors">
-              <LogOut className="w-4 h-4"/><span className="hidden md:inline">Logout</span>
-            </button>
-          </nav>
-
-          <div className="relative flex-shrink-0">
-            <button onClick={()=>{ setBellOpen(!bellOpen); if(!bellOpen) markAllSeen(); }}
-              className="relative p-2 rounded-lg text-slate-500 hover:text-[#0f1f3d] hover:bg-slate-100 transition-colors" title="Notifications">
-              <Bell className="w-5 h-5"/>
-              {unreadCount>0&&(
-                <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-[#c8991a] text-[#0f1f3d] text-[10px] font-extrabold rounded-full flex items-center justify-center border-2 border-white">{unreadCount>9?"9+":unreadCount}</span>
-              )}
-            </button>
-            {bellOpen&&(
-              <div className="absolute right-0 top-full mt-2 w-80 bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden z-40">
-                <div className="px-4 py-2.5 border-b border-slate-100 flex items-center justify-between">
-                  <span className="text-sm font-bold text-[#0f1f3d]">Notifications</span>
-                  <button onClick={()=>setBellOpen(false)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4"/></button>
-                </div>
-                <div className="max-h-80 overflow-y-auto divide-y divide-slate-50">
-                  {notifications.length===0 ? (
-                    <p className="px-4 py-8 text-center text-xs text-slate-400">No new notifications</p>
-                  ) : notifications.map(n=>(
-                    <Link key={n.key} href={`/client/orders/${n.orderId}`} onClick={()=>setBellOpen(false)}
-                      className="block px-4 py-3 hover:bg-slate-50">
-                      <p className="text-xs font-semibold text-[#0f1f3d]">{n.title}</p>
-                      <p className="text-[11px] text-slate-500 truncate mt-0.5">{n.detail}</p>
-                      <p className="text-[10px] text-slate-400 mt-0.5" suppressHydrationWarning>{etDateTime(n.ts)}</p>
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className={`hidden lg:flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-full border flex-shrink-0 ${liveConnected?"border-emerald-400/40 text-emerald-600":"border-[#D8C4AC] text-slate-400"}`}>
-            {liveConnected?<Wifi className="w-3 h-3"/>:<WifiOff className="w-3 h-3"/>}{liveConnected?"Live":"Connecting…"}
+    <div className="min-h-screen flex bg-[#F4F5F8]">
+      {/* ================= Sidebar ================= */}
+      <aside className="hidden lg:flex flex-col w-64 flex-shrink-0 bg-[#0B0F1A] text-slate-300 sticky top-0 h-screen">
+        <div className="px-5 pt-6 pb-5 flex items-center gap-2.5 border-b border-white/5">
+          <img src="/snapect-logo.png" alt="Snapect" className="h-8 w-auto object-contain" onError={e=>{(e.target as HTMLImageElement).style.display="none";}}/>
+          <div className="leading-tight">
+            <p className="text-white font-extrabold text-sm tracking-tight">Snapect</p>
+            <p className="text-[9px] text-[#FF7A33] font-bold uppercase tracking-[0.2em]">Vendor Portal</p>
           </div>
         </div>
-      </header>
 
+        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1 text-sm">
+          <button onClick={()=>{setTab("orders");window.scrollTo({top:0,behavior:"smooth"});}}
+            className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl font-semibold transition-colors ${tab==="orders"?"bg-gradient-to-r from-[#FF6A1A] to-[#FF3D00] text-white shadow-lg shadow-orange-900/30":"text-slate-400 hover:bg-white/5 hover:text-white"}`}>
+            <HomeIcon className="w-4 h-4"/>Dashboard
+          </button>
+          <Link href="/client/order" className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl font-medium text-slate-400 hover:bg-white/5 hover:text-white transition-colors">
+            <Plus className="w-4 h-4"/>New Order
+          </Link>
+          <button onClick={()=>{setTab("orders");setStatusFilter("all");setSearch("");setVisibleCount(1000);document.getElementById("order-ledger")?.scrollIntoView({behavior:"smooth"});}}
+            className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl font-medium text-slate-400 hover:bg-white/5 hover:text-white transition-colors text-left">
+            <List className="w-4 h-4"/>Orders
+            {stats.total>0 && <span className="ml-auto text-[10px] bg-white/10 text-slate-300 font-bold px-1.5 py-0.5 rounded-md">{stats.total}</span>}
+          </button>
+          <Link href="/client/multi-order" className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl font-medium text-slate-400 hover:bg-white/5 hover:text-white transition-colors">
+            <Package className="w-4 h-4"/>Multi Orders
+          </Link>
+          <Link href="/client/wallet" className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl font-medium text-slate-400 hover:bg-white/5 hover:text-white transition-colors">
+            <CreditCard className="w-4 h-4"/>Wallet &amp; Invoices
+          </Link>
+          <Link href="/coverage" className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl font-medium text-slate-400 hover:bg-white/5 hover:text-white transition-colors">
+            <MapPin className="w-4 h-4"/>Coverage Map
+          </Link>
+          <button onClick={()=>setTab("subaccounts")}
+            className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl font-semibold transition-colors text-left ${tab==="subaccounts"?"bg-gradient-to-r from-[#FF6A1A] to-[#FF3D00] text-white shadow-lg shadow-orange-900/30":"text-slate-400 hover:bg-white/5 hover:text-white"}`}>
+            <Users className="w-4 h-4"/>Team
+          </button>
+
+          <div className="pt-3 mt-3 border-t border-white/5 space-y-1">
+            <a href="mailto:info@snapect.com" className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl font-medium text-slate-400 hover:bg-white/5 hover:text-white transition-colors">
+              <Headset className="w-4 h-4"/>Support
+            </a>
+            <Link href="/faq" className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl font-medium text-slate-400 hover:bg-white/5 hover:text-white transition-colors">
+              <Info className="w-4 h-4"/>Resources
+            </Link>
+            <button onClick={openClientProfile} className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl font-medium text-slate-400 hover:bg-white/5 hover:text-white transition-colors text-left">
+              <User className="w-4 h-4"/>Settings
+            </button>
+          </div>
+        </nav>
+
+        <div className="p-3">
+          <div className="rounded-2xl bg-white/5 border border-white/10 p-4">
+            <p className="text-[10px] text-slate-400 uppercase tracking-wider font-bold mb-1">Wallet Balance</p>
+            <p className="text-xl font-extrabold text-white mb-2">{walletBalance!==null?`$${walletBalance.toFixed(2)}`:"—"}</p>
+            <Link href="/client/wallet" className="block text-center bg-gradient-to-r from-[#FF6A1A] to-[#FF3D00] hover:opacity-90 text-white text-xs font-bold py-2 rounded-lg transition-opacity">Add Funds</Link>
+          </div>
+          <button onClick={logout} className="w-full mt-2 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl font-medium text-slate-500 hover:bg-white/5 hover:text-red-400 transition-colors text-sm">
+            <LogOut className="w-4 h-4"/>Log Out
+          </button>
+        </div>
+      </aside>
+
+      {/* Mobile nav drawer */}
+      {mobileNavOpen && (
+        <div className="lg:hidden fixed inset-0 z-50 flex">
+          <div className="absolute inset-0 bg-black/50" onClick={()=>setMobileNavOpen(false)}/>
+          <div className="relative w-72 bg-[#0B0F1A] text-slate-300 h-full flex flex-col">
+            <div className="px-5 pt-6 pb-5 flex items-center justify-between border-b border-white/5">
+              <div className="flex items-center gap-2.5">
+                <img src="/snapect-logo.png" alt="Snapect" className="h-8 w-auto object-contain" onError={e=>{(e.target as HTMLImageElement).style.display="none";}}/>
+                <p className="text-white font-extrabold text-sm">Snapect</p>
+              </div>
+              <button onClick={()=>setMobileNavOpen(false)} className="text-slate-400 hover:text-white"><X className="w-5 h-5"/></button>
+            </div>
+            <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1 text-sm">
+              <button onClick={()=>{setTab("orders");setMobileNavOpen(false);}} className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl font-medium text-slate-300 hover:bg-white/5 hover:text-white text-left"><HomeIcon className="w-4 h-4"/>Dashboard</button>
+              <Link href="/client/order" onClick={()=>setMobileNavOpen(false)} className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl font-medium text-slate-300 hover:bg-white/5 hover:text-white"><Plus className="w-4 h-4"/>New Order</Link>
+              <Link href="/client/multi-order" onClick={()=>setMobileNavOpen(false)} className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl font-medium text-slate-300 hover:bg-white/5 hover:text-white"><Package className="w-4 h-4"/>Multi Orders</Link>
+              <Link href="/client/wallet" onClick={()=>setMobileNavOpen(false)} className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl font-medium text-slate-300 hover:bg-white/5 hover:text-white"><CreditCard className="w-4 h-4"/>Wallet &amp; Invoices</Link>
+              <Link href="/coverage" onClick={()=>setMobileNavOpen(false)} className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl font-medium text-slate-300 hover:bg-white/5 hover:text-white"><MapPin className="w-4 h-4"/>Coverage Map</Link>
+              <button onClick={()=>{setTab("subaccounts");setMobileNavOpen(false);}} className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl font-medium text-slate-300 hover:bg-white/5 hover:text-white text-left"><Users className="w-4 h-4"/>Team</button>
+              <a href="mailto:info@snapect.com" className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl font-medium text-slate-300 hover:bg-white/5 hover:text-white"><Headset className="w-4 h-4"/>Support</a>
+              <Link href="/faq" onClick={()=>setMobileNavOpen(false)} className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl font-medium text-slate-300 hover:bg-white/5 hover:text-white"><Info className="w-4 h-4"/>Resources</Link>
+              <button onClick={()=>{logout();}} className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl font-medium text-red-400 hover:bg-white/5 text-left mt-2"><LogOut className="w-4 h-4"/>Log Out</button>
+            </nav>
+          </div>
+        </div>
+      )}
+
+      {/* ================= Right column ================= */}
+      <div className="flex-1 flex flex-col min-w-0">
+        <header className="bg-white border-b border-slate-200 sticky top-0 z-30">
+          <div className="h-16 px-4 sm:px-6 flex items-center gap-3">
+            <button onClick={()=>setMobileNavOpen(true)} className="lg:hidden p-2 -ml-2 rounded-lg text-slate-500 hover:bg-slate-100">
+              <List className="w-5 h-5"/>
+            </button>
+            <div className="relative flex-1 max-w-md">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"/>
+              <input value={search} onChange={e=>setSearch(e.target.value)}
+                onKeyDown={e=>{ if(e.key==="Enter"){ setTab("orders"); setVisibleCount(1000); document.getElementById("order-ledger")?.scrollIntoView({behavior:"smooth"}); } }}
+                placeholder="Search your orders by address…"
+                className="w-full pl-9 pr-3 py-2 bg-slate-100 border border-transparent rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6A1A] focus:bg-white transition-colors"/>
+            </div>
+
+            <div className="flex items-center gap-2 ml-auto flex-shrink-0">
+              <div className={`hidden md:flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-full border ${liveConnected?"border-emerald-300 text-emerald-600 bg-emerald-50":"border-slate-200 text-slate-400"}`}>
+                {liveConnected?<Wifi className="w-3 h-3"/>:<WifiOff className="w-3 h-3"/>}{liveConnected?"Live":"Connecting…"}
+              </div>
+
+              <div className="relative">
+                <button onClick={()=>{ setBellOpen(!bellOpen); if(!bellOpen) markAllSeen(); }}
+                  className="relative p-2 rounded-lg text-slate-500 hover:text-[#0f1f3d] hover:bg-slate-100 transition-colors" title="Notifications">
+                  <Bell className="w-5 h-5"/>
+                  {unreadCount>0&&(
+                    <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-[#FF3D00] text-white text-[10px] font-extrabold rounded-full flex items-center justify-center border-2 border-white">{unreadCount>9?"9+":unreadCount}</span>
+                  )}
+                </button>
+                {bellOpen&&(
+                  <div className="absolute right-0 top-full mt-2 w-80 bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden z-40">
+                    <div className="px-4 py-2.5 border-b border-slate-100 flex items-center justify-between">
+                      <span className="text-sm font-bold text-[#0f1f3d]">Notifications</span>
+                      <button onClick={()=>setBellOpen(false)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4"/></button>
+                    </div>
+                    <div className="max-h-80 overflow-y-auto divide-y divide-slate-50">
+                      {notifications.length===0 ? (
+                        <p className="px-4 py-8 text-center text-xs text-slate-400">No new notifications</p>
+                      ) : notifications.map(n=>(
+                        <Link key={n.key} href={`/client/orders/${n.orderId}`} onClick={()=>setBellOpen(false)}
+                          className="block px-4 py-3 hover:bg-slate-50">
+                          <p className="text-xs font-semibold text-[#0f1f3d]">{n.title}</p>
+                          <p className="text-[11px] text-slate-500 truncate mt-0.5">{n.detail}</p>
+                          <p className="text-[10px] text-slate-400 mt-0.5" suppressHydrationWarning>{etDateTime(n.ts)}</p>
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <a href="mailto:info@snapect.com" className="hidden sm:flex p-2 rounded-lg text-slate-500 hover:text-[#0f1f3d] hover:bg-slate-100 transition-colors" title="Contact support">
+                <Headset className="w-5 h-5"/>
+              </a>
+
+              <div className="relative">
+                <button onClick={()=>setNavMenu(navMenu==="settings"?null:"settings")} onMouseEnter={()=>setNavMenu("settings")}
+                  className="flex items-center gap-2 pl-1.5 pr-2.5 py-1 rounded-full hover:bg-slate-100 transition-colors">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#FF6A1A] to-[#FF3D00] text-white text-xs font-extrabold flex items-center justify-center flex-shrink-0">
+                    {userName.slice(0,2).toUpperCase()}
+                  </div>
+                  <div className="hidden sm:block text-left leading-tight">
+                    <p className="text-xs font-bold text-[#0f1f3d] truncate max-w-[110px]">{userName}</p>
+                    <p className="text-[10px] text-slate-400">Account #{userId ? userId.replace(/\D/g,"").slice(0,6).padStart(6,"1") : "——"}</p>
+                  </div>
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 hidden sm:block"/>
+                </button>
+                {navMenu==="settings"&&(
+                  <div onMouseLeave={()=>setNavMenu(null)} className="absolute right-0 top-full mt-1 w-56 bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden py-1 z-40">
+                    <button onClick={()=>{openClientProfile();setNavMenu(null);}} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 hover:text-[#0f1f3d] text-left">
+                      <User className="w-4 h-4"/>My Profile
+                    </button>
+                    <Link href="/client/wallet" className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 hover:text-[#0f1f3d]"><CreditCard className="w-4 h-4"/>Wallet &amp; Billing</Link>
+                    <Link href="/refund-policy" className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 hover:text-[#0f1f3d]"><Shield className="w-4 h-4"/>Refund Policy</Link>
+                    <button onClick={logout} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 text-left border-t border-slate-100 mt-1">
+                      <LogOut className="w-4 h-4"/>Log Out
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <main className="flex-1 overflow-y-auto">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
         {/* Vendor name + account number */}
         <div className="flex items-baseline gap-3 mb-4 flex-wrap">
@@ -510,73 +585,54 @@ function ClientPageInner() {
           </div>
         )}
 
-        <div className="grid lg:grid-cols-[270px_1fr] gap-6 items-start">
-          {/* ── Left rail ── */}
-          <aside className="space-y-4">
-            {/* Brand panel */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-5 text-center shadow-sm overflow-hidden relative">
-              <div className="absolute inset-x-0 top-0 h-1 bg-[#c8991a]"/>
-              <img src="/snapect-logo.png" alt="Snapect" className="h-12 w-auto object-contain mx-auto mb-3" onError={e=>{(e.target as HTMLImageElement).style.display="none";}}/>
-              <p className="text-[#0f1f3d] font-extrabold text-lg leading-tight">Nationwide Field Photos</p>
-              <p className="text-[#c8991a] text-[11px] font-bold uppercase tracking-[0.25em] mt-1.5">Verified Agents · 35 States</p>
+
+        {/* Stat cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          {[
+            {label:"Total Orders", val:stats.total, icon:<List className="w-5 h-5"/>, bg:"bg-[#FF6A1A]/10", fg:"text-[#FF6A1A]"},
+            {label:"In Progress", val:stats.inProgress, icon:<RefreshCw className="w-5 h-5"/>, bg:"bg-blue-50", fg:"text-blue-600"},
+            {label:"Completed", val:stats.completed, icon:<CheckCircle className="w-5 h-5"/>, bg:"bg-emerald-50", fg:"text-emerald-600"},
+            {label:"Wallet Balance", val: walletBalance!==null?`$${walletBalance.toFixed(2)}`:"—", icon:<DollarSign className="w-5 h-5"/>, bg:"bg-violet-50", fg:"text-violet-600"},
+          ].map(s=>(
+            <div key={s.label} className="bg-white rounded-2xl border border-slate-200 p-4">
+              <div className={`w-10 h-10 rounded-xl ${s.bg} ${s.fg} flex items-center justify-center mb-3`}>{s.icon}</div>
+              <p className="text-2xl font-extrabold text-[#0f1f3d]">{s.val}</p>
+              <p className="text-xs text-slate-400 font-medium mt-0.5">{s.label}</p>
             </div>
+          ))}
+        </div>
 
-            {/* Primary actions */}
-            <div className="grid grid-cols-2 gap-2.5">
-              <Link href="/client/order"
-                className="flex items-center justify-center gap-1.5 bg-[#c8991a] hover:bg-[#f0b429] text-[#0f1f3d] font-bold text-sm py-2.5 rounded-xl transition-colors shadow-sm">
-                <Plus className="w-4 h-4"/>New Order
-              </Link>
-              <Link href="/client/multi-order"
-                className="flex items-center justify-center gap-1.5 bg-white border-2 border-[#c8991a] text-[#0f1f3d] hover:bg-[#c8991a]/10 font-bold text-sm py-2.5 rounded-xl transition-colors">
-                <Package className="w-4 h-4"/>Multi Orders
-              </Link>
-            </div>
+        {/* Quick actions */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <Link href="/client/order" className="bg-gradient-to-br from-[#FF6A1A] to-[#FF3D00] rounded-2xl p-4 text-white hover:opacity-90 transition-opacity flex flex-col">
+            <Plus className="w-5 h-5 mb-6"/>
+            <p className="font-bold text-sm">New Order</p>
+            <p className="text-[11px] text-white/80">Place a new inspection</p>
+          </Link>
+          <Link href="/client/multi-order" className="bg-[#0f1f3d] rounded-2xl p-4 text-white hover:bg-[#1a3260] transition-colors flex flex-col">
+            <Package className="w-5 h-5 mb-6"/>
+            <p className="font-bold text-sm">Multi Orders</p>
+            <p className="text-[11px] text-white/70">Place several at once</p>
+          </Link>
+          <Link href="/coverage" className="bg-white border border-slate-200 rounded-2xl p-4 hover:bg-slate-50 transition-colors flex flex-col">
+            <MapPin className="w-5 h-5 mb-6 text-[#FF6A1A]"/>
+            <p className="font-bold text-sm text-[#0f1f3d]">Coverage Map</p>
+            <p className="text-[11px] text-slate-400">Check agent coverage</p>
+          </Link>
+          <a href="mailto:info@snapect.com" className="bg-white border border-slate-200 rounded-2xl p-4 hover:bg-slate-50 transition-colors flex flex-col">
+            <Headset className="w-5 h-5 mb-6 text-[#FF6A1A]"/>
+            <p className="font-bold text-sm text-[#0f1f3d]">Live Support</p>
+            <p className="text-[11px] text-slate-400">info@snapect.com</p>
+          </a>
+        </div>
 
-            {/* Cutoff notice */}
-            <div className={`p-3 rounded-xl flex items-start gap-2 text-xs leading-relaxed ${localHour<10?"bg-green-50 border border-green-200 text-green-800":"bg-amber-50 border border-amber-200 text-amber-800"}`}>
-              <Clock className="w-3.5 h-3.5 flex-shrink-0 mt-0.5"/>
-              <span>{cutoffMsg}</span>
-            </div>
+        {/* Cutoff notice */}
+        <div className={`mb-6 p-3 rounded-xl flex items-start gap-2 text-xs leading-relaxed ${localHour<10?"bg-green-50 border border-green-200 text-green-800":"bg-amber-50 border border-amber-200 text-amber-800"}`}>
+          <Clock className="w-3.5 h-3.5 flex-shrink-0 mt-0.5"/>
+          <span>{cutoffMsg}</span>
+        </div>
 
-            {/* Customer support card */}
-            <a href="mailto:info@snapect.com" className="block bg-white border border-slate-200 rounded-2xl p-4 hover:bg-slate-50 transition-colors group">
-              <div className="flex items-center gap-3">
-                <div className="w-11 h-11 bg-[#c8991a] rounded-full flex items-center justify-center flex-shrink-0">
-                  <Headset className="w-5 h-5 text-[#0f1f3d]"/>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[#0f1f3d] font-bold text-sm">Customer Support</p>
-                  <p className="text-slate-400 text-[11px] truncate">info@snapect.com</p>
-                </div>
-                <ChevronRight className="w-4 h-4 text-[#c8991a] group-hover:translate-x-0.5 transition-transform"/>
-              </div>
-            </a>
-
-            {/* Secondary actions */}
-            <div className="grid grid-cols-2 gap-2.5">
-              <button onClick={()=>{setTab("orders");setStatusFilter("all");setSearch("");setVisibleCount(1000);document.getElementById("order-ledger")?.scrollIntoView({behavior:"smooth"});}}
-                className="flex items-center justify-center gap-1.5 bg-[#0f1f3d] hover:bg-[#1a3260] text-white font-semibold text-xs py-2.5 rounded-xl transition-colors">
-                <List className="w-3.5 h-3.5"/>Orders Broad View
-              </button>
-              <Link href="/coverage" className="flex items-center justify-center gap-1.5 bg-[#0f1f3d] hover:bg-[#1a3260] text-white font-semibold text-xs py-2.5 rounded-xl transition-colors">
-                <MapPin className="w-3.5 h-3.5"/>Coverage Map
-              </Link>
-            </div>
-
-            {/* Mini stats */}
-            <div className="bg-white border border-slate-200 rounded-2xl divide-y divide-[#F0E4D3]">
-              {[{label:"Total Orders",val:stats.total,color:"text-[#0f1f3d]"},{label:"Pending",val:stats.pending,color:"text-amber-600"},{label:"In Progress",val:stats.inProgress,color:"text-blue-600"},{label:"Completed",val:stats.completed,color:"text-green-600"}].map(s=>(
-                <div key={s.label} className="flex items-center justify-between px-4 py-2.5">
-                  <span className="text-xs text-slate-500">{s.label}</span>
-                  <span className={`text-sm font-extrabold ${s.color}`}>{s.val}</span>
-                </div>
-              ))}
-            </div>
-          </aside>
-
-          {/* ── Main column ── */}
-          <main className="space-y-5 min-w-0">
+        <div className="space-y-5">
             {tab==="subaccounts" ? (
               <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
                 <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
@@ -870,9 +926,10 @@ function ClientPageInner() {
                 </div>
               </>
             )}
-          </main>
-        </div>
-      </div>
+                </div>
+              </div>
+            </main>
+          </div>
 
       {/* ── My Profile modal (vendor) ── */}
       {clientProfileOpen && (
