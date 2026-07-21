@@ -101,12 +101,12 @@ function LoginForm() {
       {/* ── Right column: form ── */}
       <div className="flex-1 flex flex-col">
         <div className="p-4 lg:p-6 flex items-center justify-between">
-          <Link href="/" className="inline-flex items-center gap-1.5 text-sm text-slate-400 hover:text-[#0A1128] transition-colors">
+          <Link href="/" className="inline-flex items-center gap-1.5 text-sm text-slate-400 hover:text-[#081A36] transition-colors">
             <ArrowLeft className="w-3.5 h-3.5"/>Back to home
           </Link>
           <p className="hidden sm:block text-sm text-slate-400">
             New to Snapect?{" "}
-            <Link href="/register/client" className="text-[#FF6A1A] font-semibold hover:underline">Create an account</Link>
+            <Link href="/register/client" className="text-[#FF6A00] font-semibold hover:underline">Create an account</Link>
           </p>
         </div>
 
@@ -117,7 +117,7 @@ function LoginForm() {
             </div>
 
             <div className="mb-7">
-              <h1 className="text-2xl font-bold text-[#0A1128] font-display">Welcome Back</h1>
+              <h1 className="text-2xl font-bold text-[#081A36] font-display">Welcome Back</h1>
               <p className="text-slate-400 mt-1 text-sm">Sign in to continue to your Snapect dashboard</p>
             </div>
 
@@ -137,20 +137,20 @@ function LoginForm() {
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"/>
                   <input type="email" value={email} onChange={e=>setEmail(e.target.value)} required
                     placeholder="Enter your email" autoComplete="email"
-                    className="w-full pl-9 pr-3 border border-slate-200 rounded-xl py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6A1A] focus:border-transparent"/>
+                    className="w-full pl-9 pr-3 border border-slate-200 rounded-xl py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6A00] focus:border-transparent"/>
                 </div>
               </div>
 
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="block text-sm font-medium text-slate-700">Password</label>
-                  <Link href="/reset-password" className="text-xs text-[#FF6A1A] hover:underline font-semibold">Forgot password?</Link>
+                  <Link href="/reset-password" className="text-xs text-[#FF6A00] hover:underline font-semibold">Forgot password?</Link>
                 </div>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"/>
                   <input type={showPassword ? "text" : "password"} value={password} onChange={e=>setPassword(e.target.value)} required
                     placeholder="Enter your password" autoComplete="current-password"
-                    className="w-full pl-9 pr-10 border border-slate-200 rounded-xl py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6A1A] focus:border-transparent"/>
+                    className="w-full pl-9 pr-10 border border-slate-200 rounded-xl py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6A00] focus:border-transparent"/>
                   <button type="button" onClick={()=>setShowPassword(!showPassword)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
                     {showPassword ? <EyeOff className="w-4 h-4"/> : <Eye className="w-4 h-4"/>}
@@ -166,7 +166,7 @@ function LoginForm() {
               )}
 
               <button type="submit" disabled={loading}
-                className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-[#FF6A1A] to-[#FF3D00] hover:opacity-90 disabled:opacity-60 text-white font-bold py-3 rounded-xl transition-opacity text-sm">
+                className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-[#FF6A00] to-[#FF8C1A] hover:opacity-90 disabled:opacity-60 text-white font-bold py-3 rounded-xl transition-opacity text-sm">
                 {loading ? "Signing in…" : "Sign In"}
               </button>
             </form>
@@ -179,9 +179,9 @@ function LoginForm() {
                   <div className="space-y-2">
                     {paymentLinks.map((link: {id:string;label:string;url:string;amount?:number;description:string}) => (
                       <a key={link.id} href={link.url} target="_blank" rel="noopener noreferrer"
-                        className="flex items-center justify-between gap-2 p-3 border-2 border-[#FF6A1A] rounded-xl hover:bg-[#FF6A1A]/5 transition-colors text-sm">
-                        <span className="font-bold text-[#0A1128]">{link.label}</span>
-                        <span className="text-xs bg-[#FF6A1A] text-white font-bold px-2.5 py-1 rounded-lg">Pay Now →</span>
+                        className="flex items-center justify-between gap-2 p-3 border-2 border-[#FF6A00] rounded-xl hover:bg-[#FF6A00]/5 transition-colors text-sm">
+                        <span className="font-bold text-[#081A36]">{link.label}</span>
+                        <span className="text-xs bg-[#FF6A00] text-white font-bold px-2.5 py-1 rounded-lg">Pay Now →</span>
                       </a>
                     ))}
                   </div>
@@ -200,14 +200,14 @@ function LoginForm() {
             <div className="mt-5 text-center space-y-2 lg:hidden">
               <p className="text-sm text-slate-400">
                 New here?{" "}
-                <Link href="/register/client" className="text-[#FF6A1A] font-semibold hover:underline">Sign up as a client</Link>
+                <Link href="/register/client" className="text-[#FF6A00] font-semibold hover:underline">Sign up as a client</Link>
                 {" · "}
-                <Link href="/register/agent" className="text-[#FF6A1A] font-semibold hover:underline">Become a field agent</Link>
+                <Link href="/register/agent" className="text-[#FF6A00] font-semibold hover:underline">Become a field agent</Link>
               </p>
             </div>
             <div className="hidden lg:block mt-5 text-center">
               <p className="text-sm text-slate-400">
-                <Link href="/register/agent" className="text-[#FF6A1A] font-semibold hover:underline">Become a field agent</Link> instead?
+                <Link href="/register/agent" className="text-[#FF6A00] font-semibold hover:underline">Become a field agent</Link> instead?
               </p>
             </div>
           </div>

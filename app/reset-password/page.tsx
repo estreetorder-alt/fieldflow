@@ -58,7 +58,7 @@ function ResetPasswordForm() {
     setTimeout(() => router.push("/login"), 3000);
   }
 
-  const inp = "w-full pl-9 pr-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6A1A] focus:border-transparent";
+  const inp = "w-full pl-9 pr-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6A00] focus:border-transparent";
 
   return (
     <div className="min-h-screen flex bg-white">
@@ -66,7 +66,7 @@ function ResetPasswordForm() {
 
       <div className="flex-1 flex flex-col">
         <div className="p-4 lg:p-6">
-          <Link href="/login" className="inline-flex items-center gap-1.5 text-sm text-slate-400 hover:text-[#0A1128] transition-colors">
+          <Link href="/login" className="inline-flex items-center gap-1.5 text-sm text-slate-400 hover:text-[#081A36] transition-colors">
             <ArrowLeft className="w-3.5 h-3.5"/>Back to login
           </Link>
         </div>
@@ -78,7 +78,7 @@ function ResetPasswordForm() {
             </div>
 
             <div className="mb-7">
-              <h1 className="text-2xl font-bold text-[#0A1128] font-display">
+              <h1 className="text-2xl font-bold text-[#081A36] font-display">
                 {step === "request" ? "Reset Your Password" :
                  step === "reset" ? "Set New Password" :
                  step === "done" ? "Password Updated!" : "Invalid Link"}
@@ -97,14 +97,14 @@ function ResetPasswordForm() {
               <div className="text-center">
                 <p className="text-red-600 font-semibold mb-2">This reset link is invalid or has expired.</p>
                 <p className="text-slate-500 text-sm mb-4">Reset links expire after 1 hour. Please request a new one.</p>
-                <Link href="/reset-password" className="text-[#FF6A1A] font-semibold hover:underline">Request new reset link</Link>
+                <Link href="/reset-password" className="text-[#FF6A00] font-semibold hover:underline">Request new reset link</Link>
               </div>
             ) : step === "done" ? (
               <div className="text-center">
                 <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-3"/>
                 <p className="font-bold text-slate-900 mb-2">Password updated successfully!</p>
                 <p className="text-slate-500 text-sm">Redirecting to login in 3 seconds…</p>
-                <Link href="/login" className="mt-4 inline-block text-[#FF6A1A] font-semibold hover:underline text-sm">Go to login now</Link>
+                <Link href="/login" className="mt-4 inline-block text-[#FF6A00] font-semibold hover:underline text-sm">Go to login now</Link>
               </div>
             ) : step === "request" ? (
               <>
@@ -113,7 +113,7 @@ function ResetPasswordForm() {
                     <CheckCircle className="w-10 h-10 text-green-500 mx-auto mb-3"/>
                     <p className="font-semibold text-slate-900 mb-1">{message}</p>
                     <p className="text-slate-500 text-sm">Check your inbox (and spam folder).</p>
-                    <Link href="/login" className="mt-4 inline-block text-[#FF6A1A] font-semibold hover:underline text-sm">Back to login</Link>
+                    <Link href="/login" className="mt-4 inline-block text-[#FF6A00] font-semibold hover:underline text-sm">Back to login</Link>
                   </div>
                 ) : (
                   <form onSubmit={requestReset} className="space-y-4">
@@ -127,7 +127,7 @@ function ResetPasswordForm() {
                       </div>
                     </div>
                     <button type="submit" disabled={loading}
-                      className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-[#FF6A1A] to-[#FF3D00] hover:opacity-90 disabled:opacity-60 text-white font-bold py-3 rounded-xl transition-opacity text-sm">
+                      className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-[#FF6A00] to-[#FF8C1A] hover:opacity-90 disabled:opacity-60 text-white font-bold py-3 rounded-xl transition-opacity text-sm">
                       {loading ? "Sending…" : "Send Reset Link"}
                     </button>
                   </form>
@@ -156,7 +156,7 @@ function ResetPasswordForm() {
                   </div>
                 </div>
                 <button type="submit" disabled={loading}
-                  className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-[#FF6A1A] to-[#FF3D00] hover:opacity-90 disabled:opacity-60 text-white font-bold py-3 rounded-xl transition-opacity text-sm">
+                  className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-[#FF6A00] to-[#FF8C1A] hover:opacity-90 disabled:opacity-60 text-white font-bold py-3 rounded-xl transition-opacity text-sm">
                   {loading ? "Updating…" : "Update Password"}
                 </button>
               </form>

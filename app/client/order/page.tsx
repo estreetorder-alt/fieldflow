@@ -89,14 +89,14 @@ function PlaceOrderInner() {
     <div className="min-h-screen bg-white">
       <header className="bg-white border-b border-slate-200 sticky top-0 z-20 shadow-sm">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
-          <Link href="/client" className="flex items-center gap-2 text-slate-500 hover:text-[#0f1f3d] text-sm font-medium">
+          <Link href="/client" className="flex items-center gap-2 text-slate-500 hover:text-[#081A36] text-sm font-medium">
             <ArrowLeft className="w-4 h-4"/>Back to Dashboard
           </Link>
           <span className="flex items-center gap-2">
             <img src="/snapect-logo.png" alt="Snapect" className="h-8 w-auto object-contain"/>
-            <span className="text-[#0f1f3d] font-extrabold tracking-tight hidden sm:inline">Place An Order</span>
+            <span className="text-[#081A36] font-extrabold tracking-tight hidden sm:inline">Place An Order</span>
           </span>
-          <Link href="/client/multi-order" className="flex items-center gap-1.5 text-[#c8991a] hover:text-[#a87f13] text-sm font-semibold">
+          <Link href="/client/multi-order" className="flex items-center gap-1.5 text-[#FF6A00] hover:text-[#a87f13] text-sm font-semibold">
             <Package className="w-4 h-4"/>Multi Orders
           </Link>
         </div>
@@ -107,14 +107,14 @@ function PlaceOrderInner() {
 
         {/* ── Service ── */}
         <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6">
-          <h1 className="text-lg font-extrabold text-[#0f1f3d] mb-4">1. Choose a Service</h1>
+          <h1 className="text-lg font-extrabold text-[#081A36] mb-4">1. Choose a Service</h1>
 
           {/* Tabs */}
           <div className="flex gap-1.5 overflow-x-auto pb-1 mb-4">
             {catalog.map(cat=>(
               <button key={cat.id} onClick={()=>{ setTab(cat.id); if(cat.id!=="custom"){ const first=cat.services[0]; if(!cat.services.some(s=>s.id===selectedServiceId)) setSelectedServiceId(first?.id ?? ""); } }}
                 className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold uppercase tracking-wide whitespace-nowrap border-2 transition-colors ${
-                  tab===cat.id ? "bg-[#0f1f3d] text-[#c8991a] border-[#0f1f3d]" : "bg-white text-[#0f1f3d] border-slate-200 hover:border-[#c8991a]"
+                  tab===cat.id ? "bg-[#081A36] text-[#FF6A00] border-[#081A36]" : "bg-white text-[#081A36] border-slate-200 hover:border-[#FF6A00]"
                 }`}>
                 {TAB_META[cat.id]?.icon}{cat.label}
               </button>
@@ -126,7 +126,7 @@ function PlaceOrderInner() {
               <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">{currentTab?.label} Services</label>
               <div className="relative">
                 <select value={currentTab?.services.some(s=>s.id===selectedServiceId)?selectedServiceId:""} onChange={e=>setSelectedServiceId(e.target.value)}
-                  className="w-full border border-slate-300 rounded-xl px-3 py-3 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#c8991a] appearance-none font-medium text-[#0f1f3d]">
+                  className="w-full border border-slate-300 rounded-xl px-3 py-3 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#FF6A00] appearance-none font-medium text-[#081A36]">
                   <option value="" disabled>Choose the Service</option>
                   {currentTab?.services.map(s=>(
                     <option key={s.id} value={s.id}>{s.name}</option>
@@ -137,7 +137,7 @@ function PlaceOrderInner() {
 
               {selectedSvc && currentTab?.services.some(s=>s.id===selectedSvc.id) && (
                 <div className="mt-4 text-sm text-slate-700 space-y-2">
-                  <p className="font-bold text-[#0f1f3d]">{selectedSvc.name}</p>
+                  <p className="font-bold text-[#081A36]">{selectedSvc.name}</p>
                   {selectedSvc.shotList ? (
                     <ul className="list-disc ml-5 space-y-1 text-xs text-slate-600">
                       {selectedSvc.shotList.map((shot,i)=><li key={i}>1 photo — {shot}</li>)}
@@ -153,36 +153,36 @@ function PlaceOrderInner() {
               <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Duties</label>
               <textarea value={customDuties} onChange={e=>setCustomDuties(e.target.value)} rows={5}
                 placeholder="Specify the exact duties you want performed for this order. Include any lockbox codes or access / contact details."
-                className="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#c8991a]"/>
+                className="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6A00]"/>
             </>
           )}
         </div>
 
         {/* ── Address ── */}
         <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6">
-          <h1 className="text-lg font-extrabold text-[#0f1f3d] mb-4 flex items-center gap-2"><MapPin className="w-5 h-5 text-[#c8991a]"/>2. Enter the Address</h1>
+          <h1 className="text-lg font-extrabold text-[#081A36] mb-4 flex items-center gap-2"><MapPin className="w-5 h-5 text-[#FF6A00]"/>2. Enter the Address</h1>
           <div className="grid sm:grid-cols-[1fr_120px] gap-3 mb-3">
             <div>
               <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Street</label>
               <input value={street} onChange={e=>setStreet(e.target.value)} placeholder="132 Mabeline Rd"
-                className="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#c8991a]"/>
+                className="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6A00]"/>
             </div>
             <div>
               <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Unit #</label>
               <input value={unit} onChange={e=>setUnit(e.target.value)}
-                className="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#c8991a]"/>
+                className="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6A00]"/>
             </div>
           </div>
           <div className="grid sm:grid-cols-[1fr_110px_130px] gap-3">
             <div>
               <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">City</label>
               <input value={city} onChange={e=>setCity(e.target.value)} placeholder="Saint George"
-                className="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#c8991a]"/>
+                className="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6A00]"/>
             </div>
             <div>
               <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">State</label>
               <select value={stateAbbr} onChange={e=>setStateAbbr(e.target.value)}
-                className="w-full px-2 py-2.5 border border-slate-300 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#c8991a]">
+                className="w-full px-2 py-2.5 border border-slate-300 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#FF6A00]">
                 <option value="">—</option>
                 {STATES.map(s=><option key={s} value={s}>{s}</option>)}
               </select>
@@ -190,25 +190,25 @@ function PlaceOrderInner() {
             <div>
               <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">ZIP</label>
               <input value={zip} onChange={e=>setZip(e.target.value.replace(/\D/g,"").slice(0,5))} placeholder="29477"
-                className="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#c8991a]"/>
+                className="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6A00]"/>
             </div>
           </div>
 
           <div className="mt-4">
             <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1.5"><FileText className="w-3.5 h-3.5"/>Comments (optional)</label>
             <textarea value={comments} onChange={e=>setComments(e.target.value)} rows={2} placeholder="Gate code 4471, beware of dog in rear yard…"
-              className="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#c8991a]"/>
+              className="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6A00]"/>
           </div>
         </div>
 
         {/* ── Place Order Now ── */}
         <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-start gap-2 text-xs text-slate-500 max-w-sm">
-            <AlertTriangle className="w-4 h-4 text-[#c8991a] flex-shrink-0 mt-0.5"/>
+            <AlertTriangle className="w-4 h-4 text-[#FF6A00] flex-shrink-0 mt-0.5"/>
             <span>Once placed, your order goes into the queue and field agents will start sending offers. You&apos;ll review and accept an offer from your dashboard.</span>
           </div>
           <button onClick={submitOrder} disabled={submitting}
-            className="bg-[#c8991a] hover:bg-[#f0b429] disabled:opacity-50 text-[#0f1f3d] font-extrabold px-8 py-3.5 rounded-xl flex items-center gap-2 transition-colors text-base">
+            className="bg-[#FF6A00] hover:bg-[#FF8C1A] disabled:opacity-50 text-[#081A36] font-extrabold px-8 py-3.5 rounded-xl flex items-center gap-2 transition-colors text-base">
             <CheckCircle className="w-5 h-5"/>{submitting ? "Placing Order…" : "Place Order Now"}
           </button>
         </div>

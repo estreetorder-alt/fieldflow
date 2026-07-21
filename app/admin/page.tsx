@@ -694,7 +694,7 @@ export default function AdminPage() {
             <div className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${liveConnected?"bg-green-50 text-green-700":"bg-slate-100 text-slate-500"}`}>
               {liveConnected?<Wifi className="w-3.5 h-3.5"/>:<WifiOff className="w-3.5 h-3.5"/>}{liveConnected?"Live":"Offline"}
             </div>
-            <button onClick={openProfile} className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-[#0f1f3d]" title="My profile">
+            <button onClick={openProfile} className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-[#081A36]" title="My profile">
               <UserIcon className="w-4 h-4"/>Welcome, <span className="font-medium text-slate-700 underline decoration-dotted">{userName}</span>
             </button>
             <button onClick={handleLogout} className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-red-600"><LogOut className="w-4 h-4"/>Logout</button>
@@ -746,7 +746,7 @@ export default function AdminPage() {
         {/* Site announcement banner control */}
         <div className="bg-white border border-slate-200 rounded-2xl mb-6 overflow-hidden">
           <button onClick={()=>setAnnOpen(!annOpen)} className="w-full px-5 py-3 flex items-center justify-between hover:bg-slate-50">
-            <span className="flex items-center gap-2 text-sm font-semibold text-[#2A2320]">
+            <span className="flex items-center gap-2 text-sm font-semibold text-[#081A36]">
               <AlertCircle className="w-4 h-4 text-amber-500"/>Dashboard Announcement
               {annActive
                 ? <span className="text-xs bg-amber-100 text-amber-700 font-medium px-2 py-0.5 rounded-full">Active — {annActive.audience}</span>
@@ -772,7 +772,7 @@ export default function AdminPage() {
                   <option value="agent">Agents only</option>
                 </select>
                 <button onClick={publishAnnouncement} disabled={annSaving||!annMsg.trim()}
-                  className="bg-[#1C1917] hover:bg-slate-700 disabled:opacity-40 text-white text-sm font-semibold px-4 py-2 rounded-xl">
+                  className="bg-[#081A36] hover:bg-slate-700 disabled:opacity-40 text-white text-sm font-semibold px-4 py-2 rounded-xl">
                   {annSaving?"Publishing…":"Publish Banner"}
                 </button>
                 <span className="text-xs text-slate-400">Replaces any currently active banner for that audience</span>
@@ -839,9 +839,9 @@ export default function AdminPage() {
               <div className="flex items-center gap-2 flex-wrap">
                 <input value={orderSearch} onChange={e=>setOrderSearch(e.target.value)}
                   placeholder="Search address or vendor…"
-                  className="border border-slate-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#c8991a] w-52"/>
+                  className="border border-slate-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6A00] w-52"/>
                 <select value={orderStatusFilter} onChange={e=>setOrderStatusFilter(e.target.value)}
-                  className="border border-slate-200 rounded-lg px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#c8991a]">
+                  className="border border-slate-200 rounded-lg px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#FF6A00]">
                   <option value="all">All Status</option>
                   <option value="pending">Pending</option>
                   <option value="under_review">Under Review</option>
@@ -883,7 +883,7 @@ export default function AdminPage() {
                           <td className="px-4 py-3 text-xs text-slate-600">{order.client?.name??order.clientId}</td>
                           <td className="px-4 py-3 text-xs font-medium text-slate-700 capitalize">{order.serviceType.replace(/_/g," ")}</td>
                           <td className="px-4 py-3">
-                            <div className="font-semibold text-[#2A2320]">${order.totalPrice}</div>
+                            <div className="font-semibold text-[#081A36]">${order.totalPrice}</div>
                             <div className="text-xs text-green-600">Agent: ${order.compensationAmount}</div>
                           </td>
                           <td className="px-4 py-3">
@@ -950,7 +950,7 @@ export default function AdminPage() {
                               : orderBids.map(bid=>(
                                 <div key={bid.id} className={`flex items-center justify-between gap-3 p-2.5 rounded-xl border mb-2 ${bid.status==="accepted"?"bg-green-50 border-green-200":bid.status==="rejected"?"bg-red-50 border-red-200 opacity-60":"bg-white border-slate-200"}`}>
                                   <div>
-                                    <span className="text-sm font-semibold text-[#2A2320]">{bid.agentName}</span>
+                                    <span className="text-sm font-semibold text-[#081A36]">{bid.agentName}</span>
                                     {bid.agentRating&&<span className="ml-2 text-xs text-amber-600">★ {bid.agentRating.toFixed(1)}</span>}
                                     {bid.placedByAdmin&&<span className="ml-2 text-xs text-slate-400">(admin)</span>}
                                     {bid.message&&<p className="text-xs text-slate-500 mt-0.5">"{bid.message}"</p>}
@@ -1050,7 +1050,7 @@ export default function AdminPage() {
                     <div key={o.id} className="px-6 py-4 border-b border-slate-100 last:border-0">
                       <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
                         <div>
-                          <p className="text-sm font-bold text-[#2A2320]">{o.address}</p>
+                          <p className="text-sm font-bold text-[#081A36]">{o.address}</p>
                           <p className="text-xs text-slate-400">{o.serviceType} · Vendor: {o.client?.name??o.clientId} · Agent: {o.agent?.name??"—"} · {pend.length} pending photo{pend.length!==1?"s":""}</p>
                         </div>
                         <button onClick={()=>releaseAllPhotos(o.id)} disabled={photoActing===o.id}
@@ -1062,7 +1062,7 @@ export default function AdminPage() {
                         {pend.map(ph=>(
                           <div key={ph.id} className="border border-slate-200 rounded-xl overflow-hidden bg-slate-50">
                             <a href={ph.url} target="_blank" rel="noopener noreferrer" className="block aspect-video bg-slate-100" title="Open / save full size">
-                              {ph.url?<img src={ph.url} alt={ph.description} className="w-full h-full object-cover"/>:<div className="w-full h-full flex items-center justify-center"><CameraIcon className="w-5 h-5 text-[#C4AE90]"/></div>}
+                              {ph.url?<img src={ph.url} alt={ph.description} className="w-full h-full object-cover"/>:<div className="w-full h-full flex items-center justify-center"><CameraIcon className="w-5 h-5 text-[#94A3B8]"/></div>}
                             </a>
                             <div className="p-1.5">
                               <p className="text-[10px] text-slate-500 truncate" title={ph.description}>{ph.description||ph.filename}</p>
@@ -1097,7 +1097,7 @@ export default function AdminPage() {
                 <div key={su.id} className="px-6 py-4 border-b border-slate-100 last:border-0">
                   <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
                     <div>
-                      <p className="text-sm font-bold text-[#2A2320]">{su.serviceName||"Photo submission"} <span className="text-xs font-normal text-slate-400">· {su.photos.length} photos</span></p>
+                      <p className="text-sm font-bold text-[#081A36]">{su.serviceName||"Photo submission"} <span className="text-xs font-normal text-slate-400">· {su.photos.length} photos</span></p>
                       <p className="text-xs text-slate-400">Agent: {su.agentName??su.agentId} · {etDateTime(su.createdAt)} {su.orderId?`· Linked order: ${su.orderId}`:"· No order linked"}</p>
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
@@ -1122,7 +1122,7 @@ export default function AdminPage() {
                       <a key={i} href={ph.url} target="_blank" rel="noopener noreferrer"
                         className="border border-slate-200 rounded-xl overflow-hidden bg-slate-50 group" title={`${ph.label} — open / save full size`}>
                         <div className="aspect-video bg-slate-100">
-                          {ph.url?<img src={ph.url} alt={ph.label} className="w-full h-full object-cover group-hover:opacity-90"/>:<div className="w-full h-full flex items-center justify-center"><CameraIcon className="w-5 h-5 text-[#C4AE90]"/></div>}
+                          {ph.url?<img src={ph.url} alt={ph.label} className="w-full h-full object-cover group-hover:opacity-90"/>:<div className="w-full h-full flex items-center justify-center"><CameraIcon className="w-5 h-5 text-[#94A3B8]"/></div>}
                         </div>
                         <p className="text-[10px] text-slate-500 truncate px-1.5 py-1">{ph.label||ph.filename}</p>
                       </a>
@@ -1148,7 +1148,7 @@ export default function AdminPage() {
                   <div key={agent.id}>
                   {showStateHeader && (
                     <div className="px-5 py-2 bg-slate-50 border-y border-slate-100 flex items-center gap-2 sticky top-0">
-                      <MapPin className="w-3.5 h-3.5 text-[#c8991a]"/>
+                      <MapPin className="w-3.5 h-3.5 text-[#FF6A00]"/>
                       <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">{agent.__state}</span>
                       <span className="text-xs text-slate-400">({agentsByState.filter(a=>a.__state===agent.__state).length})</span>
                     </div>
@@ -1257,7 +1257,7 @@ export default function AdminPage() {
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
                         <a href={paymentLinks[0]?.url ?? "#"} target="_blank" rel="noopener noreferrer"
-                          className="text-xs bg-[#c8991a] hover:bg-[#f0b429] text-[#0f1f3d] font-bold px-3 py-1.5 rounded-lg whitespace-nowrap">
+                          className="text-xs bg-[#FF6A00] hover:bg-[#FF8C1A] text-[#081A36] font-bold px-3 py-1.5 rounded-lg whitespace-nowrap">
                           View Payment →
                         </a>
                         <button onClick={() => activateUser(u.id, "activate")} disabled={saving === `user-${u.id}`}
@@ -1303,7 +1303,7 @@ export default function AdminPage() {
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
                         <a href={paymentLinks[0]?.url ?? "#"} target="_blank" rel="noopener noreferrer"
-                          className="text-xs bg-[#c8991a] hover:bg-[#f0b429] text-[#0f1f3d] font-bold px-3 py-1.5 rounded-lg">
+                          className="text-xs bg-[#FF6A00] hover:bg-[#FF8C1A] text-[#081A36] font-bold px-3 py-1.5 rounded-lg">
                           View Payment →
                         </a>
                         <button onClick={async () => {
@@ -1323,7 +1323,7 @@ export default function AdminPage() {
             <div className="bg-white border border-slate-200 rounded-2xl p-5">
               <h3 className="font-semibold text-slate-900 mb-3 flex items-center gap-2">
                 <DollarSign className="w-4 h-4 text-emerald-600"/>Your Payment Links
-                <button onClick={() => setTab("payment-links")} className="ml-auto text-xs text-[#c8991a] font-bold hover:underline">Manage Links →</button>
+                <button onClick={() => setTab("payment-links")} className="ml-auto text-xs text-[#FF6A00] font-bold hover:underline">Manage Links →</button>
               </h3>
               {paymentLinks.length === 0 ? (
                 <div className="flex items-center gap-3 p-3 bg-red-50 border border-red-200 rounded-xl">
@@ -1335,11 +1335,11 @@ export default function AdminPage() {
                   {paymentLinks.filter(l => l.active).map(link => (
                     <div key={link.id} className="flex items-center justify-between gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
                       <div>
-                        <p className="text-sm font-semibold text-[#2A2320]">{link.label} {link.amount && <span className="text-emerald-600">${link.amount}</span>}</p>
+                        <p className="text-sm font-semibold text-[#081A36]">{link.label} {link.amount && <span className="text-emerald-600">${link.amount}</span>}</p>
                         <p className="text-xs text-slate-400 font-mono truncate max-w-xs">{link.url}</p>
                       </div>
                       <a href={link.url} target="_blank" rel="noopener noreferrer"
-                        className="text-xs bg-[#c8991a] text-[#0f1f3d] font-bold px-3 py-1.5 rounded-lg hover:bg-[#f0b429] whitespace-nowrap">
+                        className="text-xs bg-[#FF6A00] text-[#081A36] font-bold px-3 py-1.5 rounded-lg hover:bg-[#FF8C1A] whitespace-nowrap">
                         Open Link ↗
                       </a>
                     </div>
@@ -1406,7 +1406,7 @@ export default function AdminPage() {
                     <div className="flex items-center justify-between gap-4">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-medium text-[#2A2320]">{u.name}</span>
+                        <span className="font-medium text-[#081A36]">{u.name}</span>
                         <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${u.role==="admin"?"bg-purple-100 text-purple-700":u.role==="agent"?"bg-green-100 text-green-700":"bg-blue-100 text-blue-700"}`}>{u.role}</span>
                         {u.role!=="admin" && (
                           <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${u.suspended?"bg-red-100 text-red-700":u.accountActive?"bg-green-100 text-green-700":"bg-amber-100 text-amber-700"}`}>
@@ -1483,7 +1483,7 @@ export default function AdminPage() {
                                   {userStats[u.id].bids!.map(b=>(
                                     <div key={b.id} className="px-3 py-1.5 flex items-center justify-between gap-2 text-xs">
                                       <span className="text-slate-600 truncate flex-1">{b.address}</span>
-                                      <span className="font-bold text-[#2A2320]">${b.amount}</span>
+                                      <span className="font-bold text-[#081A36]">${b.amount}</span>
                                       <span className={`px-1.5 py-0.5 rounded-full font-medium ${b.status==="accepted"?"bg-green-50 text-green-700":b.status==="rejected"?"bg-red-50 text-red-600":"bg-amber-50 text-amber-700"}`}>{b.status}</span>
                                       <span className="text-slate-400 whitespace-nowrap" suppressHydrationWarning>{etDateTime(b.placedAt)}</span>
                                     </div>
@@ -1565,7 +1565,7 @@ export default function AdminPage() {
               <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between gap-3">
                 <div>
                   <h2 className="font-bold text-slate-900 flex items-center gap-2">
-                    <WalletIcon className="w-5 h-5 text-[#c8991a]"/>Whop Payment Activity
+                    <WalletIcon className="w-5 h-5 text-[#FF6A00]"/>Whop Payment Activity
                   </h2>
                   <p className="text-xs text-slate-400 mt-0.5">Which vendor paid what — linked to Whop checkout and webhook confirmation</p>
                 </div>
@@ -1583,7 +1583,7 @@ export default function AdminPage() {
                 <div className="text-center py-12 text-slate-400 text-sm">Loading Whop activity…</div>
               ) : whopPayments.length === 0 ? (
                 <div className="text-center py-12 text-slate-400">
-                  <CreditCard className="w-8 h-8 mx-auto mb-2 text-[#C4AE90]"/>
+                  <CreditCard className="w-8 h-8 mx-auto mb-2 text-[#94A3B8]"/>
                   <p className="text-sm">No Whop wallet payments yet</p>
                   <p className="text-xs mt-1">Shows when a vendor buys credits via Whop checkout</p>
                 </div>
@@ -1620,9 +1620,9 @@ export default function AdminPage() {
                               {etDateTime(row.confirmedAt ?? row.createdAt)}
                             </td>
                             <td className="px-4 py-3">
-                              <p className="font-medium text-[#2A2320]">{row.userName}</p>
+                              <p className="font-medium text-[#081A36]">{row.userName}</p>
                               <p className="text-xs text-slate-500">{row.userEmail}</p>
-                              {row.planName && <p className="text-[10px] text-[#c8991a] font-semibold mt-0.5">{row.planName}</p>}
+                              {row.planName && <p className="text-[10px] text-[#FF6A00] font-semibold mt-0.5">{row.planName}</p>}
                             </td>
                             <td className="px-4 py-3 font-bold text-emerald-600 whitespace-nowrap">${row.amount.toFixed(2)}</td>
                             <td className="px-4 py-3 text-xs text-slate-600">{purposeLabel[row.purpose] ?? row.purpose}</td>
@@ -1681,7 +1681,7 @@ export default function AdminPage() {
                     ) : whopWebhooks.map((ev) => (
                       <div key={ev.eventId} className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs border border-slate-100 rounded-lg px-3 py-2 bg-slate-50/50">
                         <span className="font-mono text-slate-500" suppressHydrationWarning>{etDateTime(ev.processedAt)}</span>
-                        <span className="font-semibold text-[#0f1f3d]">{ev.eventType}</span>
+                        <span className="font-semibold text-[#081A36]">{ev.eventType}</span>
                         {ev.userName && <span className="text-slate-700">{ev.userName} ({ev.userEmail})</span>}
                         {ev.purpose && <span className="text-slate-500">{ev.purpose}</span>}
                         {ev.paymentId && (
@@ -1706,7 +1706,7 @@ export default function AdminPage() {
                   <div key={u.id} className="px-6 py-4">
                     <div className="flex items-center justify-between gap-4">
                       <div>
-                        <p className="font-medium text-[#2A2320]">{u.name}</p>
+                        <p className="font-medium text-[#081A36]">{u.name}</p>
                         <p className="text-xs text-slate-500">{u.email}</p>
                       </div>
                       <div className="flex items-center gap-3">
@@ -1716,7 +1716,7 @@ export default function AdminPage() {
                         </div>
                         <button
                           onClick={() => { setManualCreditFor(manualCreditFor === u.id ? null : u.id); setManualCreditMsg(null); setManualCreditAmount(""); setManualCreditNote(""); }}
-                          className="text-xs font-bold border border-[#D8C4AC] hover:border-[#c8991a] hover:bg-[#c8991a]/5 text-slate-700 px-3 py-2 rounded-lg whitespace-nowrap"
+                          className="text-xs font-bold border border-[#CBD5E1] hover:border-[#FF6A00] hover:bg-[#FF6A00]/5 text-slate-700 px-3 py-2 rounded-lg whitespace-nowrap"
                         >
                           {manualCreditFor === u.id ? "Cancel" : "+ Add Payment"}
                         </button>
@@ -1733,7 +1733,7 @@ export default function AdminPage() {
                               value={manualCreditAmount}
                               onChange={(e) => setManualCreditAmount(e.target.value)}
                               placeholder="e.g. 50"
-                              className="w-full border border-[#D8C4AC] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#c8991a]"
+                              className="w-full border border-[#CBD5E1] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6A00]"
                             />
                           </div>
                           <div>
@@ -1743,7 +1743,7 @@ export default function AdminPage() {
                               value={manualCreditNote}
                               onChange={(e) => setManualCreditNote(e.target.value)}
                               placeholder="e.g. pd.cash payment #1234 confirmed manually"
-                              className="w-full border border-[#D8C4AC] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#c8991a]"
+                              className="w-full border border-[#CBD5E1] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6A00]"
                             />
                           </div>
                         </div>
@@ -1753,7 +1753,7 @@ export default function AdminPage() {
                         <button
                           onClick={() => submitManualCredit(u.id)}
                           disabled={manualCreditBusy}
-                          className="bg-[#0f1f3d] hover:bg-[#1a3260] text-white text-xs font-bold px-4 py-2 rounded-lg disabled:opacity-50"
+                          className="bg-[#081A36] hover:bg-[#12294f] text-white text-xs font-bold px-4 py-2 rounded-lg disabled:opacity-50"
                         >
                           {manualCreditBusy ? "Adding…" : "Confirm & Credit Wallet"}
                         </button>
@@ -1771,7 +1771,7 @@ export default function AdminPage() {
             <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
               <div className="px-6 py-4 border-b border-slate-100">
                 <h2 className="font-bold text-slate-900 flex items-center gap-2">
-                  <CreditCard className="w-5 h-5 text-[#c8991a]"/>Wallet Credit Plans
+                  <CreditCard className="w-5 h-5 text-[#FF6A00]"/>Wallet Credit Plans
                 </h2>
                 <p className="text-xs text-slate-400 mt-0.5">
                   Create packages here ($50, $100, …). Vendors see them in billing, pay on Whop, and get $1 = $1 credit after webhook confirmation. Plans are not created in Whop.
@@ -1819,7 +1819,7 @@ export default function AdminPage() {
                   <button
                     onClick={createWalletPlan}
                     disabled={planBusy === "create"}
-                    className="bg-[#0f1f3d] hover:bg-[#1a3260] text-white font-semibold text-sm px-4 py-2 rounded-lg disabled:opacity-50 flex items-center justify-center gap-1.5"
+                    className="bg-[#081A36] hover:bg-[#12294f] text-white font-semibold text-sm px-4 py-2 rounded-lg disabled:opacity-50 flex items-center justify-center gap-1.5"
                   >
                     <PlusIcon className="w-4 h-4"/>{planBusy === "create" ? "Saving…" : "Create plan"}
                   </button>
@@ -1830,7 +1830,7 @@ export default function AdminPage() {
               {/* Edit modal strip */}
               {editingPlan && (
                 <div className="px-6 py-4 border-b border-amber-100 bg-amber-50/50 space-y-3">
-                  <p className="text-sm font-semibold text-[#2A2320]">Edit plan</p>
+                  <p className="text-sm font-semibold text-[#081A36]">Edit plan</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                     <input value={editingPlan.name} onChange={e => setEditingPlan({ ...editingPlan, name: e.target.value })} className="border border-slate-200 rounded-lg px-3 py-2 text-sm" />
                     <input type="number" min="1" step="0.01" value={editingPlan.amount} onChange={e => setEditingPlan({ ...editingPlan, amount: e.target.value })} className="border border-slate-200 rounded-lg px-3 py-2 text-sm" />
@@ -1848,7 +1848,7 @@ export default function AdminPage() {
 
               {walletPlans.length === 0 ? (
                 <div className="text-center py-12 text-slate-400">
-                  <CreditCard className="w-8 h-8 mx-auto mb-2 text-[#C4AE90]"/>
+                  <CreditCard className="w-8 h-8 mx-auto mb-2 text-[#94A3B8]"/>
                   <p>No plans yet — create one above</p>
                 </div>
               ) : (
@@ -1904,9 +1904,9 @@ export default function AdminPage() {
               )}
             </div>
 
-            <div className="bg-[#0f1f3d] rounded-2xl p-6 text-white">
-              <h3 className="font-bold text-[#f0b429] mb-2">How vendor billing uses these plans</h3>
-              <ol className="text-sm text-[#C4AE90] space-y-1.5 list-decimal list-inside">
+            <div className="bg-[#081A36] rounded-2xl p-6 text-white">
+              <h3 className="font-bold text-[#FF8C1A] mb-2">How vendor billing uses these plans</h3>
+              <ol className="text-sm text-[#94A3B8] space-y-1.5 list-decimal list-inside">
                 <li>You create a plan here (e.g. $50) — saved only in Snapect DB</li>
                 <li>Vendor clicks the plan in their wallet / billing page</li>
                 <li>We open Whop checkout for that USD amount dynamically</li>
@@ -1967,7 +1967,7 @@ export default function AdminPage() {
                 {agents.filter(a=>a.pendingPayout>0).map(a=>(
                   <div key={a.id} className="px-6 py-4 flex items-center justify-between gap-4">
                     <div>
-                      <span className="font-medium text-[#2A2320]">{a.name}</span>
+                      <span className="font-medium text-[#081A36]">{a.name}</span>
                       <span className="ml-2 text-xs text-slate-500">{a.email}</span>
                       <div className="text-xs text-slate-500 mt-0.5">Total earned: ${a.totalEarnings} · Jobs: {a.completedJobs}</div>
                     </div>
@@ -1992,7 +1992,7 @@ export default function AdminPage() {
                   {payouts.map((p,i)=>(
                     <div key={i} className="px-6 py-4 flex items-center justify-between gap-4">
                       <div>
-                        <span className="font-medium text-[#2A2320]">{(p.users as {name:string}|undefined)?.name??p.agent_id}</span>
+                        <span className="font-medium text-[#081A36]">{(p.users as {name:string}|undefined)?.name??p.agent_id}</span>
                         <span className="ml-2 text-xs text-slate-500">{p.paypal_email}</span>
                       </div>
                       <div className="flex items-center gap-3">
@@ -2052,7 +2052,7 @@ export default function AdminPage() {
                           {/* Service name + description */}
                           <div className="col-span-4">
                             <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="text-sm font-medium text-[#2A2320]">{svc.name}</span>
+                              <span className="text-sm font-medium text-[#081A36]">{svc.name}</span>
                               {svc.photoCount&&<span className="text-xs text-slate-400">{svc.photoCount}ph</span>}
                               {svc.requiresInterior&&<span className="text-xs bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded">Interior</span>}
                               {svc.isCustom&&<span className="text-xs bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded">Custom</span>}
@@ -2132,20 +2132,20 @@ export default function AdminPage() {
                   <div className="space-y-3">
                     <div><label className="text-xs font-medium text-slate-600 block mb-1">Label</label>
                       <input value={editingLink.label} onChange={e=>setEditingLink(l=>l?{...l,label:e.target.value}:l)}
-                        className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#c8991a]"/></div>
+                        className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6A00]"/></div>
                     <div><label className="text-xs font-medium text-slate-600 block mb-1">URL</label>
                       <input value={editingLink.url} onChange={e=>setEditingLink(l=>l?{...l,url:e.target.value}:l)}
-                        className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#c8991a]"/></div>
+                        className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6A00]"/></div>
                     <div><label className="text-xs font-medium text-slate-600 block mb-1">Amount ($)</label>
                       <input type="number" value={editingLink.amount} onChange={e=>setEditingLink(l=>l?{...l,amount:e.target.value}:l)}
-                        className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#c8991a]"/></div>
+                        className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6A00]"/></div>
                     <div><label className="text-xs font-medium text-slate-600 block mb-1">Description</label>
                       <input value={editingLink.description} onChange={e=>setEditingLink(l=>l?{...l,description:e.target.value}:l)}
-                        className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#c8991a]"/></div>
+                        className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6A00]"/></div>
                   </div>
                   <div className="flex gap-2 mt-4">
                     <button onClick={saveEditLink} disabled={saving==="edit-link"}
-                      className="flex-1 bg-[#c8991a] hover:bg-[#f0b429] disabled:opacity-50 text-[#0f1f3d] font-bold py-2.5 rounded-xl text-sm">
+                      className="flex-1 bg-[#FF6A00] hover:bg-[#FF8C1A] disabled:opacity-50 text-[#081A36] font-bold py-2.5 rounded-xl text-sm">
                       {saving==="edit-link"?"Saving…":"Save Changes"}
                     </button>
                     <button onClick={()=>setEditingLink(null)} className="px-4 text-slate-500 text-sm border border-slate-200 rounded-xl hover:bg-slate-50">Cancel</button>
@@ -2155,8 +2155,8 @@ export default function AdminPage() {
             )}
 
             {/* How-to banner */}
-            <div className="bg-white rounded-2xl p-6 text-[#0f1f3d]">
-              <h2 className="text-lg font-bold text-[#c8991a] mb-3 flex items-center gap-2">
+            <div className="bg-white rounded-2xl p-6 text-[#081A36]">
+              <h2 className="text-lg font-bold text-[#FF6A00] mb-3 flex items-center gap-2">
                 <DollarSign className="w-5 h-5"/>How Payment Links Work
               </h2>
               <ol className="space-y-2 text-sm text-slate-600">
@@ -2168,7 +2168,7 @@ export default function AdminPage() {
                   "Links are saved permanently until you delete them — no need to re-add each time",
                 ].map((step, i) => (
                   <li key={i} className="flex items-start gap-3">
-                    <span className="w-6 h-6 bg-[#c8991a] text-[#0f1f3d] rounded-full flex items-center justify-center text-xs font-black flex-shrink-0 mt-0.5">{i+1}</span>
+                    <span className="w-6 h-6 bg-[#FF6A00] text-[#081A36] rounded-full flex items-center justify-center text-xs font-black flex-shrink-0 mt-0.5">{i+1}</span>
                     <span>{step}</span>
                   </li>
                 ))}
@@ -2187,25 +2187,25 @@ export default function AdminPage() {
                   <label className="text-xs font-bold text-slate-700 block mb-1">Label * <span className="font-normal text-slate-400">(shown to vendor)</span></label>
                   <input value={newLink.label} onChange={e=>setNewLink(l=>({...l,label:e.target.value}))}
                     placeholder="e.g. Pay via PayPal"
-                    className="w-full border border-[#D8C4AC] rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"/>
+                    className="w-full border border-[#CBD5E1] rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"/>
                 </div>
                 <div>
                   <label className="text-xs font-bold text-slate-700 block mb-1">Amount ($) <span className="font-normal text-slate-400">(optional)</span></label>
                   <input type="number" value={newLink.amount} onChange={e=>setNewLink(l=>({...l,amount:e.target.value}))}
                     placeholder="e.g. 299"
-                    className="w-full border border-[#D8C4AC] rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"/>
+                    className="w-full border border-[#CBD5E1] rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"/>
                 </div>
                 <div className="sm:col-span-2">
                   <label className="text-xs font-bold text-slate-700 block mb-1">Payment URL * <span className="font-normal text-slate-400">(the full link vendors will click)</span></label>
                   <input value={newLink.url} onChange={e=>setNewLink(l=>({...l,url:e.target.value}))}
                     placeholder="https://carebusinessconsultingsolutions.com/generate/invoice?care&realtoruplift&299"
-                    className="w-full border border-[#D8C4AC] rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 font-mono text-xs"/>
+                    className="w-full border border-[#CBD5E1] rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 font-mono text-xs"/>
                 </div>
                 <div className="sm:col-span-2">
                   <label className="text-xs font-bold text-slate-700 block mb-1">Description <span className="font-normal text-slate-400">(optional — shown below the button)</span></label>
                   <input value={newLink.description} onChange={e=>setNewLink(l=>({...l,description:e.target.value}))}
                     placeholder="e.g. Click to pay securely via our invoice system"
-                    className="w-full border border-[#D8C4AC] rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"/>
+                    className="w-full border border-[#CBD5E1] rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"/>
                 </div>
               </div>
               <button onClick={addPaymentLink} disabled={addingLink}
@@ -2244,7 +2244,7 @@ export default function AdminPage() {
                       <button onClick={()=>setEditingLink({id:link.id,label:link.label,url:link.url,amount:link.amount?String(link.amount):"",description:link.description})}
                         className="text-xs font-medium px-3 py-1.5 rounded-lg border border-blue-200 text-blue-600 hover:bg-blue-50">Edit</button>
                       <button onClick={()=>toggleLink(link.id,link.active)}
-                        className={`text-xs font-medium px-3 py-1.5 rounded-lg border ${link.active?"border-[#D8C4AC] text-slate-600 hover:bg-slate-50":"border-green-300 text-green-700 hover:bg-green-50"}`}>
+                        className={`text-xs font-medium px-3 py-1.5 rounded-lg border ${link.active?"border-[#CBD5E1] text-slate-600 hover:bg-slate-50":"border-green-300 text-green-700 hover:bg-green-50"}`}>
                         {link.active?"Hide":"Show"}
                       </button>
                       <button onClick={()=>deleteLink(link.id)}
@@ -2274,7 +2274,7 @@ export default function AdminPage() {
                           <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${e.type.includes("bid")?"bg-purple-50 text-purple-700":e.type.includes("complete")?"bg-green-50 text-green-700":"bg-slate-50 text-slate-600"}`}>{e.type.replace(/_/g," ")}</span>
                           <span className="text-xs text-slate-400">To: {e.to}</span>
                         </div>
-                        <p className="font-medium text-[#2A2320] text-sm">{e.subject}</p>
+                        <p className="font-medium text-[#081A36] text-sm">{e.subject}</p>
                         {e.body&&<p className="text-xs text-slate-400 mt-0.5 line-clamp-2">{e.body}</p>}
                       </div>
                       <span className="text-xs text-slate-400 whitespace-nowrap" suppressHydrationWarning>{etTime(e.timestamp)}</span>
@@ -2294,7 +2294,7 @@ export default function AdminPage() {
               <div className="flex gap-1">
                 {["open","under_review","resolved","rejected","all"].map(s=>(
                   <button key={s} onClick={()=>setDisputeFilter(s)}
-                    className={`text-xs font-medium px-3 py-1.5 rounded-lg border ${disputeFilter===s?"bg-[#1C1917] text-white border-slate-900":"border-slate-200 text-slate-600 hover:bg-slate-50"}`}>
+                    className={`text-xs font-medium px-3 py-1.5 rounded-lg border ${disputeFilter===s?"bg-[#081A36] text-white border-slate-900":"border-slate-200 text-slate-600 hover:bg-slate-50"}`}>
                     {s.replace("_"," ")}
                   </button>
                 ))}
@@ -2314,7 +2314,7 @@ export default function AdminPage() {
                       }`}>{d.status.replace("_"," ")}</span>
                       <span className="text-xs text-slate-500 bg-slate-50 px-2 py-0.5 rounded-full">{d.reason.replace("_"," ")}</span>
                     </div>
-                    <p className="font-medium text-[#2A2320] text-sm">{d.clientName} <span className="text-slate-400 font-normal">— {d.clientEmail}</span></p>
+                    <p className="font-medium text-[#081A36] text-sm">{d.clientName} <span className="text-slate-400 font-normal">— {d.clientEmail}</span></p>
                     <p className="text-xs text-slate-500 mt-0.5">Order: {d.orderAddress ?? d.orderId}</p>
                   </div>
                   <span className="text-xs text-slate-400" suppressHydrationWarning>{etDate(d.createdAt)}</span>
@@ -2331,7 +2331,7 @@ export default function AdminPage() {
                         className="text-xs font-medium px-3 py-1.5 rounded-lg border border-blue-200 text-blue-600 hover:bg-blue-50">Mark Under Review</button>
                     )}
                     <button onClick={()=>setResolveDisputeModal({id:d.id, clientName:d.clientName??""})}
-                      className="text-xs font-medium px-3 py-1.5 rounded-lg bg-[#1C1917] text-white hover:bg-slate-700">Resolve</button>
+                      className="text-xs font-medium px-3 py-1.5 rounded-lg bg-[#081A36] text-white hover:bg-slate-700">Resolve</button>
                   </div>
                 )}
               </div>
@@ -2452,7 +2452,7 @@ export default function AdminPage() {
                 {v:"other",label:"Other", icon:<AlertCircle className="w-4 h-4"/>},
               ].map(opt=>(
                 <button key={opt.v} onClick={()=>setResolveChoice(opt.v as typeof resolveChoice)}
-                  className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-xl border text-sm font-medium transition-colors ${resolveChoice===opt.v?"border-slate-900 bg-[#1C1917] text-white":"border-slate-200 text-slate-600 hover:bg-slate-50"}`}>
+                  className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-xl border text-sm font-medium transition-colors ${resolveChoice===opt.v?"border-slate-900 bg-[#081A36] text-white":"border-slate-200 text-slate-600 hover:bg-slate-50"}`}>
                   {opt.icon}{opt.label}
                 </button>
               ))}
@@ -2471,7 +2471,7 @@ export default function AdminPage() {
             </div>
             <div className="flex gap-2">
               <button onClick={submitDisputeResolution} disabled={resolvingDispute || (resolveChoice==="wallet_credit" && !resolveAmount)}
-                className="flex-1 flex items-center justify-center gap-2 bg-[#1C1917] hover:bg-slate-700 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl">
+                className="flex-1 flex items-center justify-center gap-2 bg-[#081A36] hover:bg-slate-700 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl">
                 {resolvingDispute?"Resolving…":"Submit Resolution"}
               </button>
               <button onClick={()=>setResolveDisputeModal(null)} className="px-4 text-slate-500 text-sm">Cancel</button>

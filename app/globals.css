@@ -22,6 +22,45 @@
   --gold: #c8991a;
   --gold-light: #f0b429;
   --cream: #faf8f3;
+
+  /* ---- Snapect portal brand system (Billing/Wallet, Dashboard, Orders, Admin, Agent) ---- */
+  --brand-orange: #FF6A00;
+  --brand-orange-light: #FF8C1A;
+  --brand-navy: #081A36;
+  --brand-navy-soft: #12294f;
+  --brand-blue: #2D8CFF;
+  --brand-green: #22C55E;
+  --brand-red: #EF4444;
+  --brand-amber: #F59E0B;
+  --brand-bg: #F6F8FC;
+  --brand-card: #FFFFFF;
+  --brand-border: #E6EAF2;
+  --brand-ink: #081A36;
+  --brand-ink-soft: #5B6B85;
+  --brand-ink-faint: #94A3B8;
+}
+
+/* Portal-only typography hook — use font-[family-name:var(--font-jakarta)] for portal headings,
+   keeps the public marketing site on its existing display font. */
+.portal-shell {
+  background-color: var(--brand-bg);
+  color: var(--brand-ink);
+}
+
+.portal-shell h1, .portal-shell h2, .portal-shell h3, .portal-shell h4 {
+  font-family: var(--font-jakarta), sans-serif;
+}
+
+.brand-gradient {
+  background: linear-gradient(135deg, var(--brand-orange) 0%, var(--brand-orange-light) 100%);
+}
+
+.brand-text-gradient {
+  background: linear-gradient(120deg, var(--brand-orange), var(--brand-orange-light));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
 }
 
 body {

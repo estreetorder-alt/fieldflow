@@ -357,64 +357,63 @@ function ClientPageInner() {
   }
 
   return (
-    <div className="min-h-screen flex bg-[#F4F5F8]">
+    <div className="min-h-screen flex bg-[var(--brand-bg)]">
       {/* ================= Sidebar ================= */}
-      <aside className="hidden lg:flex flex-col w-64 flex-shrink-0 bg-[#0B0F1A] text-slate-300 sticky top-0 h-screen">
-        <div className="px-5 pt-6 pb-5 flex items-center gap-2.5 border-b border-white/5">
-          <img src="/snapect-logo.png" alt="Snapect" className="h-8 w-auto object-contain" onError={e=>{(e.target as HTMLImageElement).style.display="none";}}/>
-          <div className="leading-tight">
-            <p className="text-white font-extrabold text-sm tracking-tight">Snapect</p>
-            <p className="text-[9px] text-[#FF7A33] font-bold uppercase tracking-[0.2em]">Vendor Portal</p>
+      <aside className="hidden lg:flex flex-col w-64 flex-shrink-0 bg-white text-[var(--brand-ink-soft)] border-r border-[var(--brand-border)] sticky top-0 h-screen">
+        <div className="px-5 pt-6 pb-5 border-b border-[var(--brand-border)]">
+          <div className="flex items-center gap-2.5">
+            <img src="/snapect-logo.png" alt="Snapect" className="h-8 w-auto object-contain" onError={e=>{(e.target as HTMLImageElement).style.display="none";}}/>
           </div>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--brand-ink-faint)] mt-1.5 ml-0.5">BPO &amp; REO Field Inspections</p>
         </div>
 
         <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1 text-sm">
           <button onClick={()=>{setTab("orders");window.scrollTo({top:0,behavior:"smooth"});}}
-            className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl font-semibold transition-colors ${tab==="orders"?"bg-gradient-to-r from-[#FF6A1A] to-[#FF3D00] text-white shadow-lg shadow-orange-900/30":"text-slate-400 hover:bg-white/5 hover:text-white"}`}>
-            <HomeIcon className="w-4 h-4"/>Dashboard
+            className={`w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl font-semibold transition-colors ${tab==="orders"?"bg-[#FF6A00]/10 text-[#FF6A00]":"text-[var(--brand-ink-soft)] hover:bg-slate-50 hover:text-[var(--brand-navy)]"}`}>
+            <HomeIcon className="w-[18px] h-[18px]"/>Dashboard
           </button>
-          <Link href="/client/order" className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl font-medium text-slate-400 hover:bg-white/5 hover:text-white transition-colors">
-            <Plus className="w-4 h-4"/>New Order
+          <Link href="/client/order" className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl font-medium text-[var(--brand-ink-soft)] hover:bg-slate-50 hover:text-[var(--brand-navy)] transition-colors">
+            <Plus className="w-[18px] h-[18px]"/>New Order
           </Link>
           <button onClick={()=>{setTab("orders");setStatusFilter("all");setSearch("");setVisibleCount(1000);document.getElementById("order-ledger")?.scrollIntoView({behavior:"smooth"});}}
-            className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl font-medium text-slate-400 hover:bg-white/5 hover:text-white transition-colors text-left">
-            <List className="w-4 h-4"/>Orders
-            {stats.total>0 && <span className="ml-auto text-[10px] bg-white/10 text-slate-300 font-bold px-1.5 py-0.5 rounded-md">{stats.total}</span>}
+            className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl font-medium text-[var(--brand-ink-soft)] hover:bg-slate-50 hover:text-[var(--brand-navy)] transition-colors text-left">
+            <List className="w-[18px] h-[18px]"/>Orders
+            {stats.total>0 && <span className="ml-auto text-[10px] bg-slate-100 text-slate-500 font-bold px-1.5 py-0.5 rounded-md">{stats.total}</span>}
           </button>
-          <Link href="/client/multi-order" className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl font-medium text-slate-400 hover:bg-white/5 hover:text-white transition-colors">
-            <Package className="w-4 h-4"/>Multi Orders
+          <Link href="/client/multi-order" className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl font-medium text-[var(--brand-ink-soft)] hover:bg-slate-50 hover:text-[var(--brand-navy)] transition-colors">
+            <Package className="w-[18px] h-[18px]"/>Multi Orders
           </Link>
-          <Link href="/client/wallet" className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl font-medium text-slate-400 hover:bg-white/5 hover:text-white transition-colors">
-            <CreditCard className="w-4 h-4"/>Wallet &amp; Invoices
+          <Link href="/client/wallet" className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl font-medium text-[var(--brand-ink-soft)] hover:bg-slate-50 hover:text-[var(--brand-navy)] transition-colors">
+            <CreditCard className="w-[18px] h-[18px]"/>Wallet &amp; Invoices
           </Link>
-          <Link href="/coverage" className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl font-medium text-slate-400 hover:bg-white/5 hover:text-white transition-colors">
-            <MapPin className="w-4 h-4"/>Coverage Map
+          <Link href="/coverage" className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl font-medium text-[var(--brand-ink-soft)] hover:bg-slate-50 hover:text-[var(--brand-navy)] transition-colors">
+            <MapPin className="w-[18px] h-[18px]"/>Coverage Map
           </Link>
           <button onClick={()=>setTab("subaccounts")}
-            className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl font-semibold transition-colors text-left ${tab==="subaccounts"?"bg-gradient-to-r from-[#FF6A1A] to-[#FF3D00] text-white shadow-lg shadow-orange-900/30":"text-slate-400 hover:bg-white/5 hover:text-white"}`}>
-            <Users className="w-4 h-4"/>Team
+            className={`w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl font-semibold transition-colors text-left ${tab==="subaccounts"?"bg-[#FF6A00]/10 text-[#FF6A00]":"text-[var(--brand-ink-soft)] hover:bg-slate-50 hover:text-[var(--brand-navy)]"}`}>
+            <Users className="w-[18px] h-[18px]"/>Team
           </button>
 
-          <div className="pt-3 mt-3 border-t border-white/5 space-y-1">
-            <a href="mailto:info@snapect.com" className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl font-medium text-slate-400 hover:bg-white/5 hover:text-white transition-colors">
-              <Headset className="w-4 h-4"/>Support
+          <div className="pt-3 mt-3 border-t border-[var(--brand-border)] space-y-1">
+            <a href="mailto:info@snapect.com" className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl font-medium text-[var(--brand-ink-soft)] hover:bg-slate-50 hover:text-[var(--brand-navy)] transition-colors">
+              <Headset className="w-[18px] h-[18px]"/>Support
             </a>
-            <Link href="/faq" className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl font-medium text-slate-400 hover:bg-white/5 hover:text-white transition-colors">
-              <Info className="w-4 h-4"/>Resources
+            <Link href="/faq" className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl font-medium text-[var(--brand-ink-soft)] hover:bg-slate-50 hover:text-[var(--brand-navy)] transition-colors">
+              <Info className="w-[18px] h-[18px]"/>Resources
             </Link>
-            <button onClick={openClientProfile} className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl font-medium text-slate-400 hover:bg-white/5 hover:text-white transition-colors text-left">
-              <User className="w-4 h-4"/>Settings
+            <button onClick={openClientProfile} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl font-medium text-[var(--brand-ink-soft)] hover:bg-slate-50 hover:text-[var(--brand-navy)] transition-colors text-left">
+              <User className="w-[18px] h-[18px]"/>Settings
             </button>
           </div>
         </nav>
 
-        <div className="p-3">
-          <div className="rounded-2xl bg-white/5 border border-white/10 p-4">
-            <p className="text-[10px] text-slate-400 uppercase tracking-wider font-bold mb-1">Wallet Balance</p>
+        <div className="p-3 space-y-2">
+          <div className="rounded-2xl bg-gradient-to-br from-[var(--brand-navy)] to-[#12294f] p-4">
+            <p className="text-[10px] text-white/60 uppercase tracking-wider font-bold mb-1">Wallet Balance</p>
             <p className="text-xl font-extrabold text-white mb-2">{walletBalance!==null?`$${walletBalance.toFixed(2)}`:"—"}</p>
-            <Link href="/client/wallet" className="block text-center bg-gradient-to-r from-[#FF6A1A] to-[#FF3D00] hover:opacity-90 text-white text-xs font-bold py-2 rounded-lg transition-opacity">Add Funds</Link>
+            <Link href="/client/wallet" className="block text-center bg-[#FF6A00] hover:bg-[#FF8C1A] text-white text-xs font-bold py-2 rounded-lg transition-colors">Add Funds</Link>
           </div>
-          <button onClick={logout} className="w-full mt-2 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl font-medium text-slate-500 hover:bg-white/5 hover:text-red-400 transition-colors text-sm">
+          <button onClick={logout} className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl font-medium text-slate-400 hover:bg-slate-50 hover:text-red-500 transition-colors text-sm">
             <LogOut className="w-4 h-4"/>Log Out
           </button>
         </div>
@@ -424,24 +423,21 @@ function ClientPageInner() {
       {mobileNavOpen && (
         <div className="lg:hidden fixed inset-0 z-50 flex">
           <div className="absolute inset-0 bg-black/50" onClick={()=>setMobileNavOpen(false)}/>
-          <div className="relative w-72 bg-[#0B0F1A] text-slate-300 h-full flex flex-col">
-            <div className="px-5 pt-6 pb-5 flex items-center justify-between border-b border-white/5">
-              <div className="flex items-center gap-2.5">
-                <img src="/snapect-logo.png" alt="Snapect" className="h-8 w-auto object-contain" onError={e=>{(e.target as HTMLImageElement).style.display="none";}}/>
-                <p className="text-white font-extrabold text-sm">Snapect</p>
-              </div>
-              <button onClick={()=>setMobileNavOpen(false)} className="text-slate-400 hover:text-white"><X className="w-5 h-5"/></button>
+          <div className="relative w-72 bg-white text-[var(--brand-ink-soft)] h-full flex flex-col">
+            <div className="px-5 pt-6 pb-5 flex items-center justify-between border-b border-[var(--brand-border)]">
+              <img src="/snapect-logo.png" alt="Snapect" className="h-8 w-auto object-contain" onError={e=>{(e.target as HTMLImageElement).style.display="none";}}/>
+              <button onClick={()=>setMobileNavOpen(false)} className="text-slate-400 hover:text-[var(--brand-navy)]"><X className="w-5 h-5"/></button>
             </div>
             <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1 text-sm">
-              <button onClick={()=>{setTab("orders");setMobileNavOpen(false);}} className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl font-medium text-slate-300 hover:bg-white/5 hover:text-white text-left"><HomeIcon className="w-4 h-4"/>Dashboard</button>
-              <Link href="/client/order" onClick={()=>setMobileNavOpen(false)} className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl font-medium text-slate-300 hover:bg-white/5 hover:text-white"><Plus className="w-4 h-4"/>New Order</Link>
-              <Link href="/client/multi-order" onClick={()=>setMobileNavOpen(false)} className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl font-medium text-slate-300 hover:bg-white/5 hover:text-white"><Package className="w-4 h-4"/>Multi Orders</Link>
-              <Link href="/client/wallet" onClick={()=>setMobileNavOpen(false)} className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl font-medium text-slate-300 hover:bg-white/5 hover:text-white"><CreditCard className="w-4 h-4"/>Wallet &amp; Invoices</Link>
-              <Link href="/coverage" onClick={()=>setMobileNavOpen(false)} className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl font-medium text-slate-300 hover:bg-white/5 hover:text-white"><MapPin className="w-4 h-4"/>Coverage Map</Link>
-              <button onClick={()=>{setTab("subaccounts");setMobileNavOpen(false);}} className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl font-medium text-slate-300 hover:bg-white/5 hover:text-white text-left"><Users className="w-4 h-4"/>Team</button>
-              <a href="mailto:info@snapect.com" className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl font-medium text-slate-300 hover:bg-white/5 hover:text-white"><Headset className="w-4 h-4"/>Support</a>
-              <Link href="/faq" onClick={()=>setMobileNavOpen(false)} className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl font-medium text-slate-300 hover:bg-white/5 hover:text-white"><Info className="w-4 h-4"/>Resources</Link>
-              <button onClick={()=>{logout();}} className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl font-medium text-red-400 hover:bg-white/5 text-left mt-2"><LogOut className="w-4 h-4"/>Log Out</button>
+              <button onClick={()=>{setTab("orders");setMobileNavOpen(false);}} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl font-medium text-[var(--brand-ink-soft)] hover:bg-slate-50 hover:text-[var(--brand-navy)] text-left"><HomeIcon className="w-[18px] h-[18px]"/>Dashboard</button>
+              <Link href="/client/order" onClick={()=>setMobileNavOpen(false)} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl font-medium text-[var(--brand-ink-soft)] hover:bg-slate-50 hover:text-[var(--brand-navy)]"><Plus className="w-[18px] h-[18px]"/>New Order</Link>
+              <Link href="/client/multi-order" onClick={()=>setMobileNavOpen(false)} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl font-medium text-[var(--brand-ink-soft)] hover:bg-slate-50 hover:text-[var(--brand-navy)]"><Package className="w-[18px] h-[18px]"/>Multi Orders</Link>
+              <Link href="/client/wallet" onClick={()=>setMobileNavOpen(false)} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl font-medium text-[var(--brand-ink-soft)] hover:bg-slate-50 hover:text-[var(--brand-navy)]"><CreditCard className="w-[18px] h-[18px]"/>Wallet &amp; Invoices</Link>
+              <Link href="/coverage" onClick={()=>setMobileNavOpen(false)} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl font-medium text-[var(--brand-ink-soft)] hover:bg-slate-50 hover:text-[var(--brand-navy)]"><MapPin className="w-[18px] h-[18px]"/>Coverage Map</Link>
+              <button onClick={()=>{setTab("subaccounts");setMobileNavOpen(false);}} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl font-medium text-[var(--brand-ink-soft)] hover:bg-slate-50 hover:text-[var(--brand-navy)] text-left"><Users className="w-[18px] h-[18px]"/>Team</button>
+              <a href="mailto:info@snapect.com" className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl font-medium text-[var(--brand-ink-soft)] hover:bg-slate-50 hover:text-[var(--brand-navy)]"><Headset className="w-[18px] h-[18px]"/>Support</a>
+              <Link href="/faq" onClick={()=>setMobileNavOpen(false)} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl font-medium text-[var(--brand-ink-soft)] hover:bg-slate-50 hover:text-[var(--brand-navy)]"><Info className="w-[18px] h-[18px]"/>Resources</Link>
+              <button onClick={()=>{logout();}} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl font-medium text-red-500 hover:bg-red-50 text-left mt-2"><LogOut className="w-[18px] h-[18px]"/>Log Out</button>
             </nav>
           </div>
         </div>
@@ -459,7 +455,7 @@ function ClientPageInner() {
               <input value={search} onChange={e=>setSearch(e.target.value)}
                 onKeyDown={e=>{ if(e.key==="Enter"){ setTab("orders"); setVisibleCount(1000); document.getElementById("order-ledger")?.scrollIntoView({behavior:"smooth"}); } }}
                 placeholder="Search your orders by address…"
-                className="w-full pl-9 pr-3 py-2 bg-slate-100 border border-transparent rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6A1A] focus:bg-white transition-colors"/>
+                className="w-full pl-9 pr-3 py-2 bg-slate-100 border border-transparent rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6A00] focus:bg-white transition-colors"/>
             </div>
 
             <div className="flex items-center gap-2 ml-auto flex-shrink-0">
@@ -469,16 +465,16 @@ function ClientPageInner() {
 
               <div className="relative">
                 <button onClick={()=>{ setBellOpen(!bellOpen); if(!bellOpen) markAllSeen(); }}
-                  className="relative p-2 rounded-lg text-slate-500 hover:text-[#0f1f3d] hover:bg-slate-100 transition-colors" title="Notifications">
+                  className="relative p-2 rounded-lg text-slate-500 hover:text-[#081A36] hover:bg-slate-100 transition-colors" title="Notifications">
                   <Bell className="w-5 h-5"/>
                   {unreadCount>0&&(
-                    <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-[#FF3D00] text-white text-[10px] font-extrabold rounded-full flex items-center justify-center border-2 border-white">{unreadCount>9?"9+":unreadCount}</span>
+                    <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-[#FF8C1A] text-white text-[10px] font-extrabold rounded-full flex items-center justify-center border-2 border-white">{unreadCount>9?"9+":unreadCount}</span>
                   )}
                 </button>
                 {bellOpen&&(
                   <div className="absolute right-0 top-full mt-2 w-80 bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden z-40">
                     <div className="px-4 py-2.5 border-b border-slate-100 flex items-center justify-between">
-                      <span className="text-sm font-bold text-[#0f1f3d]">Notifications</span>
+                      <span className="text-sm font-bold text-[#081A36]">Notifications</span>
                       <button onClick={()=>setBellOpen(false)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4"/></button>
                     </div>
                     <div className="max-h-80 overflow-y-auto divide-y divide-slate-50">
@@ -487,7 +483,7 @@ function ClientPageInner() {
                       ) : notifications.map(n=>(
                         <Link key={n.key} href={`/client/orders/${n.orderId}`} onClick={()=>setBellOpen(false)}
                           className="block px-4 py-3 hover:bg-slate-50">
-                          <p className="text-xs font-semibold text-[#0f1f3d]">{n.title}</p>
+                          <p className="text-xs font-semibold text-[#081A36]">{n.title}</p>
                           <p className="text-[11px] text-slate-500 truncate mt-0.5">{n.detail}</p>
                           <p className="text-[10px] text-slate-400 mt-0.5" suppressHydrationWarning>{etDateTime(n.ts)}</p>
                         </Link>
@@ -497,29 +493,29 @@ function ClientPageInner() {
                 )}
               </div>
 
-              <a href="mailto:info@snapect.com" className="hidden sm:flex p-2 rounded-lg text-slate-500 hover:text-[#0f1f3d] hover:bg-slate-100 transition-colors" title="Contact support">
+              <a href="mailto:info@snapect.com" className="hidden sm:flex p-2 rounded-lg text-slate-500 hover:text-[#081A36] hover:bg-slate-100 transition-colors" title="Contact support">
                 <Headset className="w-5 h-5"/>
               </a>
 
               <div className="relative">
                 <button onClick={()=>setNavMenu(navMenu==="settings"?null:"settings")} onMouseEnter={()=>setNavMenu("settings")}
                   className="flex items-center gap-2 pl-1.5 pr-2.5 py-1 rounded-full hover:bg-slate-100 transition-colors">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#FF6A1A] to-[#FF3D00] text-white text-xs font-extrabold flex items-center justify-center flex-shrink-0">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#FF6A00] to-[#FF8C1A] text-white text-xs font-extrabold flex items-center justify-center flex-shrink-0">
                     {userName.slice(0,2).toUpperCase()}
                   </div>
                   <div className="hidden sm:block text-left leading-tight">
-                    <p className="text-xs font-bold text-[#0f1f3d] truncate max-w-[110px]">{userName}</p>
+                    <p className="text-xs font-bold text-[#081A36] truncate max-w-[110px]">{userName}</p>
                     <p className="text-[10px] text-slate-400">Account #{userId ? userId.replace(/\D/g,"").slice(0,6).padStart(6,"1") : "——"}</p>
                   </div>
                   <ChevronDown className="w-3.5 h-3.5 text-slate-400 hidden sm:block"/>
                 </button>
                 {navMenu==="settings"&&(
                   <div onMouseLeave={()=>setNavMenu(null)} className="absolute right-0 top-full mt-1 w-56 bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden py-1 z-40">
-                    <button onClick={()=>{openClientProfile();setNavMenu(null);}} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 hover:text-[#0f1f3d] text-left">
+                    <button onClick={()=>{openClientProfile();setNavMenu(null);}} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 hover:text-[#081A36] text-left">
                       <User className="w-4 h-4"/>My Profile
                     </button>
-                    <Link href="/client/wallet" className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 hover:text-[#0f1f3d]"><CreditCard className="w-4 h-4"/>Wallet &amp; Billing</Link>
-                    <Link href="/refund-policy" className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 hover:text-[#0f1f3d]"><Shield className="w-4 h-4"/>Refund Policy</Link>
+                    <Link href="/client/wallet" className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 hover:text-[#081A36]"><CreditCard className="w-4 h-4"/>Wallet &amp; Billing</Link>
+                    <Link href="/refund-policy" className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 hover:text-[#081A36]"><Shield className="w-4 h-4"/>Refund Policy</Link>
                     <button onClick={logout} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 text-left border-t border-slate-100 mt-1">
                       <LogOut className="w-4 h-4"/>Log Out
                     </button>
@@ -534,7 +530,7 @@ function ClientPageInner() {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
         {/* Vendor name + account number */}
         <div className="flex items-baseline gap-3 mb-4 flex-wrap">
-          <h1 className="text-2xl font-extrabold text-[#0f1f3d]">{userName}</h1>
+          <h1 className="text-2xl font-extrabold text-[#081A36]">{userName}</h1>
           <span className="text-xs text-slate-400 font-medium">Account # {userId ? userId.replace(/\D/g,"").slice(0,6).padStart(6,"1") : "——"}</span>
         </div>
 
@@ -542,10 +538,10 @@ function ClientPageInner() {
         {announcement&&(
           <div className="mb-5">
             <div className="flex items-center gap-2 mb-1.5">
-              <Megaphone className="w-4 h-4 text-[#c8991a]"/>
-              <span className="text-xs font-bold text-[#0f1f3d] uppercase tracking-[0.25em]">Important Message</span>
+              <Megaphone className="w-4 h-4 text-[#FF6A00]"/>
+              <span className="text-xs font-bold text-[#081A36] uppercase tracking-[0.25em]">Important Message</span>
             </div>
-            <div className="bg-amber-50 border border-[#c8991a]/50 rounded-xl px-4 py-3 text-sm text-[#7a5c0e] leading-relaxed">
+            <div className="bg-amber-50 border border-[#FF6A00]/50 rounded-xl px-4 py-3 text-sm text-[#7a5c0e] leading-relaxed">
               {announcement.message}
             </div>
           </div>
@@ -559,16 +555,16 @@ function ClientPageInner() {
               <p className="font-semibold text-red-800">Order placed — but not processed yet</p>
               <p className="text-sm text-red-700">Your wallet balance is $0. Add funds to your wallet so your order can be processed.</p>
             </div>
-            <Link href="/client/wallet" className="bg-[#c8991a] hover:bg-[#f0b429] text-[#0f1f3d] text-sm font-bold px-4 py-2 rounded-xl whitespace-nowrap">Add Funds</Link>
+            <Link href="/client/wallet" className="bg-[#FF6A00] hover:bg-[#FF8C1A] text-[#081A36] text-sm font-bold px-4 py-2 rounded-xl whitespace-nowrap">Add Funds</Link>
           </div>
         ) : (
-          <div className="mb-5 p-4 bg-amber-50 border border-[#c8991a]/50 rounded-xl flex items-center gap-3">
+          <div className="mb-5 p-4 bg-amber-50 border border-[#FF6A00]/50 rounded-xl flex items-center gap-3">
             <span className="relative flex w-4 h-4 flex-shrink-0">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#c8991a] opacity-50"/>
-              <span className="relative inline-flex rounded-full h-4 w-4 border-2 border-[#c8991a] border-t-transparent animate-spin"/>
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#FF6A00] opacity-50"/>
+              <span className="relative inline-flex rounded-full h-4 w-4 border-2 border-[#FF6A00] border-t-transparent animate-spin"/>
             </span>
             <div>
-              <p className="font-semibold text-[#0f1f3d]">Order placed — waiting for offers!</p>
+              <p className="font-semibold text-[#081A36]">Order placed — waiting for offers!</p>
               <p className="text-sm text-slate-600">Field agents are being notified. You&apos;ll see offers appear on your order shortly.</p>
             </div>
           </div>
@@ -589,14 +585,14 @@ function ClientPageInner() {
         {/* Stat cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           {[
-            {label:"Total Orders", val:stats.total, icon:<List className="w-5 h-5"/>, bg:"bg-[#FF6A1A]/10", fg:"text-[#FF6A1A]"},
+            {label:"Total Orders", val:stats.total, icon:<List className="w-5 h-5"/>, bg:"bg-[#FF6A00]/10", fg:"text-[#FF6A00]"},
             {label:"In Progress", val:stats.inProgress, icon:<RefreshCw className="w-5 h-5"/>, bg:"bg-blue-50", fg:"text-blue-600"},
             {label:"Completed", val:stats.completed, icon:<CheckCircle className="w-5 h-5"/>, bg:"bg-emerald-50", fg:"text-emerald-600"},
             {label:"Wallet Balance", val: walletBalance!==null?`$${walletBalance.toFixed(2)}`:"—", icon:<DollarSign className="w-5 h-5"/>, bg:"bg-violet-50", fg:"text-violet-600"},
           ].map(s=>(
             <div key={s.label} className="bg-white rounded-2xl border border-slate-200 p-4">
               <div className={`w-10 h-10 rounded-xl ${s.bg} ${s.fg} flex items-center justify-center mb-3`}>{s.icon}</div>
-              <p className="text-2xl font-extrabold text-[#0f1f3d]">{s.val}</p>
+              <p className="text-2xl font-extrabold text-[#081A36]">{s.val}</p>
               <p className="text-xs text-slate-400 font-medium mt-0.5">{s.label}</p>
             </div>
           ))}
@@ -604,24 +600,24 @@ function ClientPageInner() {
 
         {/* Quick actions */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <Link href="/client/order" className="bg-gradient-to-br from-[#FF6A1A] to-[#FF3D00] rounded-2xl p-4 text-white hover:opacity-90 transition-opacity flex flex-col">
+          <Link href="/client/order" className="bg-gradient-to-br from-[#FF6A00] to-[#FF8C1A] rounded-2xl p-4 text-white hover:opacity-90 transition-opacity flex flex-col">
             <Plus className="w-5 h-5 mb-6"/>
             <p className="font-bold text-sm">New Order</p>
             <p className="text-[11px] text-white/80">Place a new inspection</p>
           </Link>
-          <Link href="/client/multi-order" className="bg-[#0f1f3d] rounded-2xl p-4 text-white hover:bg-[#1a3260] transition-colors flex flex-col">
+          <Link href="/client/multi-order" className="bg-[#081A36] rounded-2xl p-4 text-white hover:bg-[#12294f] transition-colors flex flex-col">
             <Package className="w-5 h-5 mb-6"/>
             <p className="font-bold text-sm">Multi Orders</p>
             <p className="text-[11px] text-white/70">Place several at once</p>
           </Link>
           <Link href="/coverage" className="bg-white border border-slate-200 rounded-2xl p-4 hover:bg-slate-50 transition-colors flex flex-col">
-            <MapPin className="w-5 h-5 mb-6 text-[#FF6A1A]"/>
-            <p className="font-bold text-sm text-[#0f1f3d]">Coverage Map</p>
+            <MapPin className="w-5 h-5 mb-6 text-[#FF6A00]"/>
+            <p className="font-bold text-sm text-[#081A36]">Coverage Map</p>
             <p className="text-[11px] text-slate-400">Check agent coverage</p>
           </Link>
           <a href="mailto:info@snapect.com" className="bg-white border border-slate-200 rounded-2xl p-4 hover:bg-slate-50 transition-colors flex flex-col">
-            <Headset className="w-5 h-5 mb-6 text-[#FF6A1A]"/>
-            <p className="font-bold text-sm text-[#0f1f3d]">Live Support</p>
+            <Headset className="w-5 h-5 mb-6 text-[#FF6A00]"/>
+            <p className="font-bold text-sm text-[#081A36]">Live Support</p>
             <p className="text-[11px] text-slate-400">info@snapect.com</p>
           </a>
         </div>
@@ -638,8 +634,8 @@ function ClientPageInner() {
                 <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
                   <div><h2 className="font-semibold text-slate-900">Employee Sub-Accounts</h2><p className="text-xs text-slate-400 mt-0.5">Each employee can log in and place orders billed to your account</p></div>
                   <div className="flex items-center gap-2">
-                    <button onClick={()=>setTab("orders")} className="text-xs text-slate-500 hover:text-[#0f1f3d] font-medium px-3 py-2">← Back to orders</button>
-                    <button onClick={()=>setShowAddSub(!showAddSub)} className="flex items-center gap-1.5 bg-[#c8991a] hover:bg-[#f0b429] text-[#0f1f3d] text-sm font-bold px-3 py-2 rounded-xl"><Plus className="w-4 h-4"/>Add Employee</button>
+                    <button onClick={()=>setTab("orders")} className="text-xs text-slate-500 hover:text-[#081A36] font-medium px-3 py-2">← Back to orders</button>
+                    <button onClick={()=>setShowAddSub(!showAddSub)} className="flex items-center gap-1.5 bg-[#FF6A00] hover:bg-[#FF8C1A] text-[#081A36] text-sm font-bold px-3 py-2 rounded-xl"><Plus className="w-4 h-4"/>Add Employee</button>
                   </div>
                 </div>
                 {showAddSub&&(
@@ -650,18 +646,18 @@ function ClientPageInner() {
                         <div key={f.key}>
                           <label className="text-xs font-medium text-slate-600 block mb-1">{f.label}</label>
                           <input type={f.key==="password"?"password":"text"} value={subForm[f.key as keyof typeof subForm]} onChange={e=>setSubForm(s=>({...s,[f.key]:e.target.value}))} placeholder={f.ph}
-                            className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#c8991a]"/>
+                            className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6A00]"/>
                         </div>
                       ))}
                     </div>
-                    <button onClick={addSubAccount} disabled={addingSub} className="bg-[#c8991a] hover:bg-[#f0b429] disabled:opacity-50 text-[#0f1f3d] text-sm font-bold px-4 py-2 rounded-xl">{addingSub?"Adding…":"Add Employee"}</button>
+                    <button onClick={addSubAccount} disabled={addingSub} className="bg-[#FF6A00] hover:bg-[#FF8C1A] disabled:opacity-50 text-[#081A36] text-sm font-bold px-4 py-2 rounded-xl">{addingSub?"Adding…":"Add Employee"}</button>
                   </div>
                 )}
                 {subAccounts.length===0 ? (
                   <div className="text-center py-12 text-slate-400"><Users className="w-8 h-8 mx-auto mb-2 text-slate-600"/><p>No employee accounts yet</p></div>
                 ) : subAccounts.map(s=>(
                   <div key={s.id} className="px-6 py-4 border-b border-slate-100 last:border-0 flex items-center justify-between">
-                    <div><p className="font-medium text-[#2A2320]">{s.name}</p><p className="text-xs text-slate-500">{s.email}</p></div>
+                    <div><p className="font-medium text-[#081A36]">{s.name}</p><p className="text-xs text-slate-500">{s.email}</p></div>
                     <span className="text-xs text-slate-400" suppressHydrationWarning>{etDate(s.createdAt)}</span>
                   </div>
                 ))}
@@ -671,7 +667,7 @@ function ClientPageInner() {
                 {/* Completed Orders trend chart */}
                 <div className="bg-white rounded-2xl border border-slate-200 p-5">
                   <div className="flex items-center justify-between mb-3">
-                    <h2 className="text-sm font-extrabold text-[#0f1f3d] uppercase tracking-[0.3em]">Completed Orders</h2>
+                    <h2 className="text-sm font-extrabold text-[#081A36] uppercase tracking-[0.3em]">Completed Orders</h2>
                     <span className="text-xs text-slate-400">Last 12 months</span>
                   </div>
                   <svg viewBox="0 0 720 180" className="w-full h-40" role="img" aria-label="Completed orders per month">
@@ -683,14 +679,14 @@ function ClientPageInner() {
                       <text key={i} x="30" y={24+i*40} textAnchor="end" fontSize="10" fill="#94a3b8">{Math.round(chartMax*(3-i)/3)}</text>
                     ))}
                     {/* line */}
-                    <polyline fill="none" stroke="#c8991a" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round"
+                    <polyline fill="none" stroke="#FF6A00" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round"
                       points={chartMonths.map((m,i)=>`${48+i*(656/11)},${140-(m.count/chartMax)*120}`).join(" ")}/>
                     {/* dots + month labels */}
                     {chartMonths.map((m,i)=>{
                       const x = 48+i*(656/11), y = 140-(m.count/chartMax)*120;
                       return (
                         <g key={i}>
-                          <circle cx={x} cy={y} r="4" fill="#fff" stroke="#c8991a" strokeWidth="2"/>
+                          <circle cx={x} cy={y} r="4" fill="#fff" stroke="#FF6A00" strokeWidth="2"/>
                           <text x={x} y="164" textAnchor="middle" fontSize="10" fill="#64748b">{m.label}</text>
                         </g>
                       );
@@ -702,7 +698,7 @@ function ClientPageInner() {
                 {latestComments.length>0&&(
                   <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
                     <div className="px-5 py-3 border-b border-slate-100">
-                      <h2 className="text-sm font-extrabold text-[#0f1f3d]">Latest Order Comments <span className="font-medium text-slate-400">(last two days)</span></h2>
+                      <h2 className="text-sm font-extrabold text-[#081A36]">Latest Order Comments <span className="font-medium text-slate-400">(last two days)</span></h2>
                     </div>
                     <div className="max-h-56 overflow-y-auto divide-y divide-[#F0E4D3]">
                       {latestComments.map(c=>(
@@ -711,7 +707,7 @@ function ClientPageInner() {
                             className="w-6 h-6 rounded bg-white text-white text-xs font-bold flex items-center justify-center flex-shrink-0 hover:bg-red-500 transition-colors" title="Dismiss">×</button>
                           <div className="min-w-0 flex-1">
                             <p className="text-[11px] text-slate-400" suppressHydrationWarning>{etDate(c.timestamp,{month:"2-digit",day:"2-digit",year:"numeric"})} · {c.serviceType}{c.photoCount>0?` (${c.photoCount} photos)`:""}</p>
-                            <Link href={`/client/orders/${c.orderId}`} className="text-xs font-bold text-[#0f1f3d] hover:text-[#c8991a] uppercase truncate block">{c.address}</Link>
+                            <Link href={`/client/orders/${c.orderId}`} className="text-xs font-bold text-[#081A36] hover:text-[#FF6A00] uppercase truncate block">{c.address}</Link>
                             <p className="text-xs text-slate-600 mt-0.5">{c.note}</p>
                           </div>
                         </div>
@@ -726,19 +722,19 @@ function ClientPageInner() {
                     <div className="relative flex-1 min-w-[200px] max-w-sm">
                       <Search className="w-4 h-4 text-slate-600 absolute left-3 top-1/2 -translate-y-1/2"/>
                       <input value={search} onChange={e=>{setSearch(e.target.value);setVisibleCount(10);}} placeholder="Search for an address"
-                        className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#c8991a]"/>
+                        className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6A00]"/>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-slate-400 font-medium">Filters</span>
                       <select value={statusFilter} onChange={e=>{setStatusFilter(e.target.value);setVisibleCount(10);}}
-                        className="border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#c8991a] bg-white">
+                        className="border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#FF6A00] bg-white">
                         <option value="all">All Orders (by ordered date)</option>
                         <option value="pending">Pending</option>
                         <option value="in_progress">In Progress</option>
                         <option value="completed">Completed</option>
                         <option value="cancelled">Cancelled</option>
                       </select>
-                      <Link href="/client/order" className="flex items-center gap-1.5 bg-[#c8991a] hover:bg-[#f0b429] text-[#0f1f3d] text-sm font-bold px-3.5 py-2 rounded-xl whitespace-nowrap"><Plus className="w-4 h-4"/>New Order</Link>
+                      <Link href="/client/order" className="flex items-center gap-1.5 bg-[#FF6A00] hover:bg-[#FF8C1A] text-[#081A36] text-sm font-bold px-3.5 py-2 rounded-xl whitespace-nowrap"><Plus className="w-4 h-4"/>New Order</Link>
                     </div>
                   </div>
 
@@ -761,14 +757,14 @@ function ClientPageInner() {
                         const awaitingOffers = order.status==="pending" && !order.acceptedBidId;
 
                         return (
-                          <div key={order.id} className={`border-b border-slate-100 last:border-0 ${awaitingOffers&&pendingBidCount>0?"bg-amber-50/70 border-l-4 border-l-[#c8991a]":rowIdx%2?"bg-slate-50/60":"bg-white"}`}>
+                          <div key={order.id} className={`border-b border-slate-100 last:border-0 ${awaitingOffers&&pendingBidCount>0?"bg-amber-50/70 border-l-4 border-l-[#FF6A00]":rowIdx%2?"bg-slate-50/60":"bg-white"}`}>
                             {/* Ledger row */}
                             <div className="px-5 py-3 grid grid-cols-[auto_1fr_auto_auto] sm:grid-cols-[90px_1fr_150px_170px] gap-x-3 gap-y-1 items-center">
                               <span className="text-xs text-slate-400 whitespace-nowrap" suppressHydrationWarning>{etDate(order.createdAt,{month:"2-digit",day:"2-digit",year:"numeric"})}</span>
                               <div className="min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap">
-                                  <Link href={`/client/orders/${order.id}`} className="font-bold text-[#0f1f3d] hover:text-[#c8991a] transition-colors truncate text-sm uppercase">{addr.line}</Link>
-                                  <button onClick={()=>setQuickView(isQuick?null:order.id)} className="text-[11px] text-[#c8991a] hover:underline font-medium whitespace-nowrap">({isQuick?"Close":"Quick View"})</button>
+                                  <Link href={`/client/orders/${order.id}`} className="font-bold text-[#081A36] hover:text-[#FF6A00] transition-colors truncate text-sm uppercase">{addr.line}</Link>
+                                  <button onClick={()=>setQuickView(isQuick?null:order.id)} className="text-[11px] text-[#FF6A00] hover:underline font-medium whitespace-nowrap">({isQuick?"Close":"Quick View"})</button>
                                 </div>
                                 <p className="text-[11px] text-slate-500 truncate">{order.serviceType} · {order.photos.length>0?`${order.photos.length} photos`:TIER_LABELS[order.turnaroundTier]}{order.agent?` · ${order.agent.name}`:""}{placedByEmployee?` · Placed by ${placedByEmployee.name}`:""}{order.acceptedBidId?<> · <span className="font-semibold text-slate-600">${order.compensationAmount}</span></>:null}</p>
                               </div>
@@ -777,12 +773,12 @@ function ClientPageInner() {
                                 {order.status==="completed" ? (
                                   <div className="flex flex-col items-end">
                                     <span className="flex items-center gap-1.5 text-green-600 text-xs italic font-semibold"><CheckCircle className="w-4 h-4"/>Completed.</span>
-                                    <button onClick={()=>reorder(order)} className="text-[11px] text-[#c8991a] hover:underline font-medium">Reorder</button>
+                                    <button onClick={()=>reorder(order)} className="text-[11px] text-[#FF6A00] hover:underline font-medium">Reorder</button>
                                   </div>
                                 ) : order.status==="cancelled" ? (
                                   <span className="flex items-center gap-1.5 text-red-500 text-xs italic"><XCircle className="w-4 h-4"/>Cancelled.</span>
                                 ) : order.agent||order.status==="in_progress" ? (
-                                  <span className="flex items-center gap-1.5 text-slate-600 text-xs italic"><Car className="w-4 h-4 text-[#c8991a]"/>Accepted{acceptedTime?` ${acceptedTime}`:""}</span>
+                                  <span className="flex items-center gap-1.5 text-slate-600 text-xs italic"><Car className="w-4 h-4 text-[#FF6A00]"/>Accepted{acceptedTime?` ${acceptedTime}`:""}</span>
                                 ) : walletBalance!==null && walletBalance<=0 ? (
                                   <Link href="/client/wallet"
                                     className="flex items-center gap-1.5 text-red-600 text-xs font-bold bg-red-50 border border-red-200 px-2.5 py-1 rounded-full hover:bg-red-100 transition-colors">
@@ -790,9 +786,9 @@ function ClientPageInner() {
                                   </Link>
                                 ) : pendingBidCount>0 ? (
                                   <button onClick={e=>{e.preventDefault();setQuickView(order.id);fetchBids(order.id);setBidsFor(order.id);}}
-                                    className="flex items-center gap-1.5 text-[#0f1f3d] text-xs font-bold bg-[#c8991a]/15 border border-[#c8991a] px-2.5 py-1 rounded-full hover:bg-[#c8991a]/25 transition-colors">
-                                    <Gavel className="w-3.5 h-3.5 text-[#c8991a]"/>{pendingBidCount} Offer{pendingBidCount!==1?"s":""} received
-                                    <span className="w-2 h-2 rounded-full bg-[#c8991a] animate-pulse"/>
+                                    className="flex items-center gap-1.5 text-[#081A36] text-xs font-bold bg-[#FF6A00]/15 border border-[#FF6A00] px-2.5 py-1 rounded-full hover:bg-[#FF6A00]/25 transition-colors">
+                                    <Gavel className="w-3.5 h-3.5 text-[#FF6A00]"/>{pendingBidCount} Offer{pendingBidCount!==1?"s":""} received
+                                    <span className="w-2 h-2 rounded-full bg-[#FF6A00] animate-pulse"/>
                                   </button>
                                 ) : (
                                   <span className="flex items-center gap-2 text-amber-600 text-xs italic">
@@ -820,16 +816,16 @@ function ClientPageInner() {
                                     if (days <= 7) return <span className="text-red-500 font-semibold">⚠️ Photos expire in {days}d</span>;
                                     return <span className="text-amber-600">Photos expire in {days}d</span>;
                                   })()}
-                                  <Link href={`/client/orders/${order.id}`} className="ml-auto text-[#c8991a] font-semibold hover:underline">Full order details →</Link>
+                                  <Link href={`/client/orders/${order.id}`} className="ml-auto text-[#FF6A00] font-semibold hover:underline">Full order details →</Link>
                                 </div>
 
                                 {/* Bids panel */}
                                 {order.status==="pending"&&!order.acceptedBidId&&(
                                   <div className="mb-3">
                                     <button onClick={e=>{e.preventDefault();if(!showBids)fetchBids(order.id);setBidsFor(showBids?null:order.id);}}
-                                      className="flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-[#c8991a]">
+                                      className="flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-[#FF6A00]">
                                       <Gavel className="w-4 h-4"/>View Bids
-                                      {pendingBids.length>0&&<span className="bg-[#c8991a] text-[#0f1f3d] text-xs font-bold px-1.5 py-0.5 rounded-full">{pendingBids.length}</span>}
+                                      {pendingBids.length>0&&<span className="bg-[#FF6A00] text-[#081A36] text-xs font-bold px-1.5 py-0.5 rounded-full">{pendingBids.length}</span>}
                                     </button>
                                     {showBids&&(
                                       <div className="mt-3 space-y-2">
@@ -842,7 +838,7 @@ function ClientPageInner() {
                                             <div className="flex-1">
                                               <div className="flex items-center gap-2">
                                                 <User className="w-3.5 h-3.5 text-slate-400"/>
-                                                <span className="text-sm font-semibold text-[#2A2320]">Bid placed by {anonBidder(bid.agentId)}</span>
+                                                <span className="text-sm font-semibold text-[#081A36]">Bid placed by {anonBidder(bid.agentId)}</span>
                                                 {bid.agentRating&&<span className="text-xs text-amber-600">★ {bid.agentRating.toFixed(1)}</span>}
                                               </div>
                                               {bid.message&&<p className="text-xs text-slate-500 mt-0.5">"{bid.message}"</p>}
@@ -871,7 +867,7 @@ function ClientPageInner() {
                                 {order.status==="completed"&&order.photos.length>0&&(
                                   <div>
                                     <div className="flex items-center justify-between mb-3">
-                                      <button onClick={()=>setExpandedPhotos(photosExpanded?null:order.id)} className="flex items-center gap-1.5 text-sm font-medium text-slate-700 hover:text-[#c8991a]">
+                                      <button onClick={()=>setExpandedPhotos(photosExpanded?null:order.id)} className="flex items-center gap-1.5 text-sm font-medium text-slate-700 hover:text-[#FF6A00]">
                                         <Image className="w-4 h-4"/>{photosExpanded?"Hide":"View"} Photos ({order.photos.length})
                                       </button>
                                       <div className="flex items-center gap-2">
@@ -893,10 +889,10 @@ function ClientPageInner() {
                                           const isSel = selSet.has(ph.id);
                                           return (
                                             <button key={ph.id} onClick={()=>togglePhotoSel(order.id,ph.id)}
-                                              className={`relative aspect-video rounded-xl overflow-hidden border-2 transition-all ${isSel?"border-[#c8991a]":"border-slate-200 hover:border-[#D8C4AC]"}`}>
+                                              className={`relative aspect-video rounded-xl overflow-hidden border-2 transition-all ${isSel?"border-[#FF6A00]":"border-slate-200 hover:border-[#CBD5E1]"}`}>
                                               {ph.url?.startsWith("data:") ? <img src={ph.url} alt={ph.description} className="w-full h-full object-cover"/>
                                               : <div className="w-full h-full bg-slate-100 flex items-center justify-center"><Camera className="w-5 h-5 text-slate-400"/></div>}
-                                              <div className={`absolute top-1.5 right-1.5 ${isSel?"text-[#c8991a]":"text-[#0f1f3d]/70"}`}>
+                                              <div className={`absolute top-1.5 right-1.5 ${isSel?"text-[#FF6A00]":"text-[#081A36]/70"}`}>
                                                 {isSel?<CheckSquare className="w-4 h-4 drop-shadow"/>:<Square className="w-4 h-4 drop-shadow"/>}
                                               </div>
                                             </button>
@@ -916,7 +912,7 @@ function ClientPageInner() {
                       {filteredOrders.length>visibleCount&&(
                         <div className="px-5 py-4 text-right border-t border-slate-100">
                           <button onClick={()=>setVisibleCount(c=>c+10)}
-                            className="text-sm font-semibold text-[#0f1f3d] border border-[#D8C4AC] hover:border-[#c8991a] hover:text-[#c8991a] px-4 py-2 rounded-xl transition-colors">
+                            className="text-sm font-semibold text-[#081A36] border border-[#CBD5E1] hover:border-[#FF6A00] hover:text-[#FF6A00] px-4 py-2 rounded-xl transition-colors">
                             Load More Orders…
                           </button>
                         </div>
@@ -936,7 +932,7 @@ function ClientPageInner() {
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={()=>setClientProfileOpen(false)}>
           <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl" onClick={e=>e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-[#0f1f3d] flex items-center gap-2"><User className="w-5 h-5 text-[#c8991a]"/>My Profile</h3>
+              <h3 className="font-bold text-[#081A36] flex items-center gap-2"><User className="w-5 h-5 text-[#FF6A00]"/>My Profile</h3>
               <button onClick={()=>setClientProfileOpen(false)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5"/></button>
             </div>
             {clientProfileMsg && (
@@ -946,7 +942,7 @@ function ClientPageInner() {
               <div>
                 <label className="text-xs font-medium text-slate-600 block mb-1">Name</label>
                 <input value={clientProfile.name} onChange={e=>setClientProfile(f=>({...f,name:e.target.value}))}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#c8991a]"/>
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6A00]"/>
               </div>
               <div>
                 <label className="text-xs font-medium text-slate-600 block mb-1">Email <span className="text-slate-400">(contact support to change)</span></label>
@@ -956,25 +952,25 @@ function ClientPageInner() {
                 <div>
                   <label className="text-xs font-medium text-slate-600 block mb-1">Phone</label>
                   <input value={clientProfile.phone} onChange={e=>setClientProfile(f=>({...f,phone:e.target.value}))}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#c8991a]"/>
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6A00]"/>
                 </div>
                 <div>
                   <label className="text-xs font-medium text-slate-600 block mb-1">Company</label>
                   <input value={clientProfile.company} onChange={e=>setClientProfile(f=>({...f,company:e.target.value}))}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#c8991a]"/>
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6A00]"/>
                 </div>
               </div>
               <div className="border-t border-slate-100 pt-3">
                 <p className="text-xs font-bold text-slate-700 mb-2">Change Password <span className="font-normal text-slate-400">(optional)</span></p>
                 <div className="space-y-2">
                   <input type="password" placeholder="Current password" value={clientProfile.currentPassword} onChange={e=>setClientProfile(f=>({...f,currentPassword:e.target.value}))}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#c8991a]"/>
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6A00]"/>
                   <input type="password" placeholder="New password (min 6 characters)" value={clientProfile.newPassword} onChange={e=>setClientProfile(f=>({...f,newPassword:e.target.value}))}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#c8991a]"/>
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6A00]"/>
                 </div>
               </div>
               <button onClick={saveClientProfile} disabled={clientProfileSaving}
-                className="w-full bg-[#c8991a] hover:bg-[#f0b429] disabled:opacity-50 text-[#0f1f3d] font-bold py-2.5 rounded-xl text-sm">
+                className="w-full bg-[#FF6A00] hover:bg-[#FF8C1A] disabled:opacity-50 text-[#081A36] font-bold py-2.5 rounded-xl text-sm">
                 {clientProfileSaving?"Saving…":"Save Profile"}
               </button>
             </div>

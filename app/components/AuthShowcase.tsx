@@ -8,10 +8,10 @@ import { ShieldCheck, Clock, BadgeCheck, Star } from "lucide-react";
  */
 export default function AuthShowcase() {
   return (
-    <div className="relative hidden lg:flex flex-col justify-between w-1/2 min-h-screen bg-[#0A1128] text-white px-12 py-12 overflow-hidden">
+    <div className="relative hidden lg:flex flex-col justify-between w-1/2 min-h-screen bg-[#081A36] text-white px-12 py-12 overflow-hidden">
       {/* Ambient glow accents */}
-      <div className="pointer-events-none absolute -top-24 -right-24 w-96 h-96 bg-[#FF6A1A]/20 rounded-full blur-3xl"/>
-      <div className="pointer-events-none absolute bottom-0 left-0 w-72 h-72 bg-[#FF6A1A]/10 rounded-full blur-3xl"/>
+      <div className="pointer-events-none absolute -top-24 -right-24 w-96 h-96 bg-[#FF6A00]/20 rounded-full blur-3xl"/>
+      <div className="pointer-events-none absolute bottom-0 left-0 w-72 h-72 bg-[#FF6A00]/10 rounded-full blur-3xl"/>
 
       {/* Logo */}
       <div className="relative flex items-center gap-2.5">
@@ -48,7 +48,7 @@ export default function AuthShowcase() {
 function Feature({ icon, title, subtitle }: { icon: React.ReactNode; title: string; subtitle: string }) {
   return (
     <div className="flex items-start gap-2.5 bg-white/5 border border-white/10 rounded-xl px-3 py-2.5">
-      <div className="w-7 h-7 rounded-lg bg-[#FF6A1A]/20 text-[#FF7A33] flex items-center justify-center flex-shrink-0 mt-0.5">{icon}</div>
+      <div className="w-7 h-7 rounded-lg bg-[#FF6A00]/20 text-[#FF7A33] flex items-center justify-center flex-shrink-0 mt-0.5">{icon}</div>
       <div className="min-w-0">
         <p className="text-xs font-bold text-white leading-tight">{title}</p>
         <p className="text-[11px] text-white/50 leading-tight mt-0.5">{subtitle}</p>

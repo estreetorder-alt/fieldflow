@@ -1,11 +1,12 @@
 "use client";
 import { useState, useEffect, useCallback, useRef, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import {
-  ArrowLeft, DollarSign, Plus, Clock, CheckCircle, ArrowDownCircle, ArrowUpCircle,
+  DollarSign, Plus, Clock, CheckCircle, ArrowDownCircle, ArrowUpCircle,
   RefreshCw, Wallet, AlertTriangle, CreditCard, XCircle, Loader2, Sparkles,
-  Bell, ChevronDown, Zap, History as HistoryIcon, Settings2,
+  Zap, History as HistoryIcon, Settings2, TrendingUp, ChevronDown,
 } from "lucide-react";
+import ClientPortalShell from "../../components/portal/ClientPortalShell";
 
 interface WalletTx {
   id: string;
@@ -58,14 +59,13 @@ const TYPE_ICONS: Record<string, React.ReactNode> = {
 
 export default function WalletPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-slate-50 flex items-center justify-center text-slate-400">Loading…</div>}>
+    <Suspense fallback={<div className="min-h-screen bg-[var(--brand-bg)] flex items-center justify-center text-slate-400">Loading…</div>}>
       <WalletPageInner />
     </Suspense>
   );
 }
 
 function WalletPageInner() {
-  const router = useRouter();
   const searchParams = useSearchParams();
 
   const [balance, setBalance] = useState(0);
@@ -292,9 +292,28 @@ function WalletPageInner() {
   const pendingCredits = transactions.filter((t) => t.status === "pending" && t.type === "topup").reduce((sum, t) => sum + Number(t.amount), 0);
   const totalSpent = transactions.filter((t) => t.status === "confirmed" && (t.type === "deduction" || t.type === "hold")).reduce((sum, t) => sum + Number(t.amount), 0);
 
+  const balanceHistory = transactions
+    .filter((t) => t.status === "confirmed")
+    .slice(0, 12)
+    .map((t) => Number(t.balanceAfter))
+    .reverse();
+  const sparkPoints = (() => {
+    if (balanceHistory.length < 2) return "";
+    const w = 220, h = 56;
+    const min = Math.min(...balanceHistory), max = Math.max(...balanceHistory);
+    const range = max - min || 1;
+    return balanceHistory
+      .map((v, i) => {
+        const x = (i / (balanceHistory.length - 1)) * w;
+        const y = h - ((v - min) / range) * (h - 8) - 4;
+        return `${x.toFixed(1)},${y.toFixed(1)}`;
+      })
+      .join(" ");
+  })();
+
   if (bouncing) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center text-slate-600 gap-2">
+      <div className="min-h-screen bg-[var(--brand-bg)] flex items-center justify-center text-slate-600 gap-2">
         <Loader2 className="w-5 h-5 animate-spin" />
         Returning to local app…
       </div>
@@ -302,22 +321,8 @@ function WalletPageInner() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
-        <div className="flex items-center gap-3">
-          <button onClick={() => router.push("/client")} className="text-slate-400 hover:text-slate-600" aria-label="Back">
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <img src="/snapect-logo.png" alt="Snapect" className="h-8 w-auto object-contain" />
-          <span className="text-xs bg-blue-50 text-blue-600 border border-blue-100 rounded-full px-2 py-0.5 font-medium">Billing & Wallet</span>
-        </div>
-        <div className="flex items-center gap-4">
-          <Bell className="w-5 h-5 text-slate-400" />
-          <span className="text-sm text-slate-600">Welcome back, <span className="font-semibold">{userName}</span> 👋</span>
-        </div>
-      </header>
-
-      <div className="max-w-6xl mx-auto px-4 py-8">
+    <ClientPortalShell active="wallet" title="Billing & Wallet" icon={<Wallet className="w-[18px] h-[18px]" />} userName={userName}>
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
         {banner && (
           <div className={`mb-6 rounded-xl p-4 flex items-start gap-3 border ${banner.kind === "success" ? "bg-green-50 border-green-200" : banner.kind === "error" ? "bg-red-50 border-red-200" : "bg-slate-50 border-slate-200"}`}>
             {banner.kind === "success" ? <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" /> : banner.kind === "error" ? <XCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" /> : <AlertTriangle className="w-5 h-5 text-slate-500 flex-shrink-0 mt-0.5" />}
@@ -341,14 +346,14 @@ function WalletPageInner() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
-            <div className="relative overflow-hidden bg-gradient-to-br from-[#0f1f3d] to-[#16295c] rounded-2xl p-8 text-white shadow-xl">
-              <div className="absolute -right-8 -top-8 w-40 h-40 bg-[#c8991a]/10 rounded-full blur-2xl" />
+            <div className="relative overflow-hidden bg-gradient-to-br from-[#081A36] to-[#12294f] rounded-2xl p-8 text-white shadow-xl">
+              <div className="absolute -right-8 -top-8 w-40 h-40 bg-[#FF6A00]/10 rounded-full blur-2xl" />
               <div className="absolute right-6 bottom-6 opacity-20"><Wallet className="w-24 h-24" /></div>
               <p className="text-slate-300 text-xs font-bold uppercase tracking-wider mb-2">Wallet Balance</p>
               <p className="text-5xl font-extrabold text-white mb-1">${balance.toFixed(2)}</p>
-              <span className="inline-block mt-2 text-xs font-semibold bg-white/10 border border-white/10 rounded-full px-3 py-1">= {balance.toFixed(0)} Credits</span>
+              <span className="inline-block mt-2 text-xs font-bold bg-[#FF6A00] rounded-full px-3 py-1">= {balance.toFixed(0)} Credits</span>
               <p className="text-slate-400 text-xs mt-3">$1 USD paid = $1 wallet credit</p>
-              {polling && <p className="mt-3 text-xs text-[#f0b429] flex items-center gap-1.5"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Updating balance…</p>}
+              {polling && <p className="mt-3 text-xs text-[#FF8C1A] flex items-center gap-1.5"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Updating balance…</p>}
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -358,9 +363,9 @@ function WalletPageInner() {
                 { label: "Auto Top-up", sub: "Keep ready", icon: <RefreshCw className="w-5 h-5" />, color: "bg-emerald-100 text-emerald-600", onClick: () => scrollTo(autoTopupRef) },
                 { label: "Transactions", sub: "View activity", icon: <HistoryIcon className="w-5 h-5" />, color: "bg-amber-100 text-amber-600", onClick: () => scrollTo(historyRef) },
               ].map((t) => (
-                <button key={t.label} onClick={t.onClick} className="bg-white border border-slate-200 rounded-2xl p-4 text-left hover:border-[#c8991a] hover:shadow-sm transition-all">
+                <button key={t.label} onClick={t.onClick} className="bg-white border border-slate-200 rounded-2xl p-4 text-left hover:border-[#FF6A00] hover:shadow-sm transition-all">
                   <div className={`w-9 h-9 rounded-xl flex items-center justify-center mb-3 ${t.color}`}>{t.icon}</div>
-                  <p className="text-sm font-bold text-[#0f1f3d]">{t.label}</p>
+                  <p className="text-sm font-bold text-[#081A36]">{t.label}</p>
                   <p className="text-xs text-slate-400">{t.sub}</p>
                 </button>
               ))}
@@ -379,11 +384,11 @@ function WalletPageInner() {
             <div ref={paymentCardRef} className="bg-white border border-slate-200 rounded-2xl overflow-hidden scroll-mt-20">
               <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between gap-3">
                 <div>
-                  <h2 className="font-bold text-[#0f1f3d] flex items-center gap-2"><CreditCard className="w-4 h-4 text-[#c8991a]" />Payment card</h2>
+                  <h2 className="font-bold text-[#081A36] flex items-center gap-2"><CreditCard className="w-4 h-4 text-[#FF6A00]" />Payment card</h2>
                   <p className="text-xs text-slate-400 mt-0.5">{cards.length > 0 ? "Your saved card is used for auto top-up" : "Save a card once — used for auto top-up"}</p>
                 </div>
                 {!cards.length && (
-                  <button onClick={() => connectCard("connect_card")} disabled={busyCard} className="text-xs font-bold bg-[#0f1f3d] hover:bg-[#1a3260] text-white px-3 py-2 rounded-lg disabled:opacity-50 whitespace-nowrap">
+                  <button onClick={() => connectCard("connect_card")} disabled={busyCard} className="text-xs font-bold bg-[#081A36] hover:bg-[#12294f] text-white px-3 py-2 rounded-lg disabled:opacity-50 whitespace-nowrap">
                     {busyCard ? "Redirecting…" : "Connect card"}
                   </button>
                 )}
@@ -404,7 +409,7 @@ function WalletPageInner() {
                         {cards.filter((c) => c.id !== defaultCard.id).map((c) => (<li key={c.id} className="capitalize">{c.brand || "Card"} ···· {c.last4}</li>))}
                       </ul>
                     )}
-                    <button type="button" onClick={() => connectCard("add_card")} disabled={busyCard} className="text-xs font-semibold text-[#0f1f3d] border border-slate-200 hover:border-[#c8991a] hover:bg-[#c8991a]/5 px-3 py-2 rounded-lg disabled:opacity-50">
+                    <button type="button" onClick={() => connectCard("add_card")} disabled={busyCard} className="text-xs font-semibold text-[#081A36] border border-slate-200 hover:border-[#FF6A00] hover:bg-[#FF6A00]/5 px-3 py-2 rounded-lg disabled:opacity-50">
                       {busyCard ? "Redirecting…" : "+ Add another card"}
                     </button>
                   </div>
@@ -414,7 +419,7 @@ function WalletPageInner() {
 
             <div ref={autoTopupRef} className="bg-white border border-slate-200 rounded-2xl overflow-hidden scroll-mt-20">
               <div className="px-5 py-4 border-b border-slate-100">
-                <h2 className="font-bold text-[#0f1f3d] flex items-center gap-2"><RefreshCw className="w-4 h-4 text-[#c8991a]" />Auto top-up</h2>
+                <h2 className="font-bold text-[#081A36] flex items-center gap-2"><RefreshCw className="w-4 h-4 text-[#FF6A00]" />Auto top-up</h2>
                 <p className="text-xs text-slate-400 mt-0.5">When your balance drops to the threshold, we charge your saved card automatically ($1 = $1 credit)</p>
               </div>
               <div className="px-5 py-4 space-y-4">
@@ -427,17 +432,17 @@ function WalletPageInner() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs font-semibold text-slate-500 block mb-1">When balance is at or below ($)</label>
-                    <input type="number" min="0" step="1" value={autoPrefs.thresholdUsd} onChange={(e) => setAutoPrefs((p) => ({ ...p, thresholdUsd: Number(e.target.value) || 0 }))} className="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#c8991a]" />
+                    <input type="number" min="0" step="1" value={autoPrefs.thresholdUsd} onChange={(e) => setAutoPrefs((p) => ({ ...p, thresholdUsd: Number(e.target.value) || 0 }))} className="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6A00]" />
                   </div>
                   <div>
                     <label className="text-xs font-semibold text-slate-500 block mb-1">Top-up amount ($)</label>
-                    <input type="number" min="1" max="5000" step="1" value={autoPrefs.topupAmountUsd} onChange={(e) => setAutoPrefs((p) => ({ ...p, topupAmountUsd: Number(e.target.value) || 0, planId: null }))} className="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#c8991a]" />
+                    <input type="number" min="1" max="5000" step="1" value={autoPrefs.topupAmountUsd} onChange={(e) => setAutoPrefs((p) => ({ ...p, topupAmountUsd: Number(e.target.value) || 0, planId: null }))} className="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6A00]" />
                   </div>
                 </div>
                 {plans.length > 0 && (
                   <div>
                     <label className="text-xs font-semibold text-slate-500 block mb-1">Or use a plan amount</label>
-                    <select value={autoPrefs.planId ?? ""} onChange={(e) => { const id = e.target.value || null; const plan = plans.find((p) => p.id === id); setAutoPrefs((p) => ({ ...p, planId: id, topupAmountUsd: plan ? plan.amountUsd : p.topupAmountUsd })); }} className="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#c8991a]">
+                    <select value={autoPrefs.planId ?? ""} onChange={(e) => { const id = e.target.value || null; const plan = plans.find((p) => p.id === id); setAutoPrefs((p) => ({ ...p, planId: id, topupAmountUsd: plan ? plan.amountUsd : p.topupAmountUsd })); }} className="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#FF6A00]">
                       <option value="">Custom amount above</option>
                       {plans.map((p) => (<option key={p.id} value={p.id}>{p.name} — ${p.amountUsd.toFixed(0)}</option>))}
                     </select>
@@ -447,7 +452,7 @@ function WalletPageInner() {
                 {autoPrefs.lastStatus === "failed" && autoPrefs.lastError && <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">Last attempt failed: {autoPrefs.lastError}</p>}
                 {autoPrefs.cooldownUntil && new Date(autoPrefs.cooldownUntil).getTime() > Date.now() && <p className="text-xs text-slate-500">Cooldown active until {new Date(autoPrefs.cooldownUntil).toLocaleString()} (prevents rapid retries)</p>}
                 {autoMsg && <p className="text-xs text-emerald-700 font-medium">{autoMsg}</p>}
-                <button onClick={saveAutoTopup} disabled={autoBusy} className="w-full bg-[#0f1f3d] hover:bg-[#1a3260] text-white font-bold py-2.5 rounded-xl text-sm disabled:opacity-50">
+                <button onClick={saveAutoTopup} disabled={autoBusy} className="w-full bg-[#FF6A00] hover:bg-[#FF8C1A] text-white font-bold py-2.5 rounded-xl text-sm disabled:opacity-50">
                   {autoBusy ? "Saving…" : "Save auto top-up settings"}
                 </button>
               </div>
@@ -455,7 +460,7 @@ function WalletPageInner() {
 
             <div ref={buyCreditsRef} className="bg-white border border-slate-200 rounded-2xl overflow-hidden scroll-mt-20">
               <div className="px-5 py-4 border-b border-slate-100">
-                <h2 className="font-bold text-[#0f1f3d] flex items-center gap-2"><DollarSign className="w-4 h-4 text-[#c8991a]" />Buy credits</h2>
+                <h2 className="font-bold text-[#081A36] flex items-center gap-2"><DollarSign className="w-4 h-4 text-[#FF6A00]" />Buy credits</h2>
                 <p className="text-xs text-slate-400 mt-0.5">Choose a package — you&apos;ll pay securely via Cash App, then return here</p>
               </div>
               {loading ? <div className="text-center py-10 text-slate-400 text-sm">Loading plans…</div> : plans.length === 0 ? (
@@ -463,10 +468,10 @@ function WalletPageInner() {
               ) : (
                 <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {plans.map((plan) => (
-                    <button key={plan.id} onClick={() => buyPlan(plan.id)} disabled={busyPlanId === plan.id || busyCustom || busyCard} className="text-left border-2 border-slate-200 hover:border-[#c8991a] rounded-xl p-4 transition-all disabled:opacity-50 group">
+                    <button key={plan.id} onClick={() => buyPlan(plan.id)} disabled={busyPlanId === plan.id || busyCustom || busyCard} className="text-left border-2 border-slate-200 hover:border-[#FF6A00] rounded-xl p-4 transition-all disabled:opacity-50 group">
                       <div className="flex items-start justify-between gap-2">
                         <div>
-                          <p className="font-bold text-[#0f1f3d] group-hover:text-[#c8991a]">{plan.name}</p>
+                          <p className="font-bold text-[#081A36] group-hover:text-[#FF6A00]">{plan.name}</p>
                           {plan.description && <p className="text-xs text-slate-500 mt-0.5">{plan.description}</p>}
                         </div>
                         <span className="text-lg font-black text-emerald-600">${plan.amountUsd.toFixed(0)}</span>
@@ -481,9 +486,9 @@ function WalletPageInner() {
                 <div className="flex gap-2">
                   <div className="relative flex-1">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">$</span>
-                    <input type="number" min="1" max="5000" step="0.01" value={customAmount} onChange={(e) => setCustomAmount(e.target.value)} placeholder="e.g. 75" className="w-full pl-7 pr-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#c8991a] bg-white" />
+                    <input type="number" min="1" max="5000" step="0.01" value={customAmount} onChange={(e) => setCustomAmount(e.target.value)} placeholder="e.g. 75" className="w-full pl-7 pr-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6A00] bg-white" />
                   </div>
-                  <button onClick={buyCustom} disabled={busyCustom || !!busyPlanId} className="flex items-center gap-1.5 bg-[#c8991a] hover:bg-[#f0b429] text-[#0f1f3d] font-bold px-4 py-2.5 rounded-xl text-sm disabled:opacity-50 whitespace-nowrap">
+                  <button onClick={buyCustom} disabled={busyCustom || !!busyPlanId} className="flex items-center gap-1.5 bg-[#FF6A00] hover:bg-[#FF8C1A] text-white font-bold px-4 py-2.5 rounded-xl text-sm disabled:opacity-50 whitespace-nowrap">
                     <Plus className="w-4 h-4" />{busyCustom ? "…" : "Pay"}
                   </button>
                 </div>
@@ -491,11 +496,11 @@ function WalletPageInner() {
             </div>
 
             <div className="bg-white border border-slate-200 rounded-2xl p-5">
-              <h3 className="font-bold text-[#0f1f3d] mb-3 flex items-center gap-2"><Wallet className="w-4 h-4 text-[#c8991a]" />How billing works</h3>
+              <h3 className="font-bold text-[#081A36] mb-3 flex items-center gap-2"><Wallet className="w-4 h-4 text-[#FF6A00]" />How billing works</h3>
               <ul className="space-y-2 text-sm text-slate-600">
                 {["Pick a credit plan (or enter a custom USD amount)", "You're redirected to pay securely via Cash App", "After payment, you return here — wallet credit is applied once confirmed", "Connect a card once to enable auto top-up later"].map((t, i) => (
                   <li key={i} className="flex items-start gap-2">
-                    <span className="w-5 h-5 bg-[#c8991a] text-white rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">{i + 1}</span>{t}
+                    <span className="w-5 h-5 bg-[#FF6A00] text-white rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">{i + 1}</span>{t}
                   </li>
                 ))}
               </ul>
@@ -504,7 +509,7 @@ function WalletPageInner() {
 
           <div className="space-y-6">
             <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
-              <div className="px-5 py-4 border-b border-slate-100"><h3 className="font-bold text-[#0f1f3d]">Quick Actions</h3></div>
+              <div className="px-5 py-4 border-b border-slate-100"><h3 className="font-bold text-[#081A36]">Quick Actions</h3></div>
               <div className="divide-y divide-slate-100">
                 {[
                   { icon: <CreditCard className="w-4 h-4" />, color: "bg-violet-100 text-violet-600", title: "Add Payment Method", sub: "Securely add a new card", onClick: () => scrollTo(paymentCardRef) },
@@ -525,7 +530,17 @@ function WalletPageInner() {
             </div>
 
             <div className="bg-white border border-slate-200 rounded-2xl p-5">
-              <h3 className="font-bold text-[#0f1f3d] mb-3">Wallet Overview</h3>
+              <div className="flex items-center justify-between mb-1">
+                <h3 className="font-bold text-[#081A36]">Wallet Overview</h3>
+                <TrendingUp className="w-4 h-4 text-[#22C55E]" />
+              </div>
+              {sparkPoints ? (
+                <svg viewBox="0 0 220 56" className="w-full h-14 mb-2" preserveAspectRatio="none">
+                  <polyline points={sparkPoints} fill="none" stroke="#FF6A00" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              ) : (
+                <p className="text-xs text-slate-400 py-4">Balance history will chart here once you have a few transactions.</p>
+              )}
               <div className="space-y-2.5 text-sm">
                 <div className="flex items-center justify-between"><span className="text-slate-500">Total Credits</span><span className="font-bold text-slate-800">{balance.toFixed(0)}</span></div>
                 <div className="flex items-center justify-between"><span className="text-slate-500">Available Credits</span><span className="font-bold text-slate-800">{balance.toFixed(0)}</span></div>
@@ -535,18 +550,18 @@ function WalletPageInner() {
               <p className="text-xs text-emerald-600 font-medium mt-3 flex items-center gap-1.5"><CheckCircle className="w-3.5 h-3.5" /> Credits never expire</p>
             </div>
 
-            <div className="bg-[#0f1f3d] rounded-2xl p-5 text-white relative overflow-hidden">
-              <Sparkles className="w-5 h-5 text-[#c8991a] mb-2" />
+            <div className="bg-[#081A36] rounded-2xl p-5 text-white relative overflow-hidden">
+              <Sparkles className="w-5 h-5 text-[#FF6A00] mb-2" />
               <h3 className="font-bold mb-1">Get More, Save More</h3>
               <p className="text-xs text-slate-300 mb-4">Buy larger credit packs and get better value for your money.</p>
-              <button onClick={() => scrollTo(buyCreditsRef)} className="bg-white text-[#0f1f3d] text-xs font-bold px-4 py-2 rounded-lg hover:bg-slate-100">Buy Credits</button>
+              <button onClick={() => scrollTo(buyCreditsRef)} className="bg-white text-[#081A36] text-xs font-bold px-4 py-2 rounded-lg hover:bg-slate-100">Buy Credits</button>
             </div>
           </div>
         </div>
 
         <div ref={historyRef} className="bg-white border border-slate-200 rounded-2xl overflow-hidden mt-6 scroll-mt-20">
           <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-            <h3 className="font-bold text-[#0f1f3d]">Recent Transactions</h3>
+            <h3 className="font-bold text-[#081A36]">Recent Transactions</h3>
             <button onClick={() => fetchAll()} className="text-xs text-slate-500 hover:text-slate-800 flex items-center gap-1"><RefreshCw className="w-3.5 h-3.5" /> Refresh</button>
           </div>
           {loading ? <div className="text-center py-8 text-slate-400 text-sm">Loading…</div> : transactions.length === 0 ? (
@@ -574,9 +589,9 @@ function WalletPageInner() {
         </div>
 
         <p className="text-center text-xs text-slate-400 mt-6 flex items-center justify-center gap-1.5">
-          <Zap className="w-3.5 h-3.5" /> Your payments are secure and encrypted. Need help? <a href="/contact" className="text-[#c8991a] font-medium hover:underline">Contact support</a>
+          <Zap className="w-3.5 h-3.5" /> Your payments are secure and encrypted. Need help? <a href="/contact" className="text-[#FF6A00] font-medium hover:underline">Contact support</a>
         </p>
       </div>
-    </div>
+    </ClientPortalShell>
   );
 }
