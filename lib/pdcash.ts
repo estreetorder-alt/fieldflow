@@ -1,48 +1,63 @@
 /**
- * pd.cash payment integration (Cash App + crypto checkout orchestration).
+ * Care Business Consulting Solutions payment integration.
  * Used for one-time "Buy Credits" wallet top-ups on the client wallet page.
  *
- * ⚠️ VERIFY BEFORE GOING LIVE:
- * The exact query-string parameter names pd.cash's hosted pay link accepts,
- * and the exact webhook signature scheme (header name + algorithm), were
- * not available from official docs at the time this was written. Log into
- * your pd.cash merchant dashboard, open their API/webhook docs, and:
- *   1. Confirm the param names used in buildPdCashCheckoutUrl() below
- *      match what their hosted link actually expects (amount / reference /
- *      redirect_url are reasonable, common defaults but not confirmed).
- *   2. Confirm the webhook signature scheme and replace
- *      verifyPdCashWebhookSignature() with their real verification method.
- *      Until then this checks a shared secret you set yourself (see
- *      PDCASH_WEBHOOK_SECRET below) so the endpoint isn't wide open, but
- *      it is NOT pd.cash's own signature — it only works if pd.cash lets
- *      you configure a custom query param / header on outgoing webhooks,
- *      or if you proxy/rewrite the webhook URL to include it.
+ * The old pd.cash hosted pay link has been retired. In its place, the
+ * system now uses a fixed set of hosted invoice links — one per supported
+ * top-up amount — provided by carebusinessconsultingsolutions.com. These
+ * links do NOT accept query parameters (no amount/reference/redirect_url
+ * templating), so:
+ *   1. Only the exact preset amounts below are payable through this flow.
+ *   2. There is no reference id passed through, so payments cannot be
+ *      auto-matched back to a pending wallet_transactions row via webhook.
+ *      Admins must confirm each pending top-up manually in
+ *      Admin → Wallet once the payment is verified on the
+ *      Care Business Consulting Solutions side (Confirm/Cancel buttons —
+ *      see app/api/wallet/[id]/route.ts).
  */
 
-const PDCASH_PAY_LINK = process.env.PDCASH_PAY_LINK || "https://pd.cash/pay/@Snapect";
+const CARE_PAY_LINKS: Record<number, string> = {
+  25: "https://carebusinessconsultingsolutions.com/generate/invoice?care&pay&25",
+  50: "https://carebusinessconsultingsolutions.com/generate/invoice?care&pay&50",
+  75: "https://carebusinessconsultingsolutions.com/generate/invoice?care&pay&75",
+  100: "https://carebusinessconsultingsolutions.com/generate/invoice?care&pay&100",
+  150: "https://carebusinessconsultingsolutions.com/generate/invoice?care&pay&150",
+};
+
+/** The only USD amounts that currently have a hosted payment link. */
+export const CARE_PAY_AMOUNTS: number[] = Object.keys(CARE_PAY_LINKS)
+  .map(Number)
+  .sort((a, b) => a - b);
 
 export function isPdCashConfigured(): boolean {
-  return Boolean(PDCASH_PAY_LINK);
+  return true;
+}
+
+/** Returns the fixed hosted-invoice link for an amount, or null if unsupported. */
+export function getCarePayLink(amountUsd: number): string | null {
+  const key = Math.round(amountUsd);
+  return CARE_PAY_LINKS[key] ?? null;
 }
 
 /**
- * Builds the URL a client is redirected to in order to pay via pd.cash.
- * `txId` is passed through as a reference/order id so the webhook (or
- * manual admin reconciliation) can match the payment back to the correct
- * pending wallet_transactions row.
+ * Builds the URL a client is sent to in order to pay.
+ * `txId`/`redirectPath` are accepted for backward compatibility with
+ * existing callers but are no longer usable — the provider's links don't
+ * accept query params, so nothing is appended. Throws if the amount isn't
+ * one of the supported preset tiers.
  */
 export function buildPdCashCheckoutUrl(opts: {
   amountUsd: number;
   txId: string;
   redirectPath: string;
 }): string {
-  const base = (process.env.NEXT_PUBLIC_BASE_URL || "https://snapect.com").replace(/\/$/, "");
-  const url = new URL(PDCASH_PAY_LINK);
-  url.searchParams.set("amount", opts.amountUsd.toFixed(2));
-  url.searchParams.set("reference", opts.txId);
-  url.searchParams.set("order_id", opts.txId);
-  url.searchParams.set("redirect_url", `${base}${opts.redirectPath}`);
-  return url.toString();
+  const url = getCarePayLink(opts.amountUsd);
+  if (!url) {
+    throw new Error(
+      `No payment link is configured for $${opts.amountUsd}. Supported amounts: ${CARE_PAY_AMOUNTS.map((a) => `$${a}`).join(", ")}.`,
+    );
+  }
+  return url;
 }
 
 /**

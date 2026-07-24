@@ -209,6 +209,22 @@ function WalletPageInner() {
     }
   }, [searchParams, fetchAll, bouncing]);
 
+  function afterCheckoutStarted(checkoutUrl: string) {
+    window.open(checkoutUrl, "_blank", "noopener,noreferrer");
+    setBanner({
+      kind: "info",
+      title: "Payment page opened in a new tab",
+      body: "Complete your payment there. We only credit your wallet after it's confirmed — check back here or refresh in a few minutes.",
+    });
+    setPolling(true);
+    let n = 0;
+    const id = setInterval(async () => {
+      n += 1;
+      await fetchAll();
+      if (n >= 6) { clearInterval(id); setPolling(false); }
+    }, 4000);
+  }
+
   async function buyPlan(planId: string) {
     setActionError("");
     setBusyPlanId(planId);
@@ -217,8 +233,9 @@ function WalletPageInner() {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ planId }),
       });
       const data = await res.json();
-      if (!res.ok) { setActionError(data.error ?? "Could not start checkout"); setBusyPlanId(null); return; }
-      window.location.href = data.checkout_url || data.url;
+      setBusyPlanId(null);
+      if (!res.ok) { setActionError(data.error ?? "Could not start checkout"); return; }
+      afterCheckoutStarted(data.checkout_url || data.url);
     } catch {
       setActionError("Network error starting checkout"); setBusyPlanId(null);
     }
@@ -233,8 +250,9 @@ function WalletPageInner() {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ amount }),
       });
       const data = await res.json();
-      if (!res.ok) { setActionError(data.error ?? "Could not start checkout"); setBusyCustom(false); return; }
-      window.location.href = data.checkout_url || data.url;
+      setBusyCustom(false);
+      if (!res.ok) { setActionError(data.error ?? "Could not start checkout"); return; }
+      afterCheckoutStarted(data.checkout_url || data.url);
     } catch {
       setActionError("Network error starting checkout"); setBusyCustom(false);
     }
@@ -291,6 +309,10 @@ function WalletPageInner() {
 
   const pendingCredits = transactions.filter((t) => t.status === "pending" && t.type === "topup").reduce((sum, t) => sum + Number(t.amount), 0);
   const totalSpent = transactions.filter((t) => t.status === "confirmed" && (t.type === "deduction" || t.type === "hold")).reduce((sum, t) => sum + Number(t.amount), 0);
+  // Only confirmed payments belong in the visible history — a click that
+  // returns without paying (or a payment still awaiting admin confirmation)
+  // should not show up as a transaction until it's actually confirmed.
+  const confirmedTransactions = transactions.filter((t) => t.status === "confirmed");
 
   const balanceHistory = transactions
     .filter((t) => t.status === "confirmed")
@@ -461,7 +483,7 @@ function WalletPageInner() {
             <div ref={buyCreditsRef} className="bg-white border border-slate-200 rounded-2xl overflow-hidden scroll-mt-20">
               <div className="px-5 py-4 border-b border-slate-100">
                 <h2 className="font-bold text-[#081A36] flex items-center gap-2"><DollarSign className="w-4 h-4 text-[#FF6A00]" />Buy credits</h2>
-                <p className="text-xs text-slate-400 mt-0.5">Choose a package — you&apos;ll pay securely via Cash App, then return here</p>
+                <p className="text-xs text-slate-400 mt-0.5">Choose a package — you&apos;ll pay securely via our payment link, then come back here</p>
               </div>
               {loading ? <div className="text-center py-10 text-slate-400 text-sm">Loading plans…</div> : plans.length === 0 ? (
                 <div className="text-center py-10 text-slate-400 text-sm px-4">No credit plans are available yet. Ask your admin to create plans in Admin → Wallet.</div>
@@ -476,7 +498,7 @@ function WalletPageInner() {
                         </div>
                         <span className="text-lg font-black text-emerald-600">${plan.amountUsd.toFixed(0)}</span>
                       </div>
-                      <p className="text-xs text-slate-400 mt-2">{busyPlanId === plan.id ? "Opening checkout…" : `${plan.credits.toFixed(0)} credits · Pay with Cash App →`}</p>
+                      <p className="text-xs text-slate-400 mt-2">{busyPlanId === plan.id ? "Opening checkout…" : `${plan.credits.toFixed(0)} credits · Pay via secure link →`}</p>
                     </button>
                   ))}
                 </div>
@@ -486,19 +508,20 @@ function WalletPageInner() {
                 <div className="flex gap-2">
                   <div className="relative flex-1">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">$</span>
-                    <input type="number" min="1" max="5000" step="0.01" value={customAmount} onChange={(e) => setCustomAmount(e.target.value)} placeholder="e.g. 75" className="w-full pl-7 pr-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6A00] bg-white" />
+                    <input type="number" min="1" max="5000" step="0.01" value={customAmount} onChange={(e) => setCustomAmount(e.target.value)} placeholder="25, 50, 75, 100 or 150" className="w-full pl-7 pr-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6A00] bg-white" />
                   </div>
                   <button onClick={buyCustom} disabled={busyCustom || !!busyPlanId} className="flex items-center gap-1.5 bg-[#FF6A00] hover:bg-[#FF8C1A] text-white font-bold px-4 py-2.5 rounded-xl text-sm disabled:opacity-50 whitespace-nowrap">
                     <Plus className="w-4 h-4" />{busyCustom ? "…" : "Pay"}
                   </button>
                 </div>
+                <p className="text-[11px] text-slate-400 mt-2">Only $25, $50, $75, $100, or $150 can be paid right now.</p>
               </div>
             </div>
 
             <div className="bg-white border border-slate-200 rounded-2xl p-5">
               <h3 className="font-bold text-[#081A36] mb-3 flex items-center gap-2"><Wallet className="w-4 h-4 text-[#FF6A00]" />How billing works</h3>
               <ul className="space-y-2 text-sm text-slate-600">
-                {["Pick a credit plan (or enter a custom USD amount)", "You're redirected to pay securely via Cash App", "After payment, you return here — wallet credit is applied once confirmed", "Connect a card once to enable auto top-up later"].map((t, i) => (
+                {["Pick a credit plan ($25, $50, $75, $100, or $150)", "A secure payment page opens in a new tab", "Come back here — wallet credit is applied once we confirm the payment", "Connect a card once to enable auto top-up later"].map((t, i) => (
                   <li key={i} className="flex items-start gap-2">
                     <span className="w-5 h-5 bg-[#FF6A00] text-white rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">{i + 1}</span>{t}
                   </li>
@@ -564,10 +587,10 @@ function WalletPageInner() {
             <h3 className="font-bold text-[#081A36]">Recent Transactions</h3>
             <button onClick={() => fetchAll()} className="text-xs text-slate-500 hover:text-slate-800 flex items-center gap-1"><RefreshCw className="w-3.5 h-3.5" /> Refresh</button>
           </div>
-          {loading ? <div className="text-center py-8 text-slate-400 text-sm">Loading…</div> : transactions.length === 0 ? (
-            <div className="text-center py-12 text-slate-400"><DollarSign className="w-8 h-8 mx-auto mb-2 text-slate-300" /><p>No transactions yet</p></div>
+          {loading ? <div className="text-center py-8 text-slate-400 text-sm">Loading…</div> : confirmedTransactions.length === 0 ? (
+            <div className="text-center py-12 text-slate-400"><DollarSign className="w-8 h-8 mx-auto mb-2 text-slate-300" /><p>No confirmed transactions yet</p><p className="text-xs mt-1">Payments show up here once they're confirmed — pending or unconfirmed attempts aren't listed.</p></div>
           ) : (
-            transactions.map((tx) => (
+            confirmedTransactions.map((tx) => (
               <div key={tx.id} className="px-5 py-4 border-b border-slate-100 last:border-0 flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3 min-w-0">
                   <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${TYPE_COLORS[tx.type] ?? "bg-slate-100 text-slate-600"}`}>{TYPE_ICONS[tx.type] ?? <DollarSign className="w-4 h-4" />}</div>
@@ -578,10 +601,7 @@ function WalletPageInner() {
                 </div>
                 <div className="text-right flex-shrink-0">
                   <p className={`font-bold ${tx.type === "topup" || tx.type === "refund" || tx.type === "release" ? "text-green-600" : "text-red-600"}`}>{tx.type === "topup" || tx.type === "refund" ? "+" : "-"}${Number(tx.amount).toFixed(2)}</p>
-                  {tx.status === "confirmed" && <p className="text-xs text-slate-400">Balance: ${Number(tx.balanceAfter).toFixed(2)}</p>}
-                  {tx.status === "pending" && <span className="text-xs text-amber-600 font-medium">Pending</span>}
-                  {tx.status === "failed" && <span className="text-xs text-red-600 font-medium">Failed</span>}
-                  {tx.status === "cancelled" && <span className="text-xs text-slate-500 font-medium">Cancelled</span>}
+                  <p className="text-xs text-slate-400">Balance: ${Number(tx.balanceAfter).toFixed(2)}</p>
                 </div>
               </div>
             ))

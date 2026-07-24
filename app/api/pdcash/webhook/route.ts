@@ -5,11 +5,13 @@ import { getUserById } from "@/lib/db";
 import { sendPaymentConfirmationEmail } from "@/lib/email";
 
 /**
- * Receives payment status webhooks from pd.cash.
- * ⚠️ See lib/pdcash.ts — field names below (event, invoice_id, order_id,
- * amount) follow pd.cash's publicly documented "representative" payload
- * shape. Confirm against your actual pd.cash dashboard/docs and adjust
- * the field lookups below if their real payload differs.
+ * Receives payment status webhooks from the "pd.cash"-style flow.
+ * ⚠️ DORMANT: wallet top-ups now use fixed Care Business Consulting
+ * Solutions payment links (see lib/pdcash.ts) which don't carry a
+ * reference/order id, so nothing currently calls this endpoint and it has
+ * no way to match an inbound event to a pending transaction. Pending
+ * top-ups are confirmed manually in Admin → Wallet instead. This route is
+ * left in place only in case a future provider adds real webhook support.
  */
 export async function POST(request: NextRequest) {
   const verified = verifyPdCashWebhookSignature(request);

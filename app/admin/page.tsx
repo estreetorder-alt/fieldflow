@@ -1724,7 +1724,7 @@ export default function AdminPage() {
                     </div>
                     {manualCreditFor === u.id && (
                       <div className="mt-3 bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
-                        <p className="text-xs text-slate-500">Manually credit this vendor's wallet — use when a payment (e.g. via pd.cash) went through but wasn't confirmed automatically. This creates an audited, immediately-confirmed transaction.</p>
+                        <p className="text-xs text-slate-500">Manually credit this vendor's wallet — use when a payment (e.g. via the Care Business Consulting Solutions link) went through but wasn't confirmed automatically. This creates an audited, immediately-confirmed transaction.</p>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <div>
                             <label className="text-xs font-semibold text-slate-500 block mb-1">Amount ($)</label>
@@ -1742,7 +1742,7 @@ export default function AdminPage() {
                               type="text"
                               value={manualCreditNote}
                               onChange={(e) => setManualCreditNote(e.target.value)}
-                              placeholder="e.g. pd.cash payment #1234 confirmed manually"
+                              placeholder="e.g. Care Business Consulting Solutions payment confirmed manually"
                               className="w-full border border-[#CBD5E1] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6A00]"
                             />
                           </div>
