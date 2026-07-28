@@ -189,7 +189,13 @@ function WalletPageInner() {
     .filter((t) => !CREDIT_TYPES.has(t.type))
     .reduce((sum, t) => sum + Number(t.amount), 0);
 
-  const recentActivity = transactions.slice(0, 4);
+  // Pending items are always shown first — otherwise a payment awaiting
+  // review can get pushed out of "recent" by more recent, already-confirmed
+  // activity like order service charges (which happen more often than
+  // top-ups). Fill the remaining slots with the next most recent items.
+  const pendingActivity = transactions.filter((t) => t.status === "pending");
+  const otherActivity = transactions.filter((t) => t.status !== "pending");
+  const recentActivity = [...pendingActivity, ...otherActivity].slice(0, 5);
 
   function scrollToHistory() {
     document.getElementById("transaction-history")?.scrollIntoView({ behavior: "smooth", block: "start" });
