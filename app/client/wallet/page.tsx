@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import {
   Wallet, Loader2, DollarSign, Upload, CheckCircle, XCircle, Clock,
-  Copy, Check, ImageIcon, RefreshCw,
+  Copy, Check, ImageIcon, RefreshCw, TrendingDown, ChevronRight,
 } from "lucide-react";
 import ClientPortalShell from "../../components/portal/ClientPortalShell";
 import { uploadImageFile } from "@/lib/uploadClient";
@@ -18,6 +18,7 @@ interface WalletTx {
   purpose?: string;
   receiptUrl?: string | null;
   orderNumber?: string | null;
+  orderId?: string | null;
 }
 
 const CASHAPP_ID = "$snapect";
@@ -25,11 +26,30 @@ const CASHAPP_ID = "$snapect";
 const TX_TYPE_LABEL: Record<string, string> = {
   topup: "Top-up",
   deduction: "Order Payment",
-  hold: "Order Hold",
+  hold: "Service Charge",
   release: "Payout Released",
   refund: "Refund",
 };
 const CREDIT_TYPES = new Set(["topup", "refund", "release"]);
+
+// Short, friendly order reference shown to clients (e.g. "SN#4F9A2") instead
+// of the raw internal order id (e.g. "ord-1730212345678-x9z").
+function shortOrderId(id?: string | null): string {
+  if (!id) return "SN#00000";
+  const clean = id.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+  return `SN#${(clean.slice(-5) || "00000").padStart(5, "0")}`;
+}
+
+// Renders the description for a transaction. "hold" transactions are
+// re-labeled as a service charge with a short order reference — this is
+// computed at render time from tx.orderId, so it applies retroactively to
+// every existing transaction too, not just new ones.
+function txDisplayDescription(tx: WalletTx): string {
+  if (tx.type === "hold") {
+    return `Service charge for order ${shortOrderId(tx.orderId)}`;
+  }
+  return tx.description;
+}
 
 export default function WalletPage() {
   return (
@@ -155,6 +175,26 @@ function WalletPageInner() {
   // Only confirmed transactions belong in visible history — pending/unconfirmed attempts aren't listed
   const confirmedTransactions = transactions.filter((t) => t.status === "confirmed");
 
+  // Every payment awaiting admin review adds to this pool. Once admin
+  // confirms a transaction it moves to "confirmed" (credited to balance
+  // above) and drops out of this sum; once admin rejects it, it moves to
+  // "cancelled" and also drops out — either way this total shrinks back
+  // toward zero as each submission is reviewed, and multiple unreviewed
+  // payments stack on top of each other while awaiting review.
+  const pendingCredits = transactions
+    .filter((t) => t.type === "topup" && t.status === "pending")
+    .reduce((sum, t) => sum + Number(t.amount), 0);
+
+  const totalSpent = confirmedTransactions
+    .filter((t) => !CREDIT_TYPES.has(t.type))
+    .reduce((sum, t) => sum + Number(t.amount), 0);
+
+  const recentActivity = transactions.slice(0, 4);
+
+  function scrollToHistory() {
+    document.getElementById("transaction-history")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
   if (bouncing) {
     return (
       <div className="min-h-screen bg-[var(--brand-bg)] flex items-center justify-center text-slate-600 gap-2">
@@ -168,19 +208,101 @@ function WalletPageInner() {
     <ClientPortalShell active="wallet" title="Billing & Wallet" icon={<Wallet className="w-[18px] h-[18px]" />} userName={userName}>
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-6">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-          <div className="relative overflow-hidden bg-gradient-to-br from-[#081A36] to-[#12294f] rounded-2xl p-8 text-white shadow-xl h-full">
-            <div className="absolute -right-8 -top-8 w-40 h-40 bg-[#FF6A00]/10 rounded-full blur-2xl" />
-            <div className="absolute right-6 bottom-6 opacity-20"><Wallet className="w-24 h-24" /></div>
-            <p className="text-slate-300 text-xs font-bold uppercase tracking-wider mb-2">Wallet Balance</p>
-            {loading ? (
-              <p className="text-5xl font-extrabold text-white mb-1">…</p>
-            ) : (
-              <>
-                <p className="text-5xl font-extrabold text-white mb-1">${balance.toFixed(2)}</p>
-                <span className="inline-block mt-2 text-xs font-bold bg-[#FF6A00] rounded-full px-3 py-1">= {balance.toFixed(0)} Credits</span>
-                <p className="text-slate-400 text-xs mt-3">$1 USD paid = $1 wallet credit</p>
-              </>
-            )}
+          <div className="relative overflow-hidden bg-gradient-to-br from-[#081A36] to-[#12294f] rounded-2xl p-8 text-white shadow-xl h-full flex flex-col">
+            <div className="absolute -right-8 -top-8 w-40 h-40 bg-[#FF6A00]/10 rounded-full blur-2xl pointer-events-none" />
+
+            <div className="relative flex items-start justify-between">
+              <div>
+                <p className="text-slate-300 text-xs font-bold uppercase tracking-wider mb-2">Wallet Balance</p>
+                {loading ? (
+                  <p className="text-5xl font-extrabold text-white mb-1">…</p>
+                ) : (
+                  <>
+                    <p className="text-5xl font-extrabold text-white mb-1">${balance.toFixed(2)}</p>
+                    <span className="inline-block mt-2 text-xs font-bold bg-[#FF6A00] rounded-full px-3 py-1">+ {balance.toFixed(0)} Credits</span>
+                    <p className="text-slate-400 text-xs mt-3">$1 USD paid = $1 wallet credit</p>
+                  </>
+                )}
+              </div>
+              <div className="w-11 h-11 rounded-xl bg-white/10 flex items-center justify-center flex-shrink-0">
+                <Wallet className="w-5 h-5 text-white" />
+              </div>
+            </div>
+
+            {/* Balance Overview */}
+            <div className="relative mt-6">
+              <p className="text-slate-300 text-[11px] font-bold uppercase tracking-wider mb-3">Balance Overview</p>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="bg-white/5 border border-white/10 rounded-xl p-3">
+                  <div className="w-7 h-7 rounded-lg bg-blue-500/20 flex items-center justify-center mb-2">
+                    <Wallet className="w-3.5 h-3.5 text-blue-300" />
+                  </div>
+                  <p className="text-lg font-extrabold text-white leading-tight">{loading ? "…" : balance.toFixed(0)}</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">Total Credits</p>
+                  <p className="text-[10px] text-slate-500">Available to use</p>
+                </div>
+                <div className="bg-white/5 border border-white/10 rounded-xl p-3">
+                  <div className="w-7 h-7 rounded-lg bg-purple-500/20 flex items-center justify-center mb-2">
+                    <TrendingDown className="w-3.5 h-3.5 text-purple-300" />
+                  </div>
+                  <p className="text-lg font-extrabold text-white leading-tight">{loading ? "…" : `$${totalSpent.toFixed(2)}`}</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">Total Spent</p>
+                  <p className="text-[10px] text-slate-500">All time</p>
+                </div>
+                <div className="bg-white/5 border border-white/10 rounded-xl p-3">
+                  <div className="w-7 h-7 rounded-lg bg-emerald-500/20 flex items-center justify-center mb-2">
+                    <Clock className="w-3.5 h-3.5 text-emerald-300" />
+                  </div>
+                  <p className="text-lg font-extrabold text-white leading-tight">{loading ? "…" : pendingCredits.toFixed(0)}</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">Pending Credits</p>
+                  <p className="text-[10px] text-slate-500">{pendingCredits > 0 ? "Awaiting approval" : "Nothing pending"}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Recent Activity */}
+            <div className="relative mt-6 flex-1">
+              <p className="text-slate-300 text-[11px] font-bold uppercase tracking-wider mb-3">Recent Activity</p>
+              {loading ? (
+                <p className="text-slate-400 text-xs text-center py-6">Loading…</p>
+              ) : recentActivity.length === 0 ? (
+                <div className="text-center py-6">
+                  <Wallet className="w-7 h-7 mx-auto mb-2 text-white/20" />
+                  <p className="text-sm text-slate-300">No recent transactions</p>
+                  <p className="text-[11px] text-slate-500 mt-0.5">Your wallet activity will appear here.</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {recentActivity.map((tx) => {
+                    const isCredit = CREDIT_TYPES.has(tx.type);
+                    return (
+                      <div key={tx.id} className="flex items-center justify-between gap-2 bg-white/5 rounded-lg px-3 py-2">
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold text-white truncate">{TX_TYPE_LABEL[tx.type] ?? tx.type}</p>
+                          <p className="text-[10px] text-slate-400" suppressHydrationWarning>{new Date(tx.createdAt).toLocaleDateString()}</p>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          {tx.status === "pending" && (
+                            <span className="text-[9px] font-bold uppercase text-amber-300 bg-amber-400/10 px-1.5 py-0.5 rounded-full">Pending</span>
+                          )}
+                          <span className={`text-xs font-bold ${isCredit ? "text-emerald-300" : "text-red-300"}`}>
+                            {isCredit ? "+" : "-"}${Number(tx.amount).toFixed(2)}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            <button
+              onClick={scrollToHistory}
+              className="relative mt-6 w-full flex items-center justify-between bg-white/10 hover:bg-white/15 rounded-xl px-4 py-3 text-sm font-semibold text-white transition-colors"
+            >
+              View Transaction History
+              <ChevronRight className="w-4 h-4" />
+            </button>
           </div>
 
           {/* Pay with Cash App */}
@@ -304,7 +426,7 @@ function WalletPageInner() {
         </div>
 
         {/* Transaction History */}
-        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+        <div id="transaction-history" className="bg-white border border-slate-200 rounded-2xl overflow-hidden scroll-mt-6">
           <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
             <h3 className="font-bold text-[#081A36]">Transaction History</h3>
             <button onClick={() => fetchAll()} className="text-xs text-slate-500 hover:text-slate-800 flex items-center gap-1">
@@ -341,7 +463,7 @@ function WalletPageInner() {
                         </td>
                         <td className="px-4 py-3 text-slate-700">
                           {TX_TYPE_LABEL[tx.type] ?? tx.type}
-                          {tx.description && <p className="text-xs text-slate-400 mt-0.5">{tx.description}</p>}
+                          {txDisplayDescription(tx) && <p className="text-xs text-slate-400 mt-0.5">{txDisplayDescription(tx)}</p>}
                         </td>
                         <td className="px-4 py-3">
                           {isCredit ? (
