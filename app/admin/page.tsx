@@ -45,7 +45,8 @@ export default function AdminPage() {
   const [emails, setEmails] = useState<EmailEntry[]>([]);
   const [samples, setSamples] = useState<Sample[]>([]);
   const [payouts, setPayouts] = useState<Payout[]>([]);
-  const [pendingTopups, setPendingTopups] = useState<{id:string;userId:string;amount:number;description:string;createdAt:string;userName?:string;userEmail?:string}[]>([]);
+  const [pendingTopups, setPendingTopups] = useState<{id:string;userId:string;amount:number;description:string;createdAt:string;userName?:string;userEmail?:string;purpose?:string;receiptUrl?:string|null;orderNumber?:string|null}[]>([]);
+  const [receiptLightbox, setReceiptLightbox] = useState<string|null>(null);
   const [confirmingTopup, setConfirmingTopup] = useState<string|null>(null);
   const [manualCreditFor, setManualCreditFor] = useState<string|null>(null);
   const [manualCreditAmount, setManualCreditAmount] = useState("");
@@ -1537,13 +1538,28 @@ export default function AdminPage() {
                 </div>
               ) : pendingTopups.map(tx => (
                 <div key={tx.id} className="px-6 py-4 border-b border-slate-100 last:border-0 flex items-center justify-between gap-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-bold text-slate-900">{tx.userName ?? tx.userId}</span>
-                      <span className="text-xs text-slate-500">{tx.userEmail}</span>
+                  <div className="flex items-center gap-4 flex-1 min-w-0">
+                    {tx.purpose === "cashapp_topup" && (
+                      tx.receiptUrl ? (
+                        <button onClick={() => setReceiptLightbox(tx.receiptUrl!)} className="flex-shrink-0">
+                          <img src={tx.receiptUrl} alt="Payment receipt" className="w-16 h-16 object-cover rounded-lg border border-slate-200 hover:border-[#FF6A00]" />
+                        </button>
+                      ) : (
+                        <div className="w-16 h-16 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0 text-slate-300 text-[10px] text-center">No receipt</div>
+                      )
+                    )}
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <span className="font-bold text-slate-900">{tx.userName ?? tx.userId}</span>
+                        <span className="text-xs text-slate-500">{tx.userEmail}</span>
+                        {tx.purpose === "cashapp_topup" && (
+                          <span className="text-[10px] font-bold uppercase bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">Cash App</span>
+                        )}
+                      </div>
+                      <p className="text-xs text-slate-500">{tx.description}</p>
+                      {tx.orderNumber && <p className="text-xs text-slate-500">Order #: <span className="font-semibold text-slate-700">{tx.orderNumber}</span></p>}
+                      <p className="text-xs text-slate-400" suppressHydrationWarning>{etDateTime(tx.createdAt)}</p>
                     </div>
-                    <p className="text-xs text-slate-500">{tx.description}</p>
-                    <p className="text-xs text-slate-400" suppressHydrationWarning>{etDateTime(tx.createdAt)}</p>
                   </div>
                   <div className="flex items-center gap-3 flex-shrink-0">
                     <span className="text-2xl font-black text-emerald-600">${tx.amount}</span>
@@ -1559,6 +1575,12 @@ export default function AdminPage() {
                 </div>
               ))}
             </div>
+
+            {receiptLightbox && (
+              <div onClick={() => setReceiptLightbox(null)} className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-6 cursor-zoom-out">
+                <img src={receiptLightbox} alt="Payment receipt" className="max-w-full max-h-full rounded-lg shadow-2xl" />
+              </div>
+            )}
 
             {/* Whop payment + webhook activity */}
             <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">

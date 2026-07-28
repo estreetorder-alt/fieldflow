@@ -800,6 +800,7 @@ export interface WalletTransaction {
   id: string; userId: string; type: string; amount: number;
   balanceAfter: number; description: string; orderId?: string;
   status: string; createdAt: string;
+  purpose?: string; receiptUrl?: string | null; orderNumber?: string | null;
 }
 
 export async function getWalletBalance(userId: string): Promise<number> {
@@ -807,18 +808,23 @@ export async function getWalletBalance(userId: string): Promise<number> {
   return Number((data as Record<string,unknown>)?.wallet_balance ?? 0);
 }
 
+function mapWalletTx(r: Record<string, unknown>): WalletTransaction {
+  const metadata = (r.metadata as Record<string, unknown>) ?? {};
+  return {
+    id: r.id as string, userId: r.user_id as string, type: r.type as string,
+    amount: Number(r.amount), balanceAfter: Number(r.balance_after),
+    description: r.description as string, orderId: r.order_id as string | undefined,
+    status: r.status as string, createdAt: r.created_at as string,
+    purpose: (r.purpose as string) ?? undefined,
+    receiptUrl: (metadata.receiptUrl as string) ?? null,
+    orderNumber: (metadata.orderNumber as string) ?? null,
+  };
+}
+
 export async function getWalletTransactions(userId: string): Promise<WalletTransaction[]> {
   const { data } = await supabase.from("wallet_transactions")
     .select("*").eq("user_id", userId).order("created_at", { ascending: false }).limit(50);
-  return (data ?? []).map(r => {
-    const row = r as Record<string,unknown>;
-    return {
-      id: row.id as string, userId: row.user_id as string, type: row.type as string,
-      amount: Number(row.amount), balanceAfter: Number(row.balance_after),
-      description: row.description as string, orderId: row.order_id as string | undefined,
-      status: row.status as string, createdAt: row.created_at as string,
-    };
-  });
+  return (data ?? []).map(r => mapWalletTx(r as Record<string, unknown>));
 }
 
 export async function addWalletTopup(userId: string, amount: number, description: string): Promise<number> {
@@ -891,17 +897,17 @@ export async function refundWalletHold(userId: string, orderId: string): Promise
   await supabase.from("orders").update({ wallet_released: true, wallet_hold_amount: 0 }).eq("id", orderId);
 }
 
-export async function getAllWalletTopupsPending(): Promise<WalletTransaction[]> {
+export async function getAllWalletTopupsPending(): Promise<(WalletTransaction & { userName?: string; userEmail?: string })[]> {
   const { data } = await supabase.from("wallet_transactions")
     .select("*, users!wallet_transactions_user_id_fkey(name,email)")
     .eq("type", "topup").eq("status", "pending").order("created_at");
   return (data ?? []).map(r => {
     const row = r as Record<string,unknown>;
+    const user = row.users as { name?: string; email?: string } | null;
     return {
-      id: row.id as string, userId: row.user_id as string, type: row.type as string,
-      amount: Number(row.amount), balanceAfter: Number(row.balance_after),
-      description: row.description as string, orderId: row.order_id as string | undefined,
-      status: row.status as string, createdAt: row.created_at as string,
+      ...mapWalletTx(row),
+      userName: user?.name ?? undefined,
+      userEmail: user?.email ?? undefined,
     };
   });
 }

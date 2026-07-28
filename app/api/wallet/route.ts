@@ -44,25 +44,34 @@ export async function POST(request: NextRequest) {
   if (!userId || !["client","agent"].includes(userRole ?? ""))
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { amount, description } = await request.json();
+  const { amount, description, receiptUrl, orderNumber } = await request.json();
   if (!amount || Number(amount) <= 0)
     return NextResponse.json({ error: "Valid amount required" }, { status: 400 });
+
+  const isCashApp = Boolean(receiptUrl);
+  if (isCashApp && !String(receiptUrl).trim())
+    return NextResponse.json({ error: "Receipt screenshot is required" }, { status: 400 });
 
   // Create pending topup transaction (admin confirms after payment received)
   const txId = `wtx-${Date.now()}-${Math.random().toString(36).slice(2,5)}`;
   await supabase.from("wallet_transactions").insert({
     id: txId, user_id: userId, type: "topup",
     amount: Number(amount), balance_after: 0,
-    description: description ?? `Wallet top-up $${amount}`,
+    description: description ?? (isCashApp ? `Cash App payment — $${amount}` : `Wallet top-up $${amount}`),
     status: "pending",
+    purpose: isCashApp ? "cashapp_topup" : "manual_topup",
+    metadata: {
+      ...(receiptUrl ? { receiptUrl: String(receiptUrl) } : {}),
+      ...(orderNumber ? { orderNumber: String(orderNumber) } : {}),
+    },
   });
 
   // Notify admin
   const { getUserById } = await import("@/lib/db");
   const user = await getUserById(userId);
   await sendAdminNotification({
-    title: `💰 Wallet Top-up Request — $${amount}`,
-    message: `User: ${user?.name} (${user?.email})\nAmount: $${amount}\nTransaction: ${txId}\n\nConfirm payment received in Admin → Wallet tab.`,
+    title: isCashApp ? `💵 Cash App Payment Submitted — $${amount}` : `💰 Wallet Top-up Request — $${amount}`,
+    message: `User: ${user?.name} (${user?.email})\nAmount: $${amount}${orderNumber ? `\nOrder #: ${orderNumber}` : ""}\nTransaction: ${txId}${isCashApp ? `\nReceipt: ${receiptUrl}` : ""}\n\nConfirm payment received in Admin → Wallet tab.`,
     type: "topup_request",
   });
 
