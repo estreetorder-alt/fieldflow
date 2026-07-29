@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
   const userId = request.cookies.get("user_id")?.value;
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { subject, message, orderNumber } = await request.json();
+  const { subject, message, orderNumber, category } = await request.json();
   const text = String(message ?? "").trim();
   if (!text) return NextResponse.json({ error: "Please describe your request." }, { status: 400 });
 
@@ -17,7 +17,8 @@ export async function POST(request: NextRequest) {
   const id = `sc-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
 
   await supabase.from("support_chats").insert({
-    id, user_id: userId, kind: "request", status: "closed", subject: subject || null,
+    id, user_id: userId, kind: "request", status: "open",
+    category: category || "general", subject: subject || null,
   });
   await supabase.from("support_messages").insert({ chat_id: id, sender: "user", body: text });
 

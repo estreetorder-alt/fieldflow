@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getChat, wipeChat } from "@/lib/supportChat";
+import { getChat, closeChat } from "@/lib/supportChat";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -11,8 +11,8 @@ export async function POST(request: NextRequest, { params }: Params) {
   const chat = await getChat(id, userId);
   if (!chat) return NextResponse.json({ error: "Chat not found" }, { status: 404 });
 
-  // App-side wipe only, per your call — the Slack thread (if any) stays put
-  // as the permanent record.
-  await wipeChat(id);
+  // Persistent close — this chat now stays in the user's Support Center
+  // history instead of being deleted. Slack keeps the full transcript too.
+  await closeChat(id);
   return NextResponse.json({ ok: true });
 }

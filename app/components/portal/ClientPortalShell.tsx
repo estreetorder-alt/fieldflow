@@ -28,11 +28,11 @@ const NAV_ITEMS: NavItem[] = [
   { key: "invoices", label: "Invoices", icon: FileText, href: "#", soon: true },
   { key: "addresses", label: "Addresses", icon: MapPin, href: "#", soon: true },
   { key: "payment-methods", label: "Payment Methods", icon: CreditCard, href: "/client/wallet#payment-card" },
-  { key: "support", label: "Support", icon: Headset, href: "#" },
+  { key: "support", label: "Support", icon: Headset, href: "/client/support" },
   { key: "settings", label: "Settings", icon: Settings, href: "#", soon: true },
 ];
 
-function NavRow({ item, active, onSupportClick }: { item: NavItem; active: boolean; onSupportClick: () => void }) {
+function NavRow({ item, active }: { item: NavItem; active: boolean }) {
   const Icon = item.icon;
   const base = "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors";
 
@@ -42,19 +42,6 @@ function NavRow({ item, active, onSupportClick }: { item: NavItem; active: boole
         <span className="flex items-center gap-3"><Icon className="w-[18px] h-[18px]" />{item.label}</span>
         <span className="text-[10px] font-semibold uppercase tracking-wide bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded-full">Soon</span>
       </div>
-    );
-  }
-
-  if (item.key === "support") {
-    return (
-      <button
-        type="button"
-        onClick={onSupportClick}
-        className={`${base} text-left text-[var(--brand-ink-soft)] hover:bg-slate-50 hover:text-[var(--brand-navy)]`}
-      >
-        <Icon className="w-[18px] h-[18px]" />
-        {item.label}
-      </button>
     );
   }
 
@@ -89,12 +76,7 @@ function Sidebar({ active }: { active: ClientNavKey }) {
 
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
         {NAV_ITEMS.map((item) => (
-          <NavRow
-            key={item.key}
-            item={item}
-            active={item.key === active}
-            onSupportClick={() => supportRef.current?.open()}
-          />
+          <NavRow key={item.key} item={item} active={item.key === active} />
         ))}
       </nav>
 

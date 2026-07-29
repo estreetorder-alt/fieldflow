@@ -16,7 +16,7 @@ interface Chat {
 type View = "menu" | "chat" | "request" | "request-sent";
 
 export interface SupportWidgetHandle {
-  open: () => void;
+  open: (view?: "menu" | "chat" | "request") => void;
 }
 
 interface SupportWidgetProps {
@@ -32,7 +32,12 @@ const SupportWidget = forwardRef<SupportWidgetHandle, SupportWidgetProps>(functi
   const [view, setView] = useState<View>("menu");
 
   useImperativeHandle(ref, () => ({
-    open: () => setOpen(true),
+    open: (view = "menu") => {
+      setOpen(true);
+      if (view === "request") setView("request");
+      else if (view === "chat") startChat();
+      else setView("menu");
+    },
   }));
 
   // Live chat state
@@ -48,6 +53,7 @@ const SupportWidget = forwardRef<SupportWidgetHandle, SupportWidgetProps>(functi
   const [reqSubject, setReqSubject] = useState("");
   const [reqMessage, setReqMessage] = useState("");
   const [reqOrderNumber, setReqOrderNumber] = useState("");
+  const [reqCategory, setReqCategory] = useState("general");
   const [reqSubmitting, setReqSubmitting] = useState(false);
   const [reqError, setReqError] = useState<string | null>(null);
 
@@ -71,6 +77,7 @@ const SupportWidget = forwardRef<SupportWidgetHandle, SupportWidgetProps>(functi
     setReqSubject("");
     setReqMessage("");
     setReqOrderNumber("");
+    setReqCategory("general");
     setReqError(null);
   }
 
@@ -145,7 +152,9 @@ const SupportWidget = forwardRef<SupportWidgetHandle, SupportWidgetProps>(functi
       const res = await fetch("/api/support/request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ subject: reqSubject, message: reqMessage, orderNumber: reqOrderNumber }),
+        body: JSON.stringify({
+          subject: reqSubject, message: reqMessage, orderNumber: reqOrderNumber, category: reqCategory,
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -281,6 +290,21 @@ const SupportWidget = forwardRef<SupportWidgetHandle, SupportWidgetProps>(functi
                   {reqError && (
                     <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg p-2">{reqError}</p>
                   )}
+                  <div>
+                    <label className="text-xs font-semibold text-slate-500 block mb-1">What&apos;s this about?</label>
+                    <select
+                      value={reqCategory}
+                      onChange={(e) => setReqCategory(e.target.value)}
+                      className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6A00] bg-white"
+                    >
+                      <option value="order_issue">Order Issue</option>
+                      <option value="payment">Payment</option>
+                      <option value="billing">Billing</option>
+                      <option value="coverage">Coverage</option>
+                      <option value="technical">Technical</option>
+                      <option value="general">General</option>
+                    </select>
+                  </div>
                   <div>
                     <label className="text-xs font-semibold text-slate-500 block mb-1">Subject</label>
                     <input

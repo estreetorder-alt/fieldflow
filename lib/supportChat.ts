@@ -12,11 +12,13 @@ export interface SupportChat {
   id: string;
   userId: string;
   kind: "chat" | "request";
-  status: "open" | "handed_off" | "closed";
+  status: "open" | "handed_off" | "in_progress" | "resolved" | "closed";
+  category: string;
   subject?: string | null;
   slackChannel?: string | null;
   slackThreadTs?: string | null;
   createdAt: string;
+  updatedAt: string;
 }
 
 function mapChat(r: Record<string, unknown>): SupportChat {
@@ -25,10 +27,12 @@ function mapChat(r: Record<string, unknown>): SupportChat {
     userId: r.user_id as string,
     kind: r.kind as SupportChat["kind"],
     status: r.status as SupportChat["status"],
+    category: (r.category as string) ?? "general",
     subject: (r.subject as string) ?? null,
     slackChannel: (r.slack_channel as string) ?? null,
     slackThreadTs: (r.slack_thread_ts as string) ?? null,
     createdAt: r.created_at as string,
+    updatedAt: (r.updated_at as string) ?? (r.created_at as string),
   };
 }
 
@@ -74,10 +78,37 @@ export async function addMessage(chatId: string, sender: SupportMessage["sender"
   await supabase.from("support_messages").insert({ chat_id: chatId, sender, body });
 }
 
-/** Wipes a chat from the app's side only. Slack keeps its own copy of the thread. */
-export async function wipeChat(chatId: string): Promise<void> {
-  await supabase.from("support_messages").delete().eq("chat_id", chatId);
-  await supabase.from("support_chats").delete().eq("id", chatId);
+/**
+ * Closes a chat WITHOUT deleting it — supersedes the old wipeChat().
+ * Rows now persist so they can show up in the Support Center's
+ * "My Support Requests" history. Slack still holds the full transcript
+ * independently, this just marks the app-side record as closed.
+ */
+export async function closeChat(chatId: string): Promise<void> {
+  await supabase.from("support_chats").update({ status: "closed", updated_at: new Date().toISOString() }).eq("id", chatId);
+}
+
+export interface SupportListItem extends SupportChat {
+  lastMessage?: string | null;
+}
+
+/** Paginated list of a user's support chats + requests, newest first, for the Support Center table. */
+export async function listForUser(
+  userId: string,
+  { page = 1, pageSize = 5 }: { page?: number; pageSize?: number } = {}
+): Promise<{ items: SupportListItem[]; total: number }> {
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+
+  const { data, count } = await supabase
+    .from("support_chats")
+    .select("*", { count: "exact" })
+    .eq("user_id", userId)
+    .order("updated_at", { ascending: false })
+    .range(from, to);
+
+  const items = (data ?? []).map((r) => mapChat(r as Record<string, unknown>));
+  return { items, total: count ?? 0 };
 }
 
 export async function findChatByThreadTs(threadTs: string): Promise<SupportChat | null> {
