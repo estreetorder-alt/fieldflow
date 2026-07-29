@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifySlackSignature, postToSupportChannel } from "@/lib/slackBot";
-import { findChatByThreadTs, addMessage, wipeChat } from "@/lib/supportChat";
+import { findChatByThreadTs, addMessage, closeChat } from "@/lib/supportChat";
 
 // Point your Slack App's Event Subscriptions request URL here:
 //   https://your-domain.com/api/slack/events
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
         const text = String(event.text ?? "").trim();
         if (text.toLowerCase() === "/close") {
           await postToSupportChannel("Chat closed by support agent. ✅", event.thread_ts);
-          await wipeChat(chat.id);
+          await closeChat(chat.id);
         } else if (text) {
           await addMessage(chat.id, "agent", text);
         }
