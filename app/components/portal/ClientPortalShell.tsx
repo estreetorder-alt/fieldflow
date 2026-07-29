@@ -6,6 +6,7 @@ import {
   Home, Wallet, Package, BarChart3, FileText, MapPin, CreditCard,
   Headset, Settings, Crown, Bell, ChevronDown, ArrowUpRight, LogOut,
 } from "lucide-react";
+import SupportWidget from "../support/SupportWidget";
 
 export type ClientNavKey =
   | "dashboard" | "wallet" | "orders" | "reports" | "invoices"
@@ -96,12 +97,7 @@ function Sidebar({ active }: { active: ClientNavKey }) {
             <p className="text-sm font-bold text-[var(--brand-navy)]">Need Help?</p>
           </div>
           <p className="text-xs text-[var(--brand-ink-soft)] leading-snug mb-3">Our support team is here to help you 24/7.</p>
-          <a
-            href="/faq"
-            className="block text-center text-xs font-bold text-[var(--brand-navy)] bg-white border border-[var(--brand-border)] hover:border-[#FF6A00] hover:text-[#FF6A00] py-2 rounded-lg transition-colors"
-          >
-            Contact Support
-          </a>
+          <SupportWidget />
         </div>
       </div>
     </aside>
