@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { Headset, X, MessageCircle, FileText, Send, Loader2, CheckCircle } from "lucide-react";
 
 interface Message {
@@ -15,9 +15,25 @@ interface Chat {
 
 type View = "menu" | "chat" | "request" | "request-sent";
 
-export default function SupportWidget() {
+export interface SupportWidgetHandle {
+  open: () => void;
+}
+
+interface SupportWidgetProps {
+  /** Hide the built-in "Contact Support" button — use when another element (e.g. a nav row) triggers open() via ref. */
+  hideTrigger?: boolean;
+}
+
+const SupportWidget = forwardRef<SupportWidgetHandle, SupportWidgetProps>(function SupportWidget(
+  { hideTrigger = false },
+  ref
+) {
   const [open, setOpen] = useState(false);
   const [view, setView] = useState<View>("menu");
+
+  useImperativeHandle(ref, () => ({
+    open: () => setOpen(true),
+  }));
 
   // Live chat state
   const [chat, setChat] = useState<Chat | null>(null);
@@ -146,12 +162,14 @@ export default function SupportWidget() {
 
   return (
     <>
-      <button
-        onClick={() => setOpen(true)}
-        className="block w-full text-center text-xs font-bold text-[var(--brand-navy)] bg-white border border-[var(--brand-border)] hover:border-[#FF6A00] hover:text-[#FF6A00] py-2 rounded-lg transition-colors"
-      >
-        Contact Support
-      </button>
+      {!hideTrigger && (
+        <button
+          onClick={() => setOpen(true)}
+          className="block w-full text-center text-xs font-bold text-[var(--brand-navy)] bg-white border border-[var(--brand-border)] hover:border-[#FF6A00] hover:text-[#FF6A00] py-2 rounded-lg transition-colors"
+        >
+          Contact Support
+        </button>
+      )}
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:justify-end p-0 sm:p-6">
@@ -326,4 +344,6 @@ export default function SupportWidget() {
       )}
     </>
   );
-}
+});
+
+export default SupportWidget;

@@ -1,12 +1,12 @@
 "use client";
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Home, Wallet, Package, BarChart3, FileText, MapPin, CreditCard,
   Headset, Settings, Crown, Bell, ChevronDown, ArrowUpRight, LogOut,
 } from "lucide-react";
-import SupportWidget from "../support/SupportWidget";
+import SupportWidget, { type SupportWidgetHandle } from "../support/SupportWidget";
 
 export type ClientNavKey =
   | "dashboard" | "wallet" | "orders" | "reports" | "invoices"
@@ -28,11 +28,11 @@ const NAV_ITEMS: NavItem[] = [
   { key: "invoices", label: "Invoices", icon: FileText, href: "#", soon: true },
   { key: "addresses", label: "Addresses", icon: MapPin, href: "#", soon: true },
   { key: "payment-methods", label: "Payment Methods", icon: CreditCard, href: "/client/wallet#payment-card" },
-  { key: "support", label: "Support", icon: Headset, href: "/faq" },
+  { key: "support", label: "Support", icon: Headset, href: "#" },
   { key: "settings", label: "Settings", icon: Settings, href: "#", soon: true },
 ];
 
-function NavRow({ item, active }: { item: NavItem; active: boolean }) {
+function NavRow({ item, active, onSupportClick }: { item: NavItem; active: boolean; onSupportClick: () => void }) {
   const Icon = item.icon;
   const base = "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors";
 
@@ -42,6 +42,19 @@ function NavRow({ item, active }: { item: NavItem; active: boolean }) {
         <span className="flex items-center gap-3"><Icon className="w-[18px] h-[18px]" />{item.label}</span>
         <span className="text-[10px] font-semibold uppercase tracking-wide bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded-full">Soon</span>
       </div>
+    );
+  }
+
+  if (item.key === "support") {
+    return (
+      <button
+        type="button"
+        onClick={onSupportClick}
+        className={`${base} text-left text-[var(--brand-ink-soft)] hover:bg-slate-50 hover:text-[var(--brand-navy)]`}
+      >
+        <Icon className="w-[18px] h-[18px]" />
+        {item.label}
+      </button>
     );
   }
 
@@ -61,6 +74,8 @@ function NavRow({ item, active }: { item: NavItem; active: boolean }) {
 }
 
 function Sidebar({ active }: { active: ClientNavKey }) {
+  const supportRef = useRef<SupportWidgetHandle>(null);
+
   return (
     <aside className="hidden lg:flex lg:flex-col w-64 shrink-0 bg-white border-r border-[var(--brand-border)] h-screen sticky top-0">
       <div className="px-5 pt-6 pb-5 border-b border-[var(--brand-border)]">
@@ -74,7 +89,12 @@ function Sidebar({ active }: { active: ClientNavKey }) {
 
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
         {NAV_ITEMS.map((item) => (
-          <NavRow key={item.key} item={item} active={item.key === active} />
+          <NavRow
+            key={item.key}
+            item={item}
+            active={item.key === active}
+            onSupportClick={() => supportRef.current?.open()}
+          />
         ))}
       </nav>
 
@@ -97,7 +117,7 @@ function Sidebar({ active }: { active: ClientNavKey }) {
             <p className="text-sm font-bold text-[var(--brand-navy)]">Need Help?</p>
           </div>
           <p className="text-xs text-[var(--brand-ink-soft)] leading-snug mb-3">Our support team is here to help you 24/7.</p>
-          <SupportWidget />
+          <SupportWidget ref={supportRef} />
         </div>
       </div>
     </aside>
