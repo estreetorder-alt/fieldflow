@@ -18,6 +18,8 @@ interface NavItem {
   icon: React.ComponentType<{ className?: string }>;
   href: string;
   soon?: boolean;
+  /** If set, clicking this item opens the support widget popup instead of navigating. */
+  opensSupport?: boolean;
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -28,11 +30,11 @@ const NAV_ITEMS: NavItem[] = [
   { key: "invoices", label: "Invoices", icon: FileText, href: "#", soon: true },
   { key: "addresses", label: "Addresses", icon: MapPin, href: "#", soon: true },
   { key: "payment-methods", label: "Payment Methods", icon: CreditCard, href: "/client/wallet#payment-card" },
-  { key: "support", label: "Support", icon: Headset, href: "/client/support" },
+  { key: "support", label: "Support", icon: Headset, href: "/client/support", opensSupport: true },
   { key: "settings", label: "Settings", icon: Settings, href: "#", soon: true },
 ];
 
-function NavRow({ item, active }: { item: NavItem; active: boolean }) {
+function NavRow({ item, active, onOpenSupport }: { item: NavItem; active: boolean; onOpenSupport: () => void }) {
   const Icon = item.icon;
   const base = "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors";
 
@@ -42,6 +44,25 @@ function NavRow({ item, active }: { item: NavItem; active: boolean }) {
         <span className="flex items-center gap-3"><Icon className="w-[18px] h-[18px]" />{item.label}</span>
         <span className="text-[10px] font-semibold uppercase tracking-wide bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded-full">Soon</span>
       </div>
+    );
+  }
+
+  // The "Support" row opens the same live-chat widget as the "Contact Support"
+  // button below, instead of navigating away to a separate page.
+  if (item.opensSupport) {
+    return (
+      <button
+        type="button"
+        onClick={onOpenSupport}
+        className={`${base} ${
+          active
+            ? "bg-[#FF6A00]/10 text-[#FF6A00]"
+            : "text-[var(--brand-ink-soft)] hover:bg-slate-50 hover:text-[var(--brand-navy)]"
+        }`}
+      >
+        <Icon className="w-[18px] h-[18px]" />
+        {item.label}
+      </button>
     );
   }
 
@@ -76,7 +97,12 @@ function Sidebar({ active }: { active: ClientNavKey }) {
 
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
         {NAV_ITEMS.map((item) => (
-          <NavRow key={item.key} item={item} active={item.key === active} />
+          <NavRow
+            key={item.key}
+            item={item}
+            active={item.key === active}
+            onOpenSupport={() => supportRef.current?.open("menu")}
+          />
         ))}
       </nav>
 
