@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getChat, getMessages, addMessage, handOffToSlack } from "@/lib/supportChat";
-import { getUserById } from "@/lib/db";
-import { postToSupportChannel, isSlackBotConfigured } from "@/lib/slackBot";
+import { getChat, getMessages, addMessage } from "@/lib/supportChat";
 
 type Params = { params: Promise<{ id: string }> };
 
-// Client polls this every few seconds while a chat is open to pick up
-// whatever the support agent has typed back in the Slack thread.
+// Client polls this every few seconds while a ticket is open to pick up
+// whatever the support team has replied in the admin Support Center.
 export async function GET(request: NextRequest, { params }: Params) {
   const userId = request.cookies.get("user_id")?.value;
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -37,27 +35,14 @@ export async function POST(request: NextRequest, { params }: Params) {
 
   if (chat.status === "open") {
     // First substantive reply from the client = the "reason" for contacting
-    // support. Forward the whole thing to Slack as a new thread right away.
-    if (!isSlackBotConfigured()) {
-      await addMessage(
-        id,
-        "bot",
-        "Live chat isn't fully set up yet on our end — please use \"Submit a request\" instead and we'll follow up by email."
-      );
-    } else {
-      const user = await getUserById(userId);
-      const header = `🆘 *New support chat* — ${user?.name ?? userId} (${user?.email ?? "no email on file"})`;
-      const { ok, ts } = await postToSupportChannel(`${header}\n\n${text}`);
-      if (ok && ts) {
-        await handOffToSlack(id, ts);
-        await addMessage(id, "bot", "Thanks — I've brought in our support team, they'll reply right here.");
-      } else {
-        await addMessage(id, "bot", "Sorry, I couldn't reach our support team just now. Please try \"Submit a request\" instead.");
-      }
-    }
-  } else if (isSlackBotConfigured() && chat.slackThreadTs) {
-    // Already handed off — relay straight into the existing Slack thread.
-    await postToSupportChannel(text, chat.slackThreadTs);
+    // support. Logged as a ticket for the admin Support Center to pick up —
+    // for anything urgent, the Tawk chat bubble in the corner reaches a live
+    // agent immediately.
+    await addMessage(
+      id,
+      "bot",
+      "Thanks — this has been logged for our support team and they'll reply right here. For a live conversation right now, use the chat bubble in the corner."
+    );
   }
 
   const [messages, fresh] = await Promise.all([getMessages(id), getChat(id, userId)]);

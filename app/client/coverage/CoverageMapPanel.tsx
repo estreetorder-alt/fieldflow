@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { MapPin, CheckCircle, AlertTriangle, Search } from "lucide-react";
+import { MapPin, CheckCircle, Search } from "lucide-react";
 import CoverageMap, { type CoverageFlyTarget } from "@/app/components/CoverageMap";
 
 async function geocodeZip(zip: string): Promise<{ lng: number; lat: number; place: string } | null> {
@@ -68,7 +68,7 @@ export default function CoverageMapPanel() {
       </div>
 
       {result && (
-        <div className={`max-w-xl flex items-center gap-3 p-4 rounded-xl text-sm font-medium border ${result.covered ? "bg-green-50 text-green-800 border-green-200" : "bg-amber-50 text-amber-800 border-amber-200"}`}>
+        <div className="max-w-xl flex items-center gap-3 p-4 rounded-xl text-sm font-medium border bg-green-50 text-green-800 border-green-200">
           {result.covered ? (
             <>
               <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0" />
@@ -76,7 +76,7 @@ export default function CoverageMapPanel() {
             </>
           ) : (
             <>
-              <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+              <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0" />
               <span>We have <strong>a representative</strong> in the area for ZIP {zip}. Your order will be queued and matched shortly.</span>
             </>
           )}

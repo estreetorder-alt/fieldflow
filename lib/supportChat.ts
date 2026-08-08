@@ -15,6 +15,9 @@ export interface SupportChat {
   status: "open" | "handed_off" | "in_progress" | "resolved" | "closed";
   category: string;
   subject?: string | null;
+  /** Legacy fields from the old Slack-based live-chat handoff — retained
+   *  read-only so historical tickets still display correctly; nothing
+   *  writes to these anymore now that Tawk.to handles live chat. */
   slackChannel?: string | null;
   slackThreadTs?: string | null;
   createdAt: string;
@@ -81,8 +84,7 @@ export async function addMessage(chatId: string, sender: SupportMessage["sender"
 /**
  * Closes a chat WITHOUT deleting it — supersedes the old wipeChat().
  * Rows now persist so they can show up in the Support Center's
- * "My Support Requests" history. Slack still holds the full transcript
- * independently, this just marks the app-side record as closed.
+ * "My Support Requests" history.
  */
 export async function closeChat(chatId: string): Promise<void> {
   await supabase.from("support_chats").update({ status: "closed", updated_at: new Date().toISOString() }).eq("id", chatId);
@@ -109,25 +111,4 @@ export async function listForUser(
 
   const items = (data ?? []).map((r) => mapChat(r as Record<string, unknown>));
   return { items, total: count ?? 0 };
-}
-
-export async function findChatByThreadTs(threadTs: string): Promise<SupportChat | null> {
-  const { data } = await supabase
-    .from("support_chats")
-    .select("*")
-    .eq("slack_thread_ts", threadTs)
-    .neq("status", "closed")
-    .maybeSingle();
-  return data ? mapChat(data as Record<string, unknown>) : null;
-}
-
-export async function handOffToSlack(chatId: string, threadTs: string): Promise<void> {
-  await supabase
-    .from("support_chats")
-    .update({
-      status: "handed_off",
-      slack_thread_ts: threadTs,
-      slack_channel: process.env.SLACK_SUPPORT_CHANNEL_ID ?? null,
-    })
-    .eq("id", chatId);
 }

@@ -12,7 +12,7 @@ export async function POST(request: NextRequest, { params }: Params) {
   if (!chat) return NextResponse.json({ error: "Chat not found" }, { status: 404 });
 
   // Persistent close — this chat now stays in the user's Support Center
-  // history instead of being deleted. Slack keeps the full transcript too.
+  // history instead of being deleted.
   await closeChat(id);
   return NextResponse.json({ ok: true });
 }

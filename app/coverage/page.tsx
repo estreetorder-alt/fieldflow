@@ -3,7 +3,7 @@ import { useState } from "react";
 import PublicNav from "../components/PublicNav";
 import PublicFooter from "../components/PublicFooter";
 import Link from "next/link";
-import { MapPin, CheckCircle, AlertTriangle, Search } from "lucide-react";
+import { MapPin, CheckCircle, Search } from "lucide-react";
 import CoverageMap, { type CoverageFlyTarget } from "../components/CoverageMap";
 
 // Looks up a ZIP's coordinates via Mapbox's public geocoding endpoint (same
@@ -67,7 +67,7 @@ function ZipChecker({ onFound }: { onFound: (target: CoverageFlyTarget) => void 
         </button>
       </div>
       {result && (
-        <div className={`mt-4 max-w-xl mx-auto flex items-center gap-3 p-4 rounded-xl text-sm font-medium border ${result.covered ? "bg-green-50 text-green-800 border-green-200" : "bg-amber-50 text-amber-800 border-amber-200"}`}>
+        <div className="mt-4 max-w-xl mx-auto flex items-center gap-3 p-4 rounded-xl text-sm font-medium border bg-green-50 text-green-800 border-green-200">
           {result.covered ? (
             <>
               <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0" />
@@ -75,7 +75,7 @@ function ZipChecker({ onFound }: { onFound: (target: CoverageFlyTarget) => void 
             </>
           ) : (
             <>
-              <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+              <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0" />
               <span>We have <strong>a representative</strong> in the area for ZIP {zip}. Your order will be queued and matched shortly. <Link href="/register/agent" className="underline font-bold">Become an agent here →</Link></span>
             </>
           )}

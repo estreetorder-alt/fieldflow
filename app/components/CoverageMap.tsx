@@ -20,6 +20,23 @@ const HUBS: { name: string; lng: number; lat: number }[] = [
 
 export interface CoverageFlyTarget { lng: number; lat: number; zoom?: number; label?: string }
 
+// Builds a teardrop-shaped map pin (instead of a plain dot) so markers read
+// clearly against the 3D terrain, with a soft drop shadow to match the
+// map's depth.
+function createPinElement(color: string, size = 30): HTMLDivElement {
+  const el = document.createElement("div");
+  el.style.width = `${size}px`;
+  el.style.height = `${size}px`;
+  el.style.filter = "drop-shadow(0 3px 4px rgba(0,0,0,0.45))";
+  el.innerHTML = `
+    <svg width="${size}" height="${size}" viewBox="0 0 24 24" style="display:block">
+      <path fill="${color}" stroke="rgba(255,255,255,0.9)" stroke-width="1.2"
+        d="M12 0C7 0 3 4 3 9c0 6.5 9 15 9 15s9-8.5 9-15c0-5-4-9-9-9z" />
+      <circle cx="12" cy="9" r="3.4" fill="rgba(255,255,255,0.95)" />
+    </svg>`;
+  return el;
+}
+
 export default function CoverageMap({ flyTo }: { flyTo?: CoverageFlyTarget | null }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
@@ -38,7 +55,7 @@ export default function CoverageMap({ flyTo }: { flyTo?: CoverageFlyTarget | nul
 
     const map = new mapboxgl.Map({
       container: containerRef.current,
-      style: "mapbox://styles/mapbox/dark-v11",
+      style: "mapbox://styles/mapbox/satellite-streets-v12",
       center: [-95, 39],
       zoom: 3.3,
       pitch: 45,
@@ -69,17 +86,10 @@ export default function CoverageMap({ flyTo }: { flyTo?: CoverageFlyTarget | nul
       });
 
       HUBS.forEach((hub) => {
-        const el = document.createElement("div");
-        el.style.width = "14px";
-        el.style.height = "14px";
-        el.style.borderRadius = "50%";
-        el.style.background = "#EA580C";
-        el.style.boxShadow = "0 0 12px 3px rgba(234,88,12,0.8)";
-        el.style.border = "2px solid rgba(255,255,255,0.8)";
-
-        new mapboxgl.Marker({ element: el })
+        const el = createPinElement("#EA580C", 28);
+        new mapboxgl.Marker({ element: el, anchor: "bottom" })
           .setLngLat([hub.lng, hub.lat])
-          .setPopup(new mapboxgl.Popup({ offset: 16, closeButton: false }).setText(hub.name))
+          .setPopup(new mapboxgl.Popup({ offset: 24, closeButton: false }).setText(hub.name))
           .addTo(map);
       });
     });
@@ -109,15 +119,10 @@ export default function CoverageMap({ flyTo }: { flyTo?: CoverageFlyTarget | nul
       });
 
       searchMarkerRef.current?.remove();
-      const el = document.createElement("div");
-      el.className = "coverage-search-pin";
-      el.style.width = "16px";
-      el.style.height = "16px";
-      el.style.borderRadius = "50%";
-      el.style.background = "#EA580C";
-      el.style.border = "3px solid rgba(255,255,255,0.9)";
-      const marker = new mapboxgl.Marker({ element: el }).setLngLat([flyTo.lng, flyTo.lat]);
-      if (flyTo.label) marker.setPopup(new mapboxgl.Popup({ offset: 16, closeButton: false }).setText(flyTo.label));
+      const el = createPinElement("#16A34A", 34);
+      el.classList.add("coverage-search-pin");
+      const marker = new mapboxgl.Marker({ element: el, anchor: "bottom" }).setLngLat([flyTo.lng, flyTo.lat]);
+      if (flyTo.label) marker.setPopup(new mapboxgl.Popup({ offset: 28, closeButton: false }).setText(flyTo.label));
       marker.addTo(map);
       searchMarkerRef.current = marker;
     };

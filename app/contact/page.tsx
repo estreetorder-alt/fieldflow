@@ -2,11 +2,10 @@
 import { useState } from "react";
 import PublicNav from "../components/PublicNav";
 import PublicFooter from "../components/PublicFooter";
-import { Mail, Phone, MapPin, Send, CheckCircle, XCircle } from "lucide-react";
+import { Mail, MapPin, Send, CheckCircle, XCircle } from "lucide-react";
 
 const INFO_CARDS = [
   { icon: Mail, title: "Email Us", line1: "contact@snapect.com", line2: "We reply within 24 hours" },
-  { icon: Phone, title: "Call Us", line1: "1-800-SNAPECT", line2: "Mon-Fri, 9am-6pm EST" },
   { icon: MapPin, title: "Coverage", line1: "35+ States", line2: "Nationwide service" },
 ];
 

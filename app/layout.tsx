@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, Space_Grotesk, Plus_Jakarta_Sans } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import SmoothScroll from "./components/SmoothScroll";
 
@@ -88,6 +89,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={`${inter.variable} ${spaceGrotesk.variable} ${plusJakarta.variable} font-sans antialiased`} suppressHydrationWarning>
         <SmoothScroll />
         {children}
+        {/* Tawk.to live chat widget — loads site-wide, after the page is interactive */}
+        <Script id="tawk-to-widget" strategy="afterInteractive">
+          {`
+            var Tawk_API = Tawk_API || {}, Tawk_LoadStart = new Date();
+            (function () {
+              var s1 = document.createElement("script"), s0 = document.getElementsByTagName("script")[0];
+              s1.async = true;
+              s1.src = 'https://embed.tawk.to/6a775e71d702231d4ea99397/1jvh4hr4r';
+              s1.charset = 'UTF-8';
+              s1.setAttribute('crossorigin', '*');
+              s0.parentNode.insertBefore(s1, s0);
+            })();
+          `}
+        </Script>
       </body>
     </html>
   );
