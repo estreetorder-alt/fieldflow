@@ -32,8 +32,8 @@ export async function GET(request: NextRequest, { params }: Params) {
   if (userRole === "client") {
     const masked = {
       ...order,
-      agent: order.agent ? { name: anonUserId(order.assignedAgentId), email: "", phone: "" } : null,
-      bids: (order.bids ?? []).map(b => ({ ...b, agentName: anonUserId(b.agentId) })),
+      agent: order.agent ? { name: anonUserId(order.assignedAgentId, order.id), email: "", phone: "" } : null,
+      bids: (order.bids ?? []).map(b => ({ ...b, agentName: anonUserId(b.agentId, order.id) })),
       photos: (order.photos ?? []).filter(p => p.approved !== false),
     };
     return NextResponse.json({ order: masked });
@@ -57,7 +57,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     if (order.status !== "pending" || order.assignedAgentId)
       return NextResponse.json({ error: "Order not available" }, { status: 409 });
     await updateOrder(id, { status: "in_progress", assignedAgentId: userId, offerAcceptedAt: new Date().toISOString() });
-    await addStatusHistory(id, "in_progress", `${anonUserId(userId)} accepted the order`);
+    await addStatusHistory(id, "in_progress", `${anonUserId(userId, id)} accepted the order`);
     return NextResponse.json({ ok: true });
   }
 

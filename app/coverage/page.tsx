@@ -4,9 +4,29 @@ import PublicNav from "../components/PublicNav";
 import PublicFooter from "../components/PublicFooter";
 import Link from "next/link";
 import { MapPin, CheckCircle, AlertTriangle, Search } from "lucide-react";
-import CoverageMap from "../components/CoverageMap";
+import CoverageMap, { type CoverageFlyTarget } from "../components/CoverageMap";
 
-function ZipChecker() {
+// Looks up a ZIP's coordinates via Mapbox's public geocoding endpoint (same
+// token already used for the 3D map) so the map can fly to it. Best-effort —
+// if it fails, the coverage result still shows, it just skips the zoom.
+async function geocodeZip(zip: string): Promise<{ lng: number; lat: number; place: string } | null> {
+  const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+  if (!token) return null;
+  try {
+    const r = await fetch(
+      `https://api.mapbox.com/geocoding/v5/mapbox.places/${zip}.json?country=us&types=postcode&access_token=${token}`
+    );
+    const d = await r.json();
+    const feature = d?.features?.[0];
+    if (!feature?.center) return null;
+    const [lng, lat] = feature.center as [number, number];
+    return { lng, lat, place: feature.place_name ?? zip };
+  } catch {
+    return null;
+  }
+}
+
+function ZipChecker({ onFound }: { onFound: (target: CoverageFlyTarget) => void }) {
   const [zip, setZip] = useState("");
   const [result, setResult] = useState<{ covered: boolean; agentCount: number } | null>(null);
   const [loading, setLoading] = useState(false);
@@ -14,9 +34,13 @@ function ZipChecker() {
   async function check() {
     if (zip.length !== 5) return;
     setLoading(true);
-    const r = await fetch("/api/coverage-check", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ zip }) });
+    const [r, geo] = await Promise.all([
+      fetch("/api/coverage-check", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ zip }) }),
+      geocodeZip(zip),
+    ]);
     const d = await r.json();
     setResult(d);
+    if (geo) onFound({ lng: geo.lng, lat: geo.lat, zoom: 10.5, label: geo.place });
     setLoading(false);
   }
 
@@ -52,7 +76,7 @@ function ZipChecker() {
           ) : (
             <>
               <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />
-              <span><strong>No agents yet</strong> in ZIP {zip}. Your order will be queued. <Link href="/register/agent" className="underline font-bold">Become the first agent here →</Link></span>
+              <span>We have <strong>a representative</strong> in the area for ZIP {zip}. Your order will be queued and matched shortly. <Link href="/register/agent" className="underline font-bold">Become an agent here →</Link></span>
             </>
           )}
         </div>
@@ -73,6 +97,8 @@ const STATES = [
 ];
 
 export default function CoveragePage() {
+  const [flyTarget, setFlyTarget] = useState<CoverageFlyTarget | null>(null);
+
   return (
     <div className="min-h-screen bg-[#FAF6EF] pt-20">
       <PublicNav />
@@ -85,13 +111,13 @@ export default function CoveragePage() {
         <p className="text-lg text-[#6B5D52] max-w-2xl mx-auto mb-10">
           Our network of professional field agents covers 35+ states with rapid response times. Check if we service your area.
         </p>
-        <ZipChecker />
+        <ZipChecker onFound={setFlyTarget} />
       </section>
 
-      {/* Live 3D coverage map */}
+      {/* Live 3D coverage map — zooms in on the searched ZIP */}
       <section className="px-4 max-w-6xl mx-auto">
         <div className="relative h-[420px] rounded-3xl overflow-hidden border border-[#2A2320] bg-[#1C1917]">
-          <CoverageMap />
+          <CoverageMap flyTo={flyTarget} />
         </div>
       </section>
 

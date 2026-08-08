@@ -74,7 +74,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               "description": "America's trusted BPO and REO field inspection photography platform.",
               "contactPoint": {
                 "@type": "ContactPoint",
-                "telephone": "+1-941-723-3200",
+                "email": "info@snapect.com",
                 "contactType": "customer service",
                 "availableLanguage": "English"
               },

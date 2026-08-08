@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   MessageCircle, FileText, Clock, ShieldCheck, Ticket, LifeBuoy,
-  ChevronDown, ChevronRight, ChevronLeft, Mail, Phone, BookOpen, Lock, ArrowUpRight,
+  ChevronDown, ChevronRight, ChevronLeft, Mail, BookOpen, Lock, ArrowUpRight,
 } from "lucide-react";
 import SupportWidget, { type SupportWidgetHandle } from "./SupportWidget";
 import type { SupportListItem } from "@/lib/supportChat";
@@ -275,12 +275,6 @@ export default function SupportCenterPage({ pageSize = 5 }: { pageSize?: number 
               <Mail className="w-4 h-4" />
               <span>
                 Email Support<br /><span className="text-xs text-[var(--brand-ink-faint)]">info@snapect.com</span>
-              </span>
-            </a>
-            <a href="tel:+17869526816" className="flex items-center gap-2.5 py-1.5 text-sm text-[var(--brand-ink-soft)] hover:text-[var(--brand-navy)]">
-              <Phone className="w-4 h-4" />
-              <span>
-                Call Us<br /><span className="text-xs text-[var(--brand-ink-faint)]">+1 (786) 952-6816</span>
               </span>
             </a>
             <button onClick={() => setTab("faq")} className="w-full flex items-center gap-2.5 py-1.5 text-sm text-[var(--brand-ink-soft)] hover:text-[var(--brand-navy)] text-left">

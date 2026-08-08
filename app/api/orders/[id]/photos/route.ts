@@ -18,7 +18,7 @@ export async function POST(request: NextRequest, { params }: Params) {
   const body = await request.json();
 
   // Admin: batch upload on behalf of the assigned agent — the vendor sees it as
-  // the anonymized agent ("User 1234567"), never as admin.
+  // the anonymized agent ("Agent #A93F2C"), never as admin.
   if (userRole === "admin") {
     if (!order.assignedAgentId)
       return NextResponse.json({ error: "This order has no assigned agent — assign one before uploading on their behalf" }, { status: 400 });
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest, { params }: Params) {
     }
     // Timeline entry attributed to the anonymized agent, not admin
     await addStatusHistory(id, order.status,
-      `${anonUserId(order.assignedAgentId)} uploaded ${photos.length} photo${photos.length !== 1 ? "s" : ""}`);
+      `${anonUserId(order.assignedAgentId, order.id)} uploaded ${photos.length} photo${photos.length !== 1 ? "s" : ""}`);
     return NextResponse.json({ photos }, { status: 201 });
   }
 

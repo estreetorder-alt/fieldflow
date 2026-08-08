@@ -26,7 +26,7 @@ const CASHAPP_ID = "$snapect";
 const TX_TYPE_LABEL: Record<string, string> = {
   topup: "Top-up",
   deduction: "Order Payment",
-  hold: "Service Charge",
+  hold: "Payment", // funds leave the wallet immediately — this is a completed payment, not a pending hold
   release: "Payout Released",
   refund: "Refund",
 };
@@ -41,12 +41,14 @@ function shortOrderId(id?: string | null): string {
 }
 
 // Renders the description for a transaction. "hold" transactions are
-// re-labeled as a service charge with a short order reference — this is
+// re-labeled as a completed payment with a short order reference — this is
 // computed at render time from tx.orderId, so it applies retroactively to
-// every existing transaction too, not just new ones.
+// every existing transaction too, not just new ones. The money already left
+// the wallet the moment this row was created, so it reads as "Paid", never
+// as pending/on-hold.
 function txDisplayDescription(tx: WalletTx): string {
   if (tx.type === "hold") {
-    return `Service charge for order ${shortOrderId(tx.orderId)}`;
+    return `Paid — order ${shortOrderId(tx.orderId)}`;
   }
   return tx.description;
 }

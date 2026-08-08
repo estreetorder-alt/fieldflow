@@ -15,7 +15,7 @@ interface Order { id: string; address: string; status: string; clientId: string;
 interface PhotoSub { id: string; agentId: string; agentName?: string; orderId: string | null; serviceName: string; photos: { label: string; filename: string; url: string }[]; status: string; createdAt: string; }
 interface Bid { id: string; agentId: string; agentName: string; agentRating: number | null; amount: number; message: string; placedAt: string; status: string; placedByAdmin?: boolean; }
 interface Agent { id: string; name: string; email: string; phone: string; coverageZone: string; vehicle: string; available: boolean; rating: number; totalEarnings: number; pendingPayout: number; completedJobs: number; grade?: number; approved?: boolean; state?: string; backgroundCheckStatus?: string; smsOptIn?: boolean; }
-interface AUser { id: string; name: string; email: string; role: string; phone: string; company?: string; createdAt?: string; accountActive?: boolean; suspended?: boolean; }
+interface AUser { id: string; name: string; email: string; role: string; phone: string; company?: string; createdAt?: string; accountActive?: boolean; suspended?: boolean; walletCreditLimit?: number; }
 interface AdminDispute { id: string; orderId: string; clientId: string; clientName?: string; clientEmail?: string; orderAddress?: string; reason: string; description: string; status: string; resolution?: string | null; resolutionAmount?: number; resolutionNotes?: string; createdAt: string; }
 interface AuditEntry { id: number; actor_name: string; action: string; target_type: string; target_id: string; details: Record<string, unknown>; created_at: string; }
 interface PricingConfig { id: string; serviceType: string; name: string; basePrice: number; compensation: number; urgencyMultiplier: number; active: boolean; category: string; description: string; photoCount?: number; isCustom?: boolean; requiresInterior?: boolean; }
@@ -51,8 +51,15 @@ export default function AdminPage() {
   const [manualCreditFor, setManualCreditFor] = useState<string|null>(null);
   const [manualCreditAmount, setManualCreditAmount] = useState("");
   const [manualCreditNote, setManualCreditNote] = useState("");
+  const [manualCreditDirection, setManualCreditDirection] = useState<"credit"|"debit">("credit");
   const [manualCreditBusy, setManualCreditBusy] = useState(false);
   const [manualCreditMsg, setManualCreditMsg] = useState<{userId:string;text:string;ok:boolean}|null>(null);
+  const [vendorWalletInfo, setVendorWalletInfo] = useState<Record<string,{balance:number;creditLimit:number}>>({});
+  const [creditLimitDraft, setCreditLimitDraft] = useState("");
+  const [creditLimitBusy, setCreditLimitBusy] = useState(false);
+  const [walletLog, setWalletLog] = useState<{id:string;userId:string;userName?:string;userEmail?:string;type:string;amount:number;description:string;orderId?:string|null;status:string;createdAt:string}[]>([]);
+  const [walletLogEdit, setWalletLogEdit] = useState<{id:string;amount:string;description:string}|null>(null);
+  const [walletLogBusy, setWalletLogBusy] = useState<string|null>(null);
   const [walletPlans, setWalletPlans] = useState<{id:string;name:string;amountUsd:number;credits:number;description:string;active:boolean;sortOrder:number}[]>([]);
   const [newPlan, setNewPlan] = useState({ name: "", amount: "", description: "", sortOrder: "0" });
   const [editingPlan, setEditingPlan] = useState<{id:string;name:string;amount:string;description:string;sortOrder:string}|null>(null);
@@ -250,13 +257,23 @@ export default function AdminPage() {
   useEffect(() => { if (tab === "payment-links") fetchPaymentLinks(); }, [tab, fetchPaymentLinks]);
   useEffect(() => { if (tab === "disputes") fetchDisputes(disputeFilter); }, [tab, fetchDisputes, disputeFilter]);
   useEffect(() => { if (tab === "audit") fetchAuditLog(); }, [tab, fetchAuditLog]);
+  const fetchWalletLog = useCallback(async () => {
+    try {
+      const res = await fetch("/api/wallet/log");
+      if (!res.ok) return;
+      const data = await res.json();
+      setWalletLog(data.log ?? []);
+    } catch { /* best-effort */ }
+  }, []);
+
   useEffect(() => {
     if (tab === "wallet") {
       fetchWallet();
       fetchWalletPlans();
       fetchWhopActivity();
+      fetchWalletLog();
     }
-  }, [tab, fetchWallet, fetchWalletPlans, fetchWhopActivity]);
+  }, [tab, fetchWallet, fetchWalletPlans, fetchWhopActivity, fetchWalletLog]);
   useEffect(() => { if (tab === "users") fetchApplications(); }, [tab, fetchApplications]);
 
   async function handleLogout() { await fetch("/api/auth/logout", { method:"POST" }); router.push("/"); }
@@ -402,24 +419,68 @@ export default function AdminPage() {
     setManualCreditBusy(true);
     setManualCreditMsg(null);
     try {
-      const res = await fetch("/api/wallet/admin-credit", {
+      const res = await fetch("/api/wallet/manual-entry", {
         method: "POST", headers: {"Content-Type":"application/json"},
-        body: JSON.stringify({ userId, amount, note: manualCreditNote.trim() }),
+        body: JSON.stringify({ userId, amount, direction: manualCreditDirection, note: manualCreditNote.trim() }),
       });
       const data = await res.json();
       if (!res.ok) {
-        setManualCreditMsg({ userId, text: data.error ?? "Failed to add credit", ok: false });
+        setManualCreditMsg({ userId, text: data.error ?? "Failed to update wallet", ok: false });
       } else {
-        setManualCreditMsg({ userId, text: `Credited $${amount.toFixed(2)} — new balance $${Number(data.newBalance).toFixed(2)}`, ok: true });
+        const verb = manualCreditDirection === "credit" ? "Credited" : "Deducted";
+        setManualCreditMsg({ userId, text: `${verb} $${amount.toFixed(2)} — new balance $${Number(data.newBalance).toFixed(2)}`, ok: true });
         setManualCreditAmount("");
         setManualCreditNote("");
-        setManualCreditFor(null);
+        setVendorWalletInfo(prev => ({ ...prev, [userId]: { ...prev[userId], balance: data.newBalance } }));
         fetchAll();
+        fetchWalletLog();
       }
     } catch {
       setManualCreditMsg({ userId, text: "Network error", ok: false });
     }
     setManualCreditBusy(false);
+  }
+
+  async function fetchVendorWalletInfo(userId: string) {
+    try {
+      const res = await fetch(`/api/wallet/${userId}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      setVendorWalletInfo(prev => ({ ...prev, [userId]: { balance: data.balance ?? 0, creditLimit: data.creditLimit ?? 0 } }));
+      setCreditLimitDraft(String(data.creditLimit ?? 0));
+    } catch { /* best-effort */ }
+  }
+
+  async function saveCreditLimit(userId: string) {
+    const limit = Number(creditLimitDraft);
+    if (!Number.isFinite(limit) || limit < 0) return;
+    setCreditLimitBusy(true);
+    try {
+      const res = await fetch(`/api/users/${userId}`, {
+        method: "PATCH", headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({ action: "set_credit_limit", walletCreditLimit: limit }),
+      });
+      if (res.ok) {
+        setVendorWalletInfo(prev => ({ ...prev, [userId]: { balance: prev[userId]?.balance ?? 0, creditLimit: limit } }));
+      }
+    } catch { /* best-effort */ }
+    setCreditLimitBusy(false);
+  }
+
+  async function saveWalletLogEdit() {
+    if (!walletLogEdit) return;
+    setWalletLogBusy(walletLogEdit.id);
+    try {
+      const res = await fetch("/api/wallet/log", {
+        method: "PATCH", headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({ id: walletLogEdit.id, amount: Number(walletLogEdit.amount), description: walletLogEdit.description }),
+      });
+      if (res.ok) {
+        setWalletLogEdit(null);
+        fetchWalletLog();
+      }
+    } catch { /* best-effort */ }
+    setWalletLogBusy(null);
   }
 
   async function saveEditLink() {
@@ -996,7 +1057,7 @@ export default function AdminPage() {
             {/* ── Upload on behalf of an agent ── */}
             <div className="bg-white border-2 border-blue-200 rounded-2xl p-6">
               <h2 className="font-semibold text-slate-900 flex items-center gap-2"><Upload className="w-5 h-5 text-blue-600"/>Upload Photos on Behalf of an Agent</h2>
-              <p className="text-xs text-slate-400 mt-0.5 mb-4">Pick an order with an assigned agent. The vendor will see the photos as uploaded by the agent (e.g. &quot;User 1234567 uploaded 3 photos&quot;) — never as admin.</p>
+              <p className="text-xs text-slate-400 mt-0.5 mb-4">Pick an order with an assigned agent. The vendor will see the photos as uploaded by the agent (e.g. &quot;Agent #A93F2C uploaded 3 photos&quot;) — never as admin.</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
                 <select value={oboOrderId} onChange={e=>setOboOrderId(e.target.value)}
                   className="border border-slate-200 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400">
@@ -1733,20 +1794,35 @@ export default function AdminPage() {
                       </div>
                       <div className="flex items-center gap-3">
                         <div className="text-right">
-                          <p className="text-lg font-bold text-emerald-600">$0.00</p>
+                          <p className="text-lg font-bold text-emerald-600">{vendorWalletInfo[u.id] ? `$${vendorWalletInfo[u.id].balance.toFixed(2)}` : "—"}</p>
                           <p className="text-xs text-slate-400">wallet balance</p>
                         </div>
                         <button
-                          onClick={() => { setManualCreditFor(manualCreditFor === u.id ? null : u.id); setManualCreditMsg(null); setManualCreditAmount(""); setManualCreditNote(""); }}
+                          onClick={() => {
+                            const opening = manualCreditFor !== u.id;
+                            setManualCreditFor(opening ? u.id : null);
+                            setManualCreditMsg(null); setManualCreditAmount(""); setManualCreditNote(""); setManualCreditDirection("credit");
+                            if (opening) fetchVendorWalletInfo(u.id);
+                          }}
                           className="text-xs font-bold border border-[#CBD5E1] hover:border-[#FF6A00] hover:bg-[#FF6A00]/5 text-slate-700 px-3 py-2 rounded-lg whitespace-nowrap"
                         >
-                          {manualCreditFor === u.id ? "Cancel" : "+ Add Payment"}
+                          {manualCreditFor === u.id ? "Cancel" : "Manage Wallet"}
                         </button>
                       </div>
                     </div>
                     {manualCreditFor === u.id && (
                       <div className="mt-3 bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
-                        <p className="text-xs text-slate-500">Manually credit this vendor's wallet — use when a payment (e.g. via the Care Business Consulting Solutions link) went through but wasn't confirmed automatically. This creates an audited, immediately-confirmed transaction.</p>
+                        <p className="text-xs text-slate-500">Manually credit or debit this vendor&apos;s wallet — e.g. when a payment went through outside the normal flow, or needs correcting. This creates an audited, immediately-confirmed transaction and updates the live balance.</p>
+                        <div className="flex gap-2">
+                          <button onClick={() => setManualCreditDirection("credit")}
+                            className={`flex-1 text-xs font-bold py-2 rounded-lg border ${manualCreditDirection==="credit" ? "bg-emerald-600 text-white border-emerald-600" : "border-[#CBD5E1] text-slate-600"}`}>
+                            + Add Payment (Credit)
+                          </button>
+                          <button onClick={() => setManualCreditDirection("debit")}
+                            className={`flex-1 text-xs font-bold py-2 rounded-lg border ${manualCreditDirection==="debit" ? "bg-red-600 text-white border-red-600" : "border-[#CBD5E1] text-slate-600"}`}>
+                            − Deduct Payment (Debit)
+                          </button>
+                        </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <div>
                             <label className="text-xs font-semibold text-slate-500 block mb-1">Amount ($)</label>
@@ -1764,7 +1840,7 @@ export default function AdminPage() {
                               type="text"
                               value={manualCreditNote}
                               onChange={(e) => setManualCreditNote(e.target.value)}
-                              placeholder="e.g. Care Business Consulting Solutions payment confirmed manually"
+                              placeholder={manualCreditDirection==="credit" ? "e.g. Bank transfer confirmed manually" : "e.g. Correcting duplicate charge"}
                               className="w-full border border-[#CBD5E1] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6A00]"
                             />
                           </div>
@@ -1775,16 +1851,85 @@ export default function AdminPage() {
                         <button
                           onClick={() => submitManualCredit(u.id)}
                           disabled={manualCreditBusy}
-                          className="bg-[#081A36] hover:bg-[#12294f] text-white text-xs font-bold px-4 py-2 rounded-lg disabled:opacity-50"
+                          className={`text-white text-xs font-bold px-4 py-2 rounded-lg disabled:opacity-50 ${manualCreditDirection==="credit" ? "bg-[#081A36] hover:bg-[#12294f]" : "bg-red-600 hover:bg-red-700"}`}
                         >
-                          {manualCreditBusy ? "Adding…" : "Confirm & Credit Wallet"}
+                          {manualCreditBusy ? "Saving…" : manualCreditDirection==="credit" ? "Confirm & Credit Wallet" : "Confirm & Deduct from Wallet"}
                         </button>
+
+                        <div className="pt-3 mt-1 border-t border-slate-200">
+                          <label className="text-xs font-semibold text-slate-500 block mb-1">Overdraft allowance (lets this vendor place/accept orders below $0, down to −this amount)</label>
+                          <div className="flex gap-2">
+                            <input
+                              type="number" min="0" step="1"
+                              value={creditLimitDraft}
+                              onChange={(e) => setCreditLimitDraft(e.target.value)}
+                              placeholder="0"
+                              className="w-32 border border-[#CBD5E1] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6A00]"
+                            />
+                            <button
+                              onClick={() => saveCreditLimit(u.id)}
+                              disabled={creditLimitBusy}
+                              className="bg-slate-700 hover:bg-slate-800 text-white text-xs font-bold px-4 py-2 rounded-lg disabled:opacity-50"
+                            >
+                              {creditLimitBusy ? "Saving…" : "Save Limit"}
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     )}
                   </div>
                 ))}
                 {allUsers.filter(u => u.role === "client" && u.accountActive).length === 0 && (
                   <div className="text-center py-8 text-slate-400 text-sm">No active vendors yet</div>
+                )}
+              </div>
+            </div>
+
+            {/* Wallet & Payment Log — every transaction, admin-editable */}
+            <div className="bg-white rounded-2xl border border-[#F0E4D3] mt-6">
+              <div className="px-6 py-4 border-b border-[#F0E4D3]">
+                <h3 className="font-bold text-[#081A36]">Wallet &amp; Payment Log</h3>
+                <p className="text-xs text-slate-500 mt-0.5">Full history of holds, payouts, refunds, top-ups, and manual entries — orders show as paid the moment funds are deducted. Click Edit to correct a mistaken entry.</p>
+              </div>
+              <div className="divide-y divide-[#F0E4D3] max-h-[500px] overflow-y-auto">
+                {walletLog.map(entry => (
+                  <div key={entry.id} className="px-6 py-3">
+                    {walletLogEdit?.id === entry.id ? (
+                      <div className="flex flex-wrap items-center gap-2">
+                        <input type="number" step="0.01" value={walletLogEdit.amount}
+                          onChange={e => setWalletLogEdit({...walletLogEdit, amount: e.target.value})}
+                          className="w-28 border border-[#CBD5E1] rounded-lg px-2 py-1.5 text-sm" />
+                        <input type="text" value={walletLogEdit.description}
+                          onChange={e => setWalletLogEdit({...walletLogEdit, description: e.target.value})}
+                          className="flex-1 min-w-[200px] border border-[#CBD5E1] rounded-lg px-2 py-1.5 text-sm" />
+                        <button onClick={saveWalletLogEdit} disabled={walletLogBusy === entry.id}
+                          className="text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg disabled:opacity-50">
+                          {walletLogBusy === entry.id ? "Saving…" : "Save"}
+                        </button>
+                        <button onClick={() => setWalletLogEdit(null)} className="text-xs font-semibold text-slate-500 px-2">Cancel</button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-sm text-[#081A36] truncate">
+                            <span className="font-semibold">{entry.userName ?? entry.userEmail ?? entry.userId}</span>
+                            <span className="text-slate-400"> — </span>{entry.description}
+                          </p>
+                          <p className="text-xs text-slate-400 mt-0.5">{entry.type} · {entry.status} · {new Date(entry.createdAt).toLocaleString()}</p>
+                        </div>
+                        <div className="flex items-center gap-3 flex-shrink-0">
+                          <span className="font-bold text-sm text-[#081A36]">${Number(entry.amount).toFixed(2)}</span>
+                          <button
+                            onClick={() => setWalletLogEdit({ id: entry.id, amount: String(entry.amount), description: entry.description })}
+                            className="text-xs font-semibold text-[#FF6A00] hover:underline"
+                          >Edit</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {walletLog.length === 0 && (
+                  <div className="text-center py-8 text-slate-400 text-sm">No wallet transactions yet</div>
                 )}
               </div>
             </div>

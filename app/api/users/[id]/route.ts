@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { activateUserAccount, suspendUserAccount, unsuspendUserAccount, getUserById, logAdminAction } from "@/lib/db";
+import { activateUserAccount, suspendUserAccount, unsuspendUserAccount, getUserById, logAdminAction, updateUser } from "@/lib/db";
 import { sendPaymentConfirmationEmail } from "@/lib/email";
 
 type Params = { params: Promise<{ id: string }> };
@@ -10,11 +10,18 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   if (!adminId || userRole !== "admin") return NextResponse.json({ error: "Admin only" }, { status: 403 });
 
   const { id } = await params;
-  const { action } = await request.json();
+  const { action, walletCreditLimit } = await request.json();
 
   const user = await getUserById(id);
   if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
   const admin = await getUserById(adminId);
+
+  if (action === "set_credit_limit") {
+    const limit = Math.max(0, Number(walletCreditLimit) || 0);
+    await updateUser(id, { walletCreditLimit: limit });
+    await logAdminAction({ actorId: adminId, actorName: admin?.name ?? "Admin", action: "user.set_credit_limit", targetType: "user", targetId: id, details: { role: user.role, email: user.email, walletCreditLimit: limit } });
+    return NextResponse.json({ ok: true, message: `${user.name}'s overdraft allowance set to $${limit.toFixed(2)}` });
+  }
 
   if (action === "activate") {
     await activateUserAccount(id);

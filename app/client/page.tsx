@@ -386,7 +386,7 @@ function ClientPageInner() {
           <Link href="/client/wallet" className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl font-medium text-[var(--brand-ink-soft)] hover:bg-slate-50 hover:text-[var(--brand-navy)] transition-colors">
             <CreditCard className="w-[18px] h-[18px]"/>Wallet &amp; Invoices
           </Link>
-          <Link href="/coverage" className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl font-medium text-[var(--brand-ink-soft)] hover:bg-slate-50 hover:text-[var(--brand-navy)] transition-colors">
+          <Link href="/client/coverage" className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl font-medium text-[var(--brand-ink-soft)] hover:bg-slate-50 hover:text-[var(--brand-navy)] transition-colors">
             <MapPin className="w-[18px] h-[18px]"/>Coverage Map
           </Link>
           <button onClick={()=>setTab("subaccounts")}
@@ -395,9 +395,12 @@ function ClientPageInner() {
           </button>
 
           <div className="pt-3 mt-3 border-t border-[var(--brand-border)] space-y-1">
-            <a href="mailto:info@snapect.com" className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl font-medium text-[var(--brand-ink-soft)] hover:bg-slate-50 hover:text-[var(--brand-navy)] transition-colors">
+            <Link href="/client/support" className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl font-medium text-[var(--brand-ink-soft)] hover:bg-slate-50 hover:text-[var(--brand-navy)] transition-colors">
               <Headset className="w-[18px] h-[18px]"/>Support
-            </a>
+            </Link>
+            <Link href="/client/feedback" className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl font-medium text-[var(--brand-ink-soft)] hover:bg-slate-50 hover:text-[var(--brand-navy)] transition-colors">
+              <Megaphone className="w-[18px] h-[18px]"/>Feedback
+            </Link>
             <Link href="/faq" className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl font-medium text-[var(--brand-ink-soft)] hover:bg-slate-50 hover:text-[var(--brand-navy)] transition-colors">
               <Info className="w-[18px] h-[18px]"/>Resources
             </Link>
@@ -407,12 +410,7 @@ function ClientPageInner() {
           </div>
         </nav>
 
-        <div className="p-3 space-y-2">
-          <div className="rounded-2xl bg-gradient-to-br from-[var(--brand-navy)] to-[#12294f] p-4">
-            <p className="text-[10px] text-white/60 uppercase tracking-wider font-bold mb-1">Wallet Balance</p>
-            <p className="text-xl font-extrabold text-white mb-2">{walletBalance!==null?`$${walletBalance.toFixed(2)}`:"—"}</p>
-            <Link href="/client/wallet" className="block text-center bg-[#FF6A00] hover:bg-[#FF8C1A] text-white text-xs font-bold py-2 rounded-lg transition-colors">Add Funds</Link>
-          </div>
+        <div className="p-3">
           <button onClick={logout} className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl font-medium text-slate-400 hover:bg-slate-50 hover:text-red-500 transition-colors text-sm">
             <LogOut className="w-4 h-4"/>Log Out
           </button>
@@ -433,9 +431,10 @@ function ClientPageInner() {
               <Link href="/client/order" onClick={()=>setMobileNavOpen(false)} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl font-medium text-[var(--brand-ink-soft)] hover:bg-slate-50 hover:text-[var(--brand-navy)]"><Plus className="w-[18px] h-[18px]"/>New Order</Link>
               <Link href="/client/multi-order" onClick={()=>setMobileNavOpen(false)} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl font-medium text-[var(--brand-ink-soft)] hover:bg-slate-50 hover:text-[var(--brand-navy)]"><Package className="w-[18px] h-[18px]"/>Multi Orders</Link>
               <Link href="/client/wallet" onClick={()=>setMobileNavOpen(false)} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl font-medium text-[var(--brand-ink-soft)] hover:bg-slate-50 hover:text-[var(--brand-navy)]"><CreditCard className="w-[18px] h-[18px]"/>Wallet &amp; Invoices</Link>
-              <Link href="/coverage" onClick={()=>setMobileNavOpen(false)} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl font-medium text-[var(--brand-ink-soft)] hover:bg-slate-50 hover:text-[var(--brand-navy)]"><MapPin className="w-[18px] h-[18px]"/>Coverage Map</Link>
+              <Link href="/client/coverage" onClick={()=>setMobileNavOpen(false)} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl font-medium text-[var(--brand-ink-soft)] hover:bg-slate-50 hover:text-[var(--brand-navy)]"><MapPin className="w-[18px] h-[18px]"/>Coverage Map</Link>
               <button onClick={()=>{setTab("subaccounts");setMobileNavOpen(false);}} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl font-medium text-[var(--brand-ink-soft)] hover:bg-slate-50 hover:text-[var(--brand-navy)] text-left"><Users className="w-[18px] h-[18px]"/>Team</button>
-              <a href="mailto:info@snapect.com" className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl font-medium text-[var(--brand-ink-soft)] hover:bg-slate-50 hover:text-[var(--brand-navy)]"><Headset className="w-[18px] h-[18px]"/>Support</a>
+              <Link href="/client/support" onClick={()=>setMobileNavOpen(false)} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl font-medium text-[var(--brand-ink-soft)] hover:bg-slate-50 hover:text-[var(--brand-navy)]"><Headset className="w-[18px] h-[18px]"/>Support</Link>
+              <Link href="/client/feedback" onClick={()=>setMobileNavOpen(false)} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl font-medium text-[var(--brand-ink-soft)] hover:bg-slate-50 hover:text-[var(--brand-navy)]"><Megaphone className="w-[18px] h-[18px]"/>Feedback</Link>
               <Link href="/faq" onClick={()=>setMobileNavOpen(false)} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl font-medium text-[var(--brand-ink-soft)] hover:bg-slate-50 hover:text-[var(--brand-navy)]"><Info className="w-[18px] h-[18px]"/>Resources</Link>
               <button onClick={()=>{logout();}} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl font-medium text-red-500 hover:bg-red-50 text-left mt-2"><LogOut className="w-[18px] h-[18px]"/>Log Out</button>
             </nav>

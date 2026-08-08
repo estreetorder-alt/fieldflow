@@ -48,7 +48,14 @@ export default function AgentPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [profile, setProfile] = useState<AgentProfile|null>(null);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<"mine"|"offers"|"upload"|"coverage"|"sample"|"profile">("mine");
+  const [tab, setTab] = useState<"mine"|"offers"|"upload"|"coverage"|"sample"|"feedback"|"profile">("mine");
+  const [fbName, setFbName] = useState("");
+  const [fbEmail, setFbEmail] = useState("");
+  const [fbSubject, setFbSubject] = useState("General Feedback");
+  const [fbMessage, setFbMessage] = useState("");
+  const [fbSending, setFbSending] = useState(false);
+  const [fbSent, setFbSent] = useState(false);
+  const [fbError, setFbError] = useState("");
   const [liveConnected, setLiveConnected] = useState(false);
   const [acting, setActing] = useState<string|null>(null);
   const [declining, setDeclining] = useState<string|null>(null);
@@ -321,7 +328,7 @@ export default function AgentPage() {
         {/* Tabs */}
         <div className="flex gap-1 bg-slate-100 p-1 rounded-xl mb-5 flex-wrap">
           {([
-            ["mine","My Jobs"],["offers","Available"],["upload","Upload Form"],["coverage","ZIP Codes"],["sample","Sample"],["profile","Profile"]
+            ["mine","My Jobs"],["offers","Available"],["upload","Upload Form"],["coverage","ZIP Codes"],["sample","Sample"],["feedback","Feedback"],["profile","Profile"]
           ] as const).map(([t,label])=>(
             <button key={t} onClick={()=>setTab(t)}
               className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${tab===t?"bg-white text-slate-900 shadow-sm":"text-slate-500 hover:text-slate-700"}`}>
@@ -655,6 +662,51 @@ export default function AgentPage() {
                   <ShieldCheck className="w-4 h-4"/>{submittingSample?"Submitting…":"Submit for Review"}
                 </button>
               </>
+            )}
+          </div>
+
+        ) : tab==="feedback" ? (
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 max-w-xl">
+            <h2 className="font-semibold text-slate-900 mb-1 flex items-center gap-2"><Star className="w-5 h-5 text-amber-500"/>Feedback</h2>
+            <p className="text-sm text-slate-500 mb-4">Suggestions, bugs, or anything else — sent straight to our team, no need to leave your dashboard.</p>
+            {fbSent ? (
+              <div className="p-4 bg-green-50 border border-green-200 rounded-xl text-green-800 font-medium">
+                ✓ Thanks — we got your feedback.
+                <button onClick={()=>setFbSent(false)} className="block mt-2 text-sm font-semibold text-emerald-700 underline">Send another</button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {fbError && <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">{fbError}</div>}
+                <div className="grid grid-cols-2 gap-3">
+                  <input value={fbName || profile?.name || ""} onChange={e=>setFbName(e.target.value)} placeholder="Name"
+                    className="border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"/>
+                  <input value={fbEmail || profile?.email || ""} onChange={e=>setFbEmail(e.target.value)} placeholder="Email" type="email"
+                    className="border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"/>
+                </div>
+                <select value={fbSubject} onChange={e=>setFbSubject(e.target.value)}
+                  className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-400">
+                  <option>General Feedback</option><option>Feature Request</option><option>Bug Report</option><option>Job Experience</option><option>Other</option>
+                </select>
+                <textarea value={fbMessage} onChange={e=>setFbMessage(e.target.value)} rows={5} placeholder="Tell us what's on your mind…"
+                  className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 resize-none"/>
+                <button
+                  onClick={async()=>{
+                    const name = fbName || profile?.name || "";
+                    const email = fbEmail || profile?.email || "";
+                    if(!name.trim()||!email.trim()||!fbMessage.trim()){ setFbError("Please fill in your name, email, and message."); return; }
+                    setFbError(""); setFbSending(true);
+                    try{
+                      const r = await fetch("/api/contact",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name,email,subject:fbSubject,message:fbMessage})});
+                      if(!r.ok) throw new Error();
+                      setFbSent(true); setFbMessage("");
+                    }catch{ setFbError("Couldn't send — please try again."); }
+                    finally{ setFbSending(false); }
+                  }}
+                  disabled={fbSending}
+                  className="bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white text-sm font-semibold px-5 py-2.5 rounded-xl">
+                  {fbSending?"Sending…":"Send Feedback"}
+                </button>
+              </div>
             )}
           </div>
 

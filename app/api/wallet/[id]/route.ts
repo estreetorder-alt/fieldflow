@@ -1,9 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
-import { confirmTopup, getUserById, logAdminAction } from "@/lib/db";
+import { confirmTopup, getUserById, logAdminAction, getWalletBalance } from "@/lib/db";
 import { sendPaymentConfirmationEmail } from "@/lib/email";
 import { supabase } from "@/lib/supabase";
 
 type Params = { params: Promise<{ id: string }> };
+
+// Admin-only: current balance + overdraft (credit) limit for one vendor —
+// used to populate the manual wallet-adjustment panel in the admin Users tab.
+export async function GET(request: NextRequest, { params }: Params) {
+  const userRole = request.cookies.get("user_role")?.value;
+  if (userRole !== "admin") return NextResponse.json({ error: "Admin only" }, { status: 403 });
+  const { id } = await params;
+  const [balance, user] = await Promise.all([getWalletBalance(id), getUserById(id)]);
+  return NextResponse.json({ balance, creditLimit: user?.walletCreditLimit ?? 0 });
+}
 
 export async function PATCH(request: NextRequest, { params }: Params) {
   const adminId = request.cookies.get("user_id")?.value;

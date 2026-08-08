@@ -18,9 +18,12 @@ const HUBS: { name: string; lng: number; lat: number }[] = [
   { name: "Miami, FL", lng: -80.1918, lat: 25.7617 },
 ];
 
-export default function CoverageMap() {
+export interface CoverageFlyTarget { lng: number; lat: number; zoom?: number; label?: string }
+
+export default function CoverageMap({ flyTo }: { flyTo?: CoverageFlyTarget | null }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
+  const searchMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const [tokenMissing, setTokenMissing] = useState(false);
 
   useEffect(() => {
@@ -86,6 +89,42 @@ export default function CoverageMap() {
       mapRef.current = null;
     };
   }, []);
+
+  // Fly-in animation: whenever a searched ZIP resolves to coordinates, glide
+  // the camera down to it and drop a pulsing marker there instead of just
+  // snapping the map or leaving it static.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !flyTo) return;
+
+    const goToTarget = () => {
+      map.flyTo({
+        center: [flyTo.lng, flyTo.lat],
+        zoom: flyTo.zoom ?? 10.5,
+        pitch: 55,
+        bearing: -8,
+        speed: 0.85,
+        curve: 1.4,
+        essential: true,
+      });
+
+      searchMarkerRef.current?.remove();
+      const el = document.createElement("div");
+      el.className = "coverage-search-pin";
+      el.style.width = "16px";
+      el.style.height = "16px";
+      el.style.borderRadius = "50%";
+      el.style.background = "#EA580C";
+      el.style.border = "3px solid rgba(255,255,255,0.9)";
+      const marker = new mapboxgl.Marker({ element: el }).setLngLat([flyTo.lng, flyTo.lat]);
+      if (flyTo.label) marker.setPopup(new mapboxgl.Popup({ offset: 16, closeButton: false }).setText(flyTo.label));
+      marker.addTo(map);
+      searchMarkerRef.current = marker;
+    };
+
+    if (map.loaded()) goToTarget();
+    else map.once("load", goToTarget);
+  }, [flyTo]);
 
   if (tokenMissing) {
     return (

@@ -16,6 +16,10 @@ export interface User {
   backgroundCheckNotes?: string;
   backgroundCheckUpdatedAt?: string;
   smsOptIn?: boolean;
+  /** Admin-granted overdraft: vendor can place/accept orders past a $0 wallet
+   *  balance, down to -walletCreditLimit, without being blocked. Defaults to 0
+   *  (no override) for every vendor unless an admin sets one. */
+  walletCreditLimit?: number;
 }
 
 export interface Bid {
@@ -87,6 +91,7 @@ function mapUser(row: Record<string, unknown>): User {
     backgroundCheckNotes: row.background_check_notes as string | undefined,
     backgroundCheckUpdatedAt: row.background_check_updated_at as string | undefined,
     smsOptIn: row.sms_opt_in as boolean | undefined,
+    walletCreditLimit: Number(row.wallet_credit_limit ?? 0),
   };
 }
 
@@ -221,15 +226,26 @@ export async function updateUser(id: string, fields: Partial<User>): Promise<voi
   if (fields.backgroundCheckNotes !== undefined) patch.background_check_notes = fields.backgroundCheckNotes;
   if (fields.smsOptIn !== undefined) patch.sms_opt_in = fields.smsOptIn;
   if (fields.suspended !== undefined) patch.suspended = fields.suspended;
+  if (fields.walletCreditLimit !== undefined) patch.wallet_credit_limit = fields.walletCreditLimit;
   const { error } = await supabase.from("users").update(patch).eq("id", id);
   if (error) throw new Error(error.message);
 }
 
 // Anonymized display id for a user — vendors never see real agent names.
-// e.g. "user-1712345678901-abc" → "User 5678901"
-export function anonUserId(id: string | null | undefined): string {
-  const digits = (id ?? "").replace(/\D/g, "");
-  return `User ${(digits.slice(-7) || "0000000")}`;
+// Seeded from BOTH the agent id and the order id, so every order shows a
+// different, unrelated-looking label even for the same agent (e.g. an agent
+// who completes three orders for the same vendor shows up as three totally
+// different "Agent #XXXXXX" codes to that vendor). The mapping back to the
+// real agent is never lost — admin views (which never call this) always show
+// the real name/id, and the underlying assignedAgentId/bid.agentId columns
+// are untouched, so an agent's full job history stays intact in the admin
+// panel and in the agent's own dashboard.
+export function anonUserId(id: string | null | undefined, orderId?: string | null): string {
+  const seed = `${id ?? ""}::${orderId ?? ""}`;
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) hash = (Math.imul(hash, 31) + seed.charCodeAt(i)) >>> 0;
+  const code = hash.toString(16).toUpperCase().padStart(6, "0").slice(-6);
+  return `Agent #${code}`;
 }
 
 // ── Orders ────────────────────────────────────────────────────
@@ -302,8 +318,23 @@ export async function getOrdersByAgentId(agentId: string): Promise<Order[]> {
 }
 
 export async function getAllOrders(): Promise<Order[]> {
+  await reconcilePaymentStatuses();
   const { data } = await supabase.from("orders").select("*").order("created_at", { ascending: false });
   return enrichOrders((data ?? []) as Record<string, unknown>[]);
+}
+
+// One-time-safe backfill for orders placed before the payment-status fix
+// shipped: if a wallet hold was actually taken (wallet_hold_amount > 0) but
+// the order is still flagged "pending" (Awaiting Payment), correct it. Only
+// ever touches that exact stale combination, so it's safe to run on every
+// admin dashboard load — most runs will find nothing to fix.
+export async function reconcilePaymentStatuses(): Promise<number> {
+  const { data } = await supabase.from("orders")
+    .select("id").eq("payment_status", "pending").gt("wallet_hold_amount", 0);
+  const ids = (data ?? []).map(r => (r as Record<string, unknown>).id as string);
+  if (ids.length === 0) return 0;
+  await supabase.from("orders").update({ payment_status: "confirmed" }).in("id", ids);
+  return ids.length;
 }
 
 export async function getOrderById(id: string): Promise<Order | null> {
@@ -840,7 +871,12 @@ export async function addWalletTopup(userId: string, amount: number, description
 
 export async function holdWalletFunds(userId: string, orderId: string, amount: number): Promise<boolean> {
   const current = await getWalletBalance(userId);
-  if (current < amount) return false; // insufficient funds
+  // Admin can grant specific vendors an overdraft (walletCreditLimit) so they
+  // can keep placing/accepting orders past a $0 balance. Everyone else is
+  // still blocked exactly as before (limit defaults to 0).
+  const { data: userRow } = await supabase.from("users").select("wallet_credit_limit").eq("id", userId).single();
+  const creditLimit = Number((userRow as Record<string, unknown> | null)?.wallet_credit_limit ?? 0);
+  if (current + creditLimit < amount) return false; // insufficient funds, even with any admin-granted credit
   const newBalance = current - amount;
   await supabase.from("users").update({ wallet_balance: newBalance }).eq("id", userId);
   await supabase.from("wallet_transactions").insert({
@@ -848,7 +884,10 @@ export async function holdWalletFunds(userId: string, orderId: string, amount: n
     description: `Hold for order ${orderId}`, order_id: orderId, status: "confirmed",
     purpose: "order_hold",
   });
-  await supabase.from("orders").update({ wallet_hold_amount: amount }).eq("id", orderId);
+  // The money has actually left the vendor's wallet right now, so the order
+  // is paid — not "awaiting payment". (The payout to the agent is a separate
+  // thing, still held until the job is completed — see releaseWalletHold.)
+  await supabase.from("orders").update({ wallet_hold_amount: amount, payment_status: "confirmed" }).eq("id", orderId);
 
   // Fire-and-forget: if balance is now low, auto top-up may charge saved card
   void import("@/lib/autoTopup")
@@ -912,6 +951,44 @@ export async function getAllWalletTopupsPending(): Promise<(WalletTransaction & 
   });
 }
 
+// Full wallet + payment log for the admin panel — every transaction of
+// every type (topup, hold/payment, release, refund, manual credit/debit),
+// newest first, with the vendor's name/email attached.
+export async function getAllWalletTransactions(limit = 300): Promise<(WalletTransaction & { userName?: string; userEmail?: string })[]> {
+  const { data } = await supabase.from("wallet_transactions")
+    .select("*, users!wallet_transactions_user_id_fkey(name,email)")
+    .order("created_at", { ascending: false }).limit(limit);
+  return (data ?? []).map(r => {
+    const row = r as Record<string, unknown>;
+    const user = row.users as { name?: string; email?: string } | null;
+    return { ...mapWalletTx(row), userName: user?.name ?? undefined, userEmail: user?.email ?? undefined };
+  });
+}
+
+// Lets admin correct a transaction after the fact (wrong amount, typo'd
+// note, wrong status). Does NOT touch the vendor's live wallet_balance —
+// that's intentional, since replaying every balance-affecting edit safely
+// would need a full ledger rebuild; admin should use manualWalletAdjustment
+// for anything that needs to actually move money. This is for fixing the
+// record itself. Every edit is logged to the audit trail.
+export async function updateWalletTransaction(
+  id: string,
+  fields: { amount?: number; description?: string; status?: string },
+  adminId: string,
+  adminName: string,
+): Promise<void> {
+  const patch: Record<string, unknown> = {};
+  if (fields.amount !== undefined) patch.amount = fields.amount;
+  if (fields.description !== undefined) patch.description = fields.description;
+  if (fields.status !== undefined) patch.status = fields.status;
+  if (Object.keys(patch).length === 0) return;
+  await supabase.from("wallet_transactions").update(patch).eq("id", id);
+  await logAdminAction({
+    actorId: adminId, actorName: adminName, action: "edit_wallet_transaction",
+    targetType: "wallet_transaction", targetId: id, details: fields,
+  });
+}
+
 export async function confirmTopup(transactionId: string): Promise<void> {
   const { data } = await supabase.from("wallet_transactions").select("*").eq("id", transactionId).single();
   const row = data as Record<string,unknown>;
@@ -950,7 +1027,19 @@ export async function manualWalletAdjustment(opts: {
 
   const current = await getWalletBalance(opts.userId);
   const signedAmount = opts.direction === "credit" ? amount : -amount;
-  const newBalance = Math.max(0, current + signedAmount);
+  // Debits are allowed to take the balance negative, up to the vendor's
+  // admin-granted overdraft — the same limit enforced when a bid is
+  // accepted — instead of silently clamping at $0 and losing the admin's
+  // intended deduction.
+  let creditLimit = 0;
+  if (opts.direction === "debit") {
+    const target = await getUserById(opts.userId);
+    creditLimit = target?.walletCreditLimit ?? 0;
+    if (current + creditLimit < amount) {
+      throw new Error(`Debit exceeds available balance + overdraft limit ($${(current + creditLimit).toFixed(2)} available)`);
+    }
+  }
+  const newBalance = current + signedAmount;
 
   const txId = `wtx-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
   const label = opts.direction === "credit" ? "Manual credit" : "Manual debit";

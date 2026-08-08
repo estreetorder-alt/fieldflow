@@ -37,8 +37,8 @@ export async function GET(request: NextRequest) {
             // Vendors never see real agent names — only anonymized user ids
             orders = orders.map(o => ({
               ...o,
-              agent: o.agent ? { name: anonUserId(o.assignedAgentId) } : null,
-              bids: (o.bids ?? []).map(b => ({ ...b, agentName: anonUserId(b.agentId) })),
+              agent: o.agent ? { name: anonUserId(o.assignedAgentId, o.id) } : null,
+              bids: (o.bids ?? []).map(b => ({ ...b, agentName: anonUserId(b.agentId, o.id) })),
               photos: (o.photos ?? []).filter(p => p.approved !== false),
             }));
           }

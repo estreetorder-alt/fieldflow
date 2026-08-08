@@ -4,12 +4,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Home, Wallet, Package, BarChart3, FileText, MapPin, CreditCard,
-  Headset, Settings, Crown, Bell, ChevronDown, ArrowUpRight, LogOut,
+  Headset, Settings, Crown, Bell, ChevronDown, ArrowUpRight, LogOut, Megaphone,
 } from "lucide-react";
 import SupportWidget, { type SupportWidgetHandle } from "../support/SupportWidget";
 
 export type ClientNavKey =
-  | "dashboard" | "wallet" | "orders" | "reports" | "invoices"
+  | "dashboard" | "wallet" | "orders" | "reports" | "invoices" | "coverage" | "feedback"
   | "addresses" | "payment-methods" | "support" | "settings";
 
 interface NavItem {
@@ -28,9 +28,11 @@ const NAV_ITEMS: NavItem[] = [
   { key: "orders", label: "Orders", icon: Package, href: "/client" },
   { key: "reports", label: "Reports", icon: BarChart3, href: "#", soon: true },
   { key: "invoices", label: "Invoices", icon: FileText, href: "#", soon: true },
+  { key: "coverage", label: "Coverage Map", icon: MapPin, href: "/client/coverage" },
   { key: "addresses", label: "Addresses", icon: MapPin, href: "#", soon: true },
   { key: "payment-methods", label: "Payment Methods", icon: CreditCard, href: "/client/wallet#payment-card" },
   { key: "support", label: "Support", icon: Headset, href: "/client/support", opensSupport: true },
+  { key: "feedback", label: "Feedback", icon: Megaphone, href: "/client/feedback" },
   { key: "settings", label: "Settings", icon: Settings, href: "#", soon: true },
 ];
 
