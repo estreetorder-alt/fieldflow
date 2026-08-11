@@ -2,9 +2,12 @@ import { supabase } from "./supabase";
 
 // ── Types (mirrors store.ts) ──────────────────────────────────
 
+export type UserRole = "admin" | "agent" | "client"
+  | "sub_admin_orders" | "sub_admin_users" | "sub_admin_finance" | "sub_admin_support";
+
 export interface User {
   id: string; email: string; password: string;
-  role: "admin" | "agent" | "client";
+  role: UserRole;
   name: string; phone: string; company?: string; createdAt?: string;
   available?: boolean; rating?: number; bio?: string;
   coverageZone?: string; vehicle?: string;
@@ -20,6 +23,35 @@ export interface User {
    *  balance, down to -walletCreditLimit, without being blocked. Defaults to 0
    *  (no override) for every vendor unless an admin sets one. */
   walletCreditLimit?: number;
+  // ── Agent type / ghost agents ──
+  /** self_registered = signed up themselves, sees real names/pricing.
+   *  ghost = admin-created stand-in for a local contact who never logs in;
+   *  admin bids/manages on their behalf. Only ever visible to admin. */
+  agentType?: "self_registered" | "ghost";
+  /** Admin-only note identifying who a ghost agent really is. Never sent to
+   *  any non-admin-facing endpoint or UI. */
+  ghostAdminLabel?: string;
+  /** Set once a ghost agent is converted into a real self-registered
+   *  account — points at the new user row. Ghost row is then suspended. */
+  ghostConvertedToUserId?: string;
+  ghostCreatedBy?: string;
+  // ── Sub-admin / account provisioning ──
+  mustChangePassword?: boolean;
+  createdBy?: string;
+  // ── Signup approval gate ──
+  signupStatus?: "pending_approval" | "approved" | "rejected";
+  signupReviewedBy?: string;
+  signupReviewedAt?: string;
+  signupRejectionReason?: string;
+  // ── Vendor-facing anonymization ──
+  vendorAnonId?: string;
+  // ── Mapbox proximity cache ──
+  lastLat?: number; lastLng?: number; lastGeocodedAt?: string;
+  // ── Rollover credit ──
+  rolloverEligible?: boolean;
+  rolloverUsed?: boolean;
+  rolloverRecurring?: boolean;
+  rolloverLimit?: number;
 }
 
 export interface Bid {
@@ -27,6 +59,11 @@ export interface Bid {
   amount: number; message: string; placedAt: string;
   placedByAdmin?: boolean; status: "pending" | "accepted" | "rejected";
   agentName?: string; agentRating?: number | null;
+  /** What the agent actually gets paid — independent from `amount`, which
+   *  is the vendor-facing winning bid price. amount - agentPayout = margin. */
+  agentPayout?: number;
+  payoutSetBy?: string;
+  payoutSetAt?: string;
 }
 
 export interface Photo {
@@ -53,6 +90,10 @@ export interface Order {
   bids: Bid[];
   client?: { name: string; email: string } | null;
   agent?: { name: string; rating?: number } | null;
+  vendorAnonId?: string;
+  rolloverUnpaid?: boolean;
+  rolloverSettledAt?: string | null;
+  rolloverAmount?: number;
 }
 
 export interface PricingConfig {
@@ -92,6 +133,24 @@ function mapUser(row: Record<string, unknown>): User {
     backgroundCheckUpdatedAt: row.background_check_updated_at as string | undefined,
     smsOptIn: row.sms_opt_in as boolean | undefined,
     walletCreditLimit: Number(row.wallet_credit_limit ?? 0),
+    agentType: (row.agent_type as User["agentType"]) ?? "self_registered",
+    ghostAdminLabel: row.ghost_admin_label as string | undefined,
+    ghostConvertedToUserId: row.ghost_converted_to_user_id as string | undefined,
+    ghostCreatedBy: row.ghost_created_by as string | undefined,
+    mustChangePassword: row.must_change_password as boolean | undefined,
+    createdBy: row.created_by as string | undefined,
+    signupStatus: (row.signup_status as User["signupStatus"]) ?? "approved",
+    signupReviewedBy: row.signup_reviewed_by as string | undefined,
+    signupReviewedAt: row.signup_reviewed_at as string | undefined,
+    signupRejectionReason: row.signup_rejection_reason as string | undefined,
+    vendorAnonId: row.vendor_anon_id as string | undefined,
+    lastLat: row.last_lat as number | undefined,
+    lastLng: row.last_lng as number | undefined,
+    lastGeocodedAt: row.last_geocoded_at as string | undefined,
+    rolloverEligible: row.rollover_eligible as boolean | undefined,
+    rolloverUsed: row.rollover_used as boolean | undefined,
+    rolloverRecurring: row.rollover_recurring as boolean | undefined,
+    rolloverLimit: row.rollover_limit as number | undefined,
   };
 }
 
@@ -129,6 +188,10 @@ function mapOrder(
     statusHistory: history,
     client: client ?? null,
     agent: agent ?? null,
+    vendorAnonId: row.vendor_anon_id as string | undefined,
+    rolloverUnpaid: row.rollover_unpaid as boolean | undefined,
+    rolloverSettledAt: row.rollover_settled_at as string | null | undefined,
+    rolloverAmount: row.rollover_amount as number | undefined,
   };
 }
 
@@ -144,6 +207,9 @@ function mapBid(row: Record<string, unknown>): Bid {
     status: row.status as Bid["status"],
     agentName: (row.agentName as string) ?? undefined,
     agentRating: (row.agentRating as number | null) ?? null,
+    agentPayout: row.agent_payout !== undefined && row.agent_payout !== null ? Number(row.agent_payout) : undefined,
+    payoutSetBy: row.payout_set_by as string | undefined,
+    payoutSetAt: row.payout_set_at as string | undefined,
   };
 }
 
@@ -187,6 +253,9 @@ export async function getAgents(): Promise<User[]> {
 }
 
 export async function createUser(user: Omit<User, "createdAt">): Promise<User> {
+  const vendorAnonId = user.role === "agent"
+    ? `AGT-${Math.random().toString(36).slice(2, 8).toUpperCase()}`
+    : null;
   const { data, error } = await supabase.from("users").insert({
     id: user.id,
     email: user.email.toLowerCase(),
@@ -204,9 +273,76 @@ export async function createUser(user: Omit<User, "createdAt">): Promise<User> {
     pending_payout: user.pendingPayout ?? 0,
     completed_jobs: user.completedJobs ?? 0,
     parent_client_id: user.parentClientId ?? null,
+    agent_type: user.agentType ?? "self_registered",
+    ghost_admin_label: user.ghostAdminLabel ?? "",
+    ghost_created_by: user.ghostCreatedBy ?? null,
+    must_change_password: user.mustChangePassword ?? false,
+    created_by: user.createdBy ?? null,
+    signup_status: user.signupStatus ?? "approved",
+    vendor_anon_id: vendorAnonId,
+    rollover_eligible: user.rolloverEligible ?? false,
+    rollover_limit: user.rolloverLimit ?? 0,
   }).select().single();
   if (error) throw new Error(error.message);
   return mapUser(data as Record<string, unknown>);
+}
+
+/** Admin-only: create a ghost agent. Never self-registered, never logs in
+ *  (no usable password flow exposed), never appears to vendors as anything
+ *  but an anonymized Agent # code — same as any other agent. */
+export async function createGhostAgent(opts: {
+  name: string; ghostAdminLabel: string; coverageZone?: string;
+  createdBy: string; phone?: string;
+}): Promise<User> {
+  return createUser({
+    id: `ghost-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+    email: `ghost-${Date.now()}@internal.snapect.local`,
+    password: "", // no login — ghost agents never authenticate
+    role: "agent",
+    name: opts.name,
+    phone: opts.phone ?? "",
+    coverageZone: opts.coverageZone ?? "",
+    available: true,
+    rating: 5.0, bio: "", vehicle: "",
+    totalEarnings: 0, pendingPayout: 0, completedJobs: 0,
+    agentType: "ghost",
+    ghostAdminLabel: opts.ghostAdminLabel,
+    ghostCreatedBy: opts.createdBy,
+    signupStatus: "approved",
+  });
+}
+
+/** Admin-only: convert a ghost agent's local contact into a real
+ *  self-registered account. Creates the new user, links the ghost row to
+ *  it via ghost_converted_to_user_id, and suspends the ghost so it can no
+ *  longer be assigned new orders — its full job/bid history stays intact
+ *  and attributed to the ghost id for records already created. */
+export async function convertGhostToRealAgent(ghostId: string, opts: {
+  email: string; password: string; createdBy: string;
+}): Promise<User> {
+  const ghost = await getUserById(ghostId);
+  if (!ghost || ghost.agentType !== "ghost") throw new Error("Not a ghost agent");
+  const real = await createUser({
+    id: `user-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+    email: opts.email.toLowerCase(),
+    password: opts.password,
+    role: "agent",
+    name: ghost.name,
+    phone: ghost.phone,
+    coverageZone: ghost.coverageZone,
+    available: true, rating: ghost.rating, bio: ghost.bio, vehicle: ghost.vehicle,
+    totalEarnings: 0, pendingPayout: 0, completedJobs: 0,
+    agentType: "self_registered",
+    createdBy: opts.createdBy,
+    signupStatus: "approved",
+    mustChangePassword: true,
+  });
+  await supabase.from("users").update({
+    ghost_converted_to_user_id: real.id,
+    suspended: true,
+    available: false,
+  }).eq("id", ghostId);
+  return real;
 }
 
 export async function updateUser(id: string, fields: Partial<User>): Promise<void> {
@@ -227,8 +363,51 @@ export async function updateUser(id: string, fields: Partial<User>): Promise<voi
   if (fields.smsOptIn !== undefined) patch.sms_opt_in = fields.smsOptIn;
   if (fields.suspended !== undefined) patch.suspended = fields.suspended;
   if (fields.walletCreditLimit !== undefined) patch.wallet_credit_limit = fields.walletCreditLimit;
+  if (fields.ghostAdminLabel !== undefined) patch.ghost_admin_label = fields.ghostAdminLabel;
+  if (fields.mustChangePassword !== undefined) patch.must_change_password = fields.mustChangePassword;
+  if (fields.password !== undefined) patch.password = fields.password;
+  if (fields.rolloverEligible !== undefined) patch.rollover_eligible = fields.rolloverEligible;
+  if (fields.rolloverUsed !== undefined) patch.rollover_used = fields.rolloverUsed;
+  if (fields.rolloverRecurring !== undefined) patch.rollover_recurring = fields.rolloverRecurring;
+  if (fields.rolloverLimit !== undefined) patch.rollover_limit = fields.rolloverLimit;
+  if (fields.lastLat !== undefined) patch.last_lat = fields.lastLat;
+  if (fields.lastLng !== undefined) patch.last_lng = fields.lastLng;
+  if (fields.lastGeocodedAt !== undefined) patch.last_geocoded_at = fields.lastGeocodedAt;
   const { error } = await supabase.from("users").update(patch).eq("id", id);
   if (error) throw new Error(error.message);
+}
+
+// ── Signup approval gate (req. 14) ──────────────────────────────
+
+export async function approveSignup(userId: string, adminId: string): Promise<User> {
+  await supabase.from("users").update({
+    signup_status: "approved",
+    signup_reviewed_by: adminId,
+    signup_reviewed_at: new Date().toISOString(),
+    account_active: true,
+  }).eq("id", userId);
+  const user = await getUserById(userId);
+  if (!user) throw new Error("User not found after approval");
+  return user;
+}
+
+export async function rejectSignup(userId: string, adminId: string, reason: string): Promise<User> {
+  await supabase.from("users").update({
+    signup_status: "rejected",
+    signup_reviewed_by: adminId,
+    signup_reviewed_at: new Date().toISOString(),
+    signup_rejection_reason: reason,
+    account_active: false,
+  }).eq("id", userId);
+  const user = await getUserById(userId);
+  if (!user) throw new Error("User not found after rejection");
+  return user;
+}
+
+export async function getPendingSignups(): Promise<User[]> {
+  const { data } = await supabase.from("users").select("*")
+    .eq("signup_status", "pending_approval").order("created_at");
+  return (data ?? []).map(r => mapUser(r as Record<string, unknown>));
 }
 
 // Anonymized display id for a user — vendors never see real agent names.
@@ -366,6 +545,7 @@ export async function createOrder(order: {
     bulk_batch_id: order.bulkBatchId ?? null,
     invoice_paid: false,
     offer_sent_at: new Date().toISOString(),
+    vendor_anon_id: `ORD-${Math.random().toString(36).slice(2, 8).toUpperCase()}`,
   }).select().single();
   if (error) throw new Error(error.message);
 
@@ -416,8 +596,23 @@ export async function getBidsByAgentAndOrder(agentId: string, orderId: string): 
 
 export async function createBid(bid: {
   orderId: string; agentId: string; amount: number; message: string; placedByAdmin: boolean;
+  agentPayout?: number; payoutSetBy?: string;
 }): Promise<Bid> {
+  // Req. 2: bidding stays entirely admin-controlled through ghost agents.
+  // A self-registered agent's own account can never place a bid or see
+  // order pricing — only admin, acting on behalf of a ghost agent (or
+  // setting a bid directly), may create bid rows.
+  const agent = await getUserById(bid.agentId);
+  if (!agent) throw new Error("Agent not found");
+  if (agent.agentType === "self_registered" && !bid.placedByAdmin) {
+    throw new Error("Self-registered agents cannot place bids. Bidding is admin-controlled.");
+  }
+
   const id = `bid-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`;
+  // Req. 3: agent payout is independent from the vendor-facing bid amount.
+  // If admin didn't set one explicitly, default payout to the bid amount
+  // (no silent margin unless admin deliberately sets a lower payout).
+  const agentPayout = bid.agentPayout !== undefined ? bid.agentPayout : bid.amount;
   const { data, error } = await supabase.from("bids").insert({
     id,
     order_id: bid.orderId,
@@ -426,9 +621,23 @@ export async function createBid(bid: {
     message: bid.message,
     placed_by_admin: bid.placedByAdmin,
     status: "pending",
+    agent_payout: agentPayout,
+    payout_set_by: bid.payoutSetBy ?? null,
+    payout_set_at: bid.payoutSetBy ? new Date().toISOString() : null,
   }).select().single();
   if (error) throw new Error(error.message);
   return mapBid(data as Record<string, unknown>);
+}
+
+/** Admin-only: set/change an agent's payout for a bid, independent of the
+ *  vendor-facing bid price. The spread between amount and agentPayout is
+ *  platform margin. */
+export async function setBidPayout(bidId: string, agentPayout: number, adminId: string): Promise<void> {
+  await supabase.from("bids").update({
+    agent_payout: agentPayout,
+    payout_set_by: adminId,
+    payout_set_at: new Date().toISOString(),
+  }).eq("id", bidId);
 }
 
 export async function updateBidStatus(bidId: string, status: "accepted" | "rejected"): Promise<void> {

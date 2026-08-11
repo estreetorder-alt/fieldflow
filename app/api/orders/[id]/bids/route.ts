@@ -31,26 +31,31 @@ export async function POST(request: NextRequest, { params }: Params) {
   const body = await request.json();
   const { amount, message, actingAsAgentId } = body;
 
-  // Determine bidder — admin acts as agent silently
+  // Req. 2: bidding is entirely admin-controlled through ghost agents.
+  // Self-registered agents never place bids or see order pricing — only
+  // admin (and scoped sub_admin_orders) can submit bids, acting on behalf
+  // of any agent (typically a ghost agent).
+  const canPlaceBids = userRole === "admin" || userRole === "sub_admin_orders";
   let bidderAgentId: string;
-  if (userRole === "admin") {
+  if (canPlaceBids) {
     if (!actingAsAgentId) return NextResponse.json({ error: "actingAsAgentId required" }, { status: 400 });
     const agent = await getUserById(actingAsAgentId);
     if (!agent || agent.role !== "agent") return NextResponse.json({ error: "Agent not found" }, { status: 404 });
     bidderAgentId = actingAsAgentId;
-  } else if (userRole === "agent") {
-    bidderAgentId = userId;
   } else {
-    return NextResponse.json({ error: "Only agents can place bids" }, { status: 403 });
+    return NextResponse.json({ error: "Bidding is admin-controlled. Agents cannot place bids directly." }, { status: 403 });
   }
 
   if (!amount || Number(amount) <= 0)
     return NextResponse.json({ error: "Valid bid amount required" }, { status: 400 });
 
+  const { agentPayout } = body;
   const bid = await createBid({
     orderId: id, agentId: bidderAgentId,
     amount: Number(amount), message: message ?? "",
-    placedByAdmin: userRole === "admin",
+    placedByAdmin: true,
+    agentPayout: agentPayout !== undefined ? Number(agentPayout) : undefined,
+    payoutSetBy: agentPayout !== undefined ? userId : undefined,
   });
 
   const agent = await getUserById(bidderAgentId);
