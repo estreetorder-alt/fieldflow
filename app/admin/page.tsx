@@ -2,6 +2,7 @@
 import { uploadImageFile } from "@/lib/uploadClient";
 import { etDate, etDateTime, etTime } from "@/lib/est";
 import ExportButton from "../components/ExportButton";
+import AdminSidebar, { type AdminTab } from "./AdminSidebar";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -10,6 +11,7 @@ import {
   Mail, MapPin, Car, Download, Package, Gavel, UserPlus, Eye, EyeOff, X,
   ShieldCheck, CreditCard, AlertCircle, ZapIcon, ChevronDown, ChevronUp, Link as LinkIcon, Plus as PlusIcon, Trash as TrashIcon,
   AlertTriangle, History, Camera as CameraIcon, Wallet as WalletIcon, Upload, BarChart3, User as UserIcon,
+  ArrowLeft, ChevronRight, Search, Bell, Menu,
 } from "lucide-react";
 
 interface Order { id: string; address: string; status: string; clientId: string; assignedAgentId: string | null; totalPrice: number; compensationAmount: number; serviceType: string; turnaroundTier: string; notes: string; createdAt: string; client?: { name: string; email: string } | null; agent?: { name: string; rating?: number } | null; bids?: Bid[]; acceptedBidId?: string | null; photos?: { id: string; filename: string; url: string; description: string; approved?: boolean }[]; }
@@ -93,6 +95,9 @@ export default function AdminPage() {
   const [userName, setUserName] = useState("Admin");
   const [adminId, setAdminId] = useState("");
   const [liveConnected, setLiveConnected] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [headerSearch, setHeaderSearch] = useState("");
   const esRef = useRef<EventSource|null>(null);
 
   // Bid modal
@@ -731,40 +736,64 @@ export default function AdminPage() {
     fetchWalletPlans();
   }
 
-  const TABS = [
-    ["orders","Orders",<ClipboardList key="o" className="w-4 h-4"/>],
-    ["agents","Agents",<Users key="a" className="w-4 h-4"/>],
-    ["users","Users",<UserPlus key="u" className="w-4 h-4"/>],
-    ["wallet","Wallet",<DollarSign key="w" className="w-4 h-4 text-emerald-600"/>],
-    ["photos","Photo Inbox",<CameraIcon key="ph" className="w-4 h-4 text-blue-600"/>],
-    ["disputes","Disputes",<AlertTriangle key="disp" className="w-4 h-4 text-red-500"/>],
-    ["samples","Samples",<ShieldCheck key="s" className="w-4 h-4"/>],
-    ["payouts","Payouts",<CreditCard key="pay" className="w-4 h-4"/>],
-    ["pricing","Pricing",<DollarSign key="p" className="w-4 h-4"/>],
-    ["payment-links","Payment Links",<DollarSign key="pl" className="w-4 h-4 text-emerald-600"/>],
-    ["emails","Email Log",<Mail key="e" className="w-4 h-4"/>],
-    ["audit","Audit Log",<History key="aud" className="w-4 h-4"/>],
-  ] as const;
-
   return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="bg-white border-b border-slate-200 px-6 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <img src="/snapect-logo.png" alt="Snapect" className="h-8 w-auto object-contain" onError={e=>{(e.target as HTMLImageElement).style.display="none";}}/>
-            <span className="text-xs bg-purple-100 text-purple-700 font-medium px-2 py-0.5 rounded-full">Admin Studio</span>
+    <div className="min-h-screen bg-slate-50 flex">
+      <AdminSidebar
+        activeTab={tab as AdminTab}
+        onSelectTab={(t) => setTab(t as typeof tab)}
+        collapsed={sidebarCollapsed}
+        onToggleCollapsed={() => setSidebarCollapsed(v => !v)}
+        mobileOpen={mobileNavOpen}
+        onCloseMobile={() => setMobileNavOpen(false)}
+        badges={{
+          samples: samples.length,
+          photos: orders.reduce((sum,o)=>sum+(o.photos??[]).filter(p=>p.approved===false).length,0) + submissions.filter(su=>su.status==="pending").length,
+        }}
+        onTeamAccess={() => router.push("/admin/team")}
+        liveConnected={liveConnected}
+      />
+      <div className="flex-1 min-w-0 flex flex-col">
+      <header className="bg-white border-b border-slate-200 px-4 sm:px-6 sticky top-0 z-10">
+        <div className="h-16 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <button onClick={()=>setMobileNavOpen(true)} aria-label="Open menu" className="lg:hidden -ml-1 w-9 h-9 rounded-lg flex items-center justify-center text-slate-500 hover:bg-slate-50 shrink-0">
+              <Menu className="w-5 h-5"/>
+            </button>
+            <div className="hidden sm:flex items-center gap-1 text-sm text-slate-400">
+              <ArrowLeft className="w-4 h-4"/><ChevronRight className="w-3.5 h-3.5"/>
+              <span className="text-slate-700 font-semibold capitalize">{tab.replace(/-/g," ")}</span>
+            </div>
           </div>
-          <div className="flex items-center gap-4">
-            <div className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${liveConnected?"bg-green-50 text-green-700":"bg-slate-100 text-slate-500"}`}>
+          <div className="flex-1 max-w-md hidden md:block">
+            <div className="relative">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"/>
+              <input value={headerSearch} onChange={e=>{setHeaderSearch(e.target.value); if(tab==="orders") setOrderSearch(e.target.value);}}
+                placeholder="Search anything…"
+                className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-xl text-sm bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#FF6A00] focus:bg-white"/>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 sm:gap-4 shrink-0">
+            <div className={`hidden sm:flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${liveConnected?"bg-green-50 text-green-700":"bg-slate-100 text-slate-500"}`}>
               {liveConnected?<Wifi className="w-3.5 h-3.5"/>:<WifiOff className="w-3.5 h-3.5"/>}{liveConnected?"Live":"Offline"}
             </div>
-            <button onClick={()=>router.push("/admin/team")} className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-purple-700" title="Ghost agents, sub-admins, signup approvals">
-              <Users className="w-4 h-4"/>Team &amp; Access
+            <button aria-label="Notifications" className="relative w-9 h-9 rounded-lg flex items-center justify-center text-slate-500 hover:bg-slate-50">
+              <Bell className="w-5 h-5"/>
+              {(samples.length + orders.reduce((sum,o)=>sum+(o.photos??[]).filter(p=>p.approved===false).length,0)) > 0 && (
+                <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-[#FF6A00] text-white text-[10px] font-bold flex items-center justify-center">
+                  {samples.length + orders.reduce((sum,o)=>sum+(o.photos??[]).filter(p=>p.approved===false).length,0)}
+                </span>
+              )}
             </button>
-            <button onClick={openProfile} className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-[#081A36]" title="My profile">
-              <UserIcon className="w-4 h-4"/>Welcome, <span className="font-medium text-slate-700 underline decoration-dotted">{userName}</span>
+            <button onClick={openProfile} className="flex items-center gap-2.5" title="My profile">
+              <div className="hidden sm:block text-right">
+                <p className="text-sm font-bold text-[#081A36] leading-tight">{userName}</p>
+                <p className="text-xs text-slate-400 leading-none">Admin</p>
+              </div>
+              <div className="w-9 h-9 rounded-full bg-[#081A36] text-white flex items-center justify-center font-bold text-sm shrink-0">
+                {(userName||"A").trim().charAt(0).toUpperCase()}
+              </div>
             </button>
-            <button onClick={handleLogout} className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-red-600"><LogOut className="w-4 h-4"/>Logout</button>
+            <button onClick={handleLogout} className="text-slate-400 hover:text-red-600" title="Logout"><LogOut className="w-4 h-4"/></button>
           </div>
         </div>
       </header>
@@ -873,20 +902,7 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* Tabs */}
-        <div className="flex gap-1 bg-slate-100 p-1 rounded-xl mb-6 flex-wrap">
-          {TABS.map(([t,label,icon])=>(
-            <button key={t} onClick={()=>setTab(t as typeof tab)}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${tab===t?"bg-white text-slate-900 shadow-sm":"text-slate-500 hover:text-slate-700"}`}>
-              {icon}{label}
-              {t==="samples"&&samples.length>0&&<span className="bg-amber-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">{samples.length}</span>}
-              {t==="photos"&&(()=>{
-                const n = orders.reduce((sum,o)=>sum+(o.photos??[]).filter(p=>p.approved===false).length,0) + submissions.filter(su=>su.status==="pending").length;
-                return n>0?<span className="bg-blue-600 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">{n}</span>:null;
-              })()}
-            </button>
-          ))}
-        </div>
+        {/* Navigation now lives in the sidebar (see AdminSidebar) — no top tab bar */}
 
         {loading ? <div className="text-center py-16 text-slate-400">Loading…</div>
 
@@ -2688,6 +2704,7 @@ export default function AdminPage() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }
