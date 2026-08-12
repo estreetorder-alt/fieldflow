@@ -57,8 +57,8 @@ export default function AgentRegisterPage() {
                 <div className="w-16 h-16 bg-[#C2410C] rounded-full flex items-center justify-center mx-auto mb-4">
                   <CheckCircle className="w-8 h-8 text-[#2A2320]"/>
                 </div>
-                <h1 className="text-2xl font-bold text-[#2A2320] mb-2">Agent Account Created!</h1>
-                <p className="text-[#6B5D52] text-sm">Free signup — your account is active. Log in now to get started.</p>
+                <h1 className="text-2xl font-bold text-[#2A2320] mb-2">Agent Account Submitted</h1>
+                <p className="text-[#6B5D52] text-sm">Your account has been created and is pending admin review. We&apos;ll email you once it&apos;s approved — then you can log in.</p>
               </div>
               <div className="p-8">
                 <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-5">

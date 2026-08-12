@@ -43,29 +43,26 @@ export async function POST(request: NextRequest) {
   await sendWelcomeEmail({ email: newUser.email, name: newUser.name, role: newUser.role });
 
   if (adminCreate) {
-    // Admin-created users are immediately active
+    // Admin-created users are immediately active — admin already vetted them
+    // by creating the account directly (req. 7), so the self-service
+    // approval gate (req. 14) doesn't apply here.
     const { activateUserAccount } = await import("@/lib/db");
     await activateUserAccount(newUser.id);
     return NextResponse.json({ user: { id: newUser.id, name: newUser.name, email: newUser.email, role: newUser.role } }, { status: 201 });
   }
 
-  if (newUser.role === "agent") {
-    // Agent signup is free — no application fee, no manual activation step.
-    const { activateUserAccount } = await import("@/lib/db");
-    await activateUserAccount(newUser.id);
-    return NextResponse.json({
-      user: { id: newUser.id, name: newUser.name, role: newUser.role, email: newUser.email },
-      requiresPayment: false,
-    }, { status: 201 });
-  }
+  // Req. 14 — every self-service signup (agent or client) sits behind a
+  // manual admin approval gate. The account is created but stays inactive
+  // (signup_status defaults to "pending_approval" here, account_active
+  // false) until an admin approves or rejects it from the Team panel;
+  // accept/reject fires the corresponding email and only approval unlocks
+  // login.
+  const { supabase } = await import("@/lib/supabase");
+  await supabase.from("users").update({ signup_status: "pending_approval", account_active: false }).eq("id", newUser.id);
 
-  // Client signup is free — activate immediately, no activation fee
-  {
-    const { activateUserAccount } = await import("@/lib/db");
-    await activateUserAccount(newUser.id);
-  }
   return NextResponse.json({
     user: { id: newUser.id, name: newUser.name, role: newUser.role, email: newUser.email },
-    requiresPayment: false,
+    pendingApproval: true,
+    message: "Your account has been submitted for review. We'll email you once it's approved.",
   }, { status: 201 });
 }

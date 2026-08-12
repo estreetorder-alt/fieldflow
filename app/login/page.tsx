@@ -82,12 +82,21 @@ function LoginForm() {
           const pld = await pl.json();
           setPaymentLinks(pld.links?.filter((l: {active:boolean}) => l.active) ?? []);
           setPendingActivation(true);
+        } else if (data.error === "pending_approval" || data.error === "rejected") {
+          setError(data.message || "Your account is not yet approved for login.");
         } else {
           setError(data.error || "Invalid email or password");
         }
         refreshCaptcha(); return;
       }
-      const dashboards: Record<string, string> = { admin: "/admin", agent: "/agent", client: "/client" };
+      if (data.user.mustChangePassword) {
+        window.location.assign(`/change-password?redirect=${encodeURIComponent(redirect || "")}`);
+        return;
+      }
+      const dashboards: Record<string, string> = {
+        admin: "/admin", agent: "/agent", client: "/client",
+        sub_admin_orders: "/admin", sub_admin_users: "/admin", sub_admin_finance: "/admin", sub_admin_support: "/admin",
+      };
       const dest = redirect || dashboards[data.user.role] || "/";
       window.location.assign(dest);
     } catch { setError("Network error. Please try again."); }

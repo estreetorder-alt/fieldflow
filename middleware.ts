@@ -6,6 +6,14 @@ const PROTECTED: Record<string, string[]> = {
   client: ["/client"],
 };
 
+// Req. 6 — four scoped sub-admin roles alongside the full-access top-level
+// admin. All four share the same /admin route shell at the middleware
+// level (route-level gating can't see which client-side tab is active);
+// the admin page itself hides/disables tabs the signed-in role doesn't
+// cover, and every API route independently re-checks the specific
+// permission (e.g. bids route only accepts "admin" or "sub_admin_orders").
+const SUB_ADMIN_ROLES = ["sub_admin_orders", "sub_admin_users", "sub_admin_finance", "sub_admin_support"];
+
 const PUBLIC = ["/", "/login", "/register", "/services", "/coverage", "/work", "/contact", "/privacy", "/terms", "/refund-policy", "/faq", "/api/auth", "/api/payment-links", "/api/validate-address", "/api/coverage-check", "/api/zip-directory", "/sitemap.xml", "/robots.txt", "/snapect-logo.png", "/_next", "/favicon"];
 
 function isTunnelHost(host: string): boolean {
@@ -38,6 +46,12 @@ export function middleware(request: NextRequest) {
 
   if (!userId || !userRole) {
     return NextResponse.redirect(new URL(`/login?redirect=${encodeURIComponent(pathname)}`, request.url));
+  }
+
+  // Sub-admins get the same /admin access as full admin at the route level;
+  // fine-grained scoping happens in the admin UI and in each API route.
+  if (pathname.startsWith("/admin") && SUB_ADMIN_ROLES.includes(userRole)) {
+    return NextResponse.next();
   }
 
   // Check role-based access

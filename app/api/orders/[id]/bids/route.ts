@@ -104,14 +104,18 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   if (!bid) return NextResponse.json({ error: "Bid not found" }, { status: 404 });
 
   if (action === "accept") {
-    // Check wallet balance before accepting
-    const { holdWalletFunds } = await import("@/lib/db");
-    const held = await holdWalletFunds(order.clientId, id, bid.amount);
+    // Check wallet balance before accepting — falls back to rollover credit
+    // (req. 11/13) for eligible vendors whose balance falls short.
+    const { tryHoldWithRollover } = await import("@/lib/rollover");
+    const { held, usedRollover, rolloverAmount } = await tryHoldWithRollover(order.clientId, id, bid.amount);
     if (!held) {
       return NextResponse.json({
         error: "insufficient_funds",
         message: `Insufficient wallet balance. You need $${bid.amount} to accept this bid. Please top up your wallet first.`,
       }, { status: 402 });
+    }
+    if (usedRollover) {
+      await addStatusHistory(id, order.status, `$${rolloverAmount?.toFixed(2)} of this order proceeded on rollover credit — will auto-settle on next wallet top-up.`);
     }
 
     await updateBidStatus(bidId, "accepted");

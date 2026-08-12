@@ -10,7 +10,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   if (!adminId || userRole !== "admin") return NextResponse.json({ error: "Admin only" }, { status: 403 });
 
   const { id } = await params;
-  const { action, walletCreditLimit } = await request.json();
+  const { action, walletCreditLimit, rolloverEligible, rolloverLimit, rolloverRecurring, resetUsed } = await request.json();
 
   const user = await getUserById(id);
   if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -47,6 +47,18 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     await unsuspendUserAccount(id);
     await logAdminAction({ actorId: adminId, actorName: admin?.name ?? "Admin", action: "user.unsuspend", targetType: "user", targetId: id, details: { role: user.role, email: user.email } });
     return NextResponse.json({ ok: true, message: `${user.name} unsuspended` });
+  }
+
+  // Req. 11/13 — per-vendor rollover trust tier. Only meaningful for clients.
+  if (action === "set_rollover") {
+    await updateUser(id, {
+      ...(rolloverEligible !== undefined ? { rolloverEligible: Boolean(rolloverEligible) } : {}),
+      ...(rolloverLimit !== undefined ? { rolloverLimit: Math.max(0, Number(rolloverLimit) || 0) } : {}),
+      ...(rolloverRecurring !== undefined ? { rolloverRecurring: Boolean(rolloverRecurring) } : {}),
+      ...(resetUsed ? { rolloverUsed: false } : {}),
+    });
+    await logAdminAction({ actorId: adminId, actorName: admin?.name ?? "Admin", action: "user.set_rollover", targetType: "user", targetId: id });
+    return NextResponse.json({ ok: true, message: `Rollover settings updated for ${user.name}` });
   }
 
   return NextResponse.json({ error: "Invalid action" }, { status: 400 });

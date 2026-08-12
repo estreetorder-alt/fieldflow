@@ -44,12 +44,12 @@ export default function ClientRegisterPage() {
                 <div className="w-16 h-16 bg-[#C2410C] rounded-full flex items-center justify-center mx-auto mb-4">
                   <CheckCircle className="w-8 h-8 text-white"/>
                 </div>
-                <h1 className="text-2xl font-bold text-[#2A2320] mb-2">Account Created!</h1>
-                <p className="text-[#8A7A6C] text-sm">Free signup — your account is active. Log in now to start placing orders.</p>
+                <h1 className="text-2xl font-bold text-[#2A2320] mb-2">Account Submitted</h1>
+                <p className="text-[#8A7A6C] text-sm">Your account has been created and is pending review. We&apos;ll email you as soon as it&apos;s approved — then you can log in.</p>
               </div>
               <div className="p-8">
                 <Link href="/login" className="block w-full text-center bg-[#C2410C] hover:bg-[#EA580C] text-white font-bold py-3 rounded-xl transition-colors">
-                  Sign In to Your Dashboard
+                  Back to Sign In
                 </Link>
               </div>
             </div>

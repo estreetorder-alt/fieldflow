@@ -5,6 +5,7 @@ import {
   Copy, Check, ImageIcon, RefreshCw, TrendingDown, ChevronRight,
 } from "lucide-react";
 import ClientPortalShell from "../../components/portal/ClientPortalShell";
+import ExportButton from "../../components/ExportButton";
 import { uploadImageFile } from "@/lib/uploadClient";
 
 interface WalletTx {
@@ -437,9 +438,23 @@ function WalletPageInner() {
         <div id="transaction-history" className="bg-white border border-slate-200 rounded-2xl overflow-hidden scroll-mt-6">
           <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
             <h3 className="font-bold text-[#081A36]">Transaction History</h3>
-            <button onClick={() => fetchAll()} className="text-xs text-slate-500 hover:text-slate-800 flex items-center gap-1">
-              <RefreshCw className="w-3.5 h-3.5" /> Refresh
-            </button>
+            <div className="flex items-center gap-2">
+              <ExportButton
+                rows={confirmedTransactions}
+                columns={[
+                  { label: "Date", value: (t: WalletTx) => t.createdAt },
+                  { label: "Type", value: (t: WalletTx) => t.type },
+                  { label: "Description", value: (t: WalletTx) => t.description ?? "" },
+                  { label: "Amount", value: (t: WalletTx) => t.amount },
+                  { label: "Balance After", value: (t: WalletTx) => t.balanceAfter ?? "" },
+                ]}
+                filename="wallet-statement"
+                pdfTitle="Wallet Statement"
+              />
+              <button onClick={() => fetchAll()} className="text-xs text-slate-500 hover:text-slate-800 flex items-center gap-1">
+                <RefreshCw className="w-3.5 h-3.5" /> Refresh
+              </button>
+            </div>
           </div>
           {loading ? (
             <div className="text-center py-10 text-slate-400 text-sm">Loading…</div>

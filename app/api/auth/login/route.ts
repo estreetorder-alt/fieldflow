@@ -68,6 +68,20 @@ export async function POST(request: NextRequest) {
   if (user.role !== "admin") {
     if (user.suspended)
       return NextResponse.json({ error: "Your account has been suspended. Contact info@snapect.com" }, { status: 403 });
+    // Req. 14 — manual approval gate blocks login until admin explicitly
+    // approves (or shows a clear message if rejected).
+    if (user.signupStatus === "pending_approval")
+      return NextResponse.json({
+        error: "pending_approval",
+        message: "Your account is still awaiting admin approval. We'll email you as soon as it's reviewed.",
+      }, { status: 403 });
+    if (user.signupStatus === "rejected")
+      return NextResponse.json({
+        error: "rejected",
+        message: user.signupRejectionReason
+          ? `Your account application was not approved. ${user.signupRejectionReason}`
+          : "Your account application was not approved. Contact info@snapect.com for details.",
+      }, { status: 403 });
     // Only block when explicitly false (legacy/null rows stay allowed)
     if (user.accountActive === false)
       return NextResponse.json({
@@ -77,7 +91,7 @@ export async function POST(request: NextRequest) {
   }
 
   const response = NextResponse.json({
-    user: { id: user.id, name: user.name, role: user.role, email: user.email },
+    user: { id: user.id, name: user.name, role: user.role, email: user.email, mustChangePassword: user.mustChangePassword ?? false },
   });
   const cookieOpts = {
     path: "/",

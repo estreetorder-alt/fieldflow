@@ -317,6 +317,38 @@ export async function sendAgentRejectedEmail(agent: { email: string; name: strin
   await sendViaResend(agent.email, subject, html);
 }
 
+// Req. 14 — manual admin approval gate on every new self-service signup.
+// Distinct from sendAgentApproved/Rejected above, which cover the later
+// sample-photo review step for agents specifically; these cover the very
+// first account-level gate that applies to every new signup (agent or
+// client) before they can log in at all.
+export async function sendSignupApprovedEmail(user: { email: string; name: string; role: string }): Promise<void> {
+  const subject = "Your Snapect Account Has Been Approved";
+  const dashPath = user.role === "agent" ? "/agent" : user.role === "client" ? "/client" : "/login";
+  const html = emailWrapper(
+    "You're approved!",
+    `<p style="color:#475569;font-size:15px;line-height:1.7;">Hi ${user.name}, your Snapect account has been reviewed and approved. You can now log in and get started.</p>`,
+    `${BASE_URL}${dashPath}`,
+    "Log In"
+  );
+  await addEmailLog({ type: "signup_approved", to: user.email, subject, body: `Signup approved: ${user.name}` });
+  await sendViaResend(user.email, subject, html);
+}
+
+export async function sendSignupRejectedEmail(user: { email: string; name: string }, reason?: string): Promise<void> {
+  const subject = "Update on Your Snapect Account Application";
+  const html = emailWrapper(
+    "Application Update",
+    `<p style="color:#475569;font-size:15px;line-height:1.7;">Hi ${user.name}, thank you for your interest in Snapect.</p>
+     <p style="color:#475569;font-size:14px;">After review, we're unable to approve your account at this time.${reason ? ` <strong>Reason:</strong> ${reason}` : ""}</p>
+     <p style="color:#475569;font-size:14px;margin-top:12px;">If you believe this was a mistake, reply to this email and our team will take another look.</p>`,
+    `${BASE_URL}/contact`,
+    "Contact Support"
+  );
+  await addEmailLog({ type: "signup_rejected", to: user.email, subject, body: `Signup rejected: ${user.name}` });
+  await sendViaResend(user.email, subject, html);
+}
+
 export async function sendDisputeResolutionEmail(opts: {
   email: string; name: string; orderAddress: string;
   resolution: "reshoot" | "wallet_credit" | "rejected" | "other";

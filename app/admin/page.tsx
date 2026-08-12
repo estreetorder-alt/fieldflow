@@ -1,6 +1,7 @@
 "use client";
 import { uploadImageFile } from "@/lib/uploadClient";
 import { etDate, etDateTime, etTime } from "@/lib/est";
+import ExportButton from "../components/ExportButton";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -14,7 +15,7 @@ import {
 interface Order { id: string; address: string; status: string; clientId: string; assignedAgentId: string | null; totalPrice: number; compensationAmount: number; serviceType: string; turnaroundTier: string; notes: string; createdAt: string; client?: { name: string; email: string } | null; agent?: { name: string; rating?: number } | null; bids?: Bid[]; acceptedBidId?: string | null; photos?: { id: string; filename: string; url: string; description: string; approved?: boolean }[]; }
 interface PhotoSub { id: string; agentId: string; agentName?: string; orderId: string | null; serviceName: string; photos: { label: string; filename: string; url: string }[]; status: string; createdAt: string; }
 interface Bid { id: string; agentId: string; agentName: string; agentRating: number | null; amount: number; message: string; placedAt: string; status: string; placedByAdmin?: boolean; }
-interface Agent { id: string; name: string; email: string; phone: string; coverageZone: string; vehicle: string; available: boolean; rating: number; totalEarnings: number; pendingPayout: number; completedJobs: number; grade?: number; approved?: boolean; state?: string; backgroundCheckStatus?: string; smsOptIn?: boolean; }
+interface Agent { id: string; name: string; email: string; phone: string; coverageZone: string; vehicle: string; available: boolean; rating: number; totalEarnings: number; pendingPayout: number; completedJobs: number; grade?: number; approved?: boolean; state?: string; backgroundCheckStatus?: string; smsOptIn?: boolean; agentType?: "self_registered"|"ghost"; ghostAdminLabel?: string; }
 interface AUser { id: string; name: string; email: string; role: string; phone: string; company?: string; createdAt?: string; accountActive?: boolean; suspended?: boolean; walletCreditLimit?: number; }
 interface AdminDispute { id: string; orderId: string; clientId: string; clientName?: string; clientEmail?: string; orderAddress?: string; reason: string; description: string; status: string; resolution?: string | null; resolutionAmount?: number; resolutionNotes?: string; createdAt: string; }
 interface AuditEntry { id: number; actor_name: string; action: string; target_type: string; target_id: string; details: Record<string, unknown>; created_at: string; }
@@ -98,6 +99,7 @@ export default function AdminPage() {
   const [bidModal, setBidModal] = useState<{orderId:string;orderAddr:string}|null>(null);
   const [bidAgentId, setBidAgentId] = useState("");
   const [bidAmount, setBidAmount] = useState("");
+  const [bidPayout, setBidPayout] = useState(""); // Req. 3 — agent payout, set independently from the vendor-facing bid amount
   const [bidMessage, setBidMessage] = useState("");
   const [submittingBid, setSubmittingBid] = useState(false);
   const [bidError, setBidError] = useState("");
@@ -336,10 +338,10 @@ export default function AdminPage() {
   async function submitAdminBid() {
     if (!bidModal||!bidAgentId||!bidAmount) { setBidError("Select an agent and enter an amount"); return; }
     setSubmittingBid(true); setBidError("");
-    const r = await fetch(`/api/orders/${bidModal.orderId}/bids`, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ actingAsAgentId:bidAgentId, amount:Number(bidAmount), message:bidMessage }) });
+    const r = await fetch(`/api/orders/${bidModal.orderId}/bids`, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ actingAsAgentId:bidAgentId, amount:Number(bidAmount), agentPayout: bidPayout?Number(bidPayout):undefined, message:bidMessage }) });
     const d = await r.json();
     if (!r.ok) { setBidError(d.error??"Failed"); setSubmittingBid(false); return; }
-    setBidModal(null); setBidAgentId(""); setBidAmount(""); setBidMessage(""); setSubmittingBid(false);
+    setBidModal(null); setBidAgentId(""); setBidAmount(""); setBidPayout(""); setBidMessage(""); setSubmittingBid(false);
   }
 
   async function deleteOrder(orderId: string, address: string) {
@@ -756,6 +758,9 @@ export default function AdminPage() {
             <div className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${liveConnected?"bg-green-50 text-green-700":"bg-slate-100 text-slate-500"}`}>
               {liveConnected?<Wifi className="w-3.5 h-3.5"/>:<WifiOff className="w-3.5 h-3.5"/>}{liveConnected?"Live":"Offline"}
             </div>
+            <button onClick={()=>router.push("/admin/team")} className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-purple-700" title="Ghost agents, sub-admins, signup approvals">
+              <Users className="w-4 h-4"/>Team &amp; Access
+            </button>
             <button onClick={openProfile} className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-[#081A36]" title="My profile">
               <UserIcon className="w-4 h-4"/>Welcome, <span className="font-medium text-slate-700 underline decoration-dotted">{userName}</span>
             </button>
@@ -911,6 +916,25 @@ export default function AdminPage() {
                   <option value="completed">Completed</option>
                   <option value="cancelled">Cancelled</option>
                 </select>
+                <ExportButton
+                  rows={orders.filter(o => {
+                    const matchSearch = !orderSearch || o.address.toLowerCase().includes(orderSearch.toLowerCase()) || (o.client?.name ?? "").toLowerCase().includes(orderSearch.toLowerCase());
+                    const matchStatus = orderStatusFilter === "all" || o.status === orderStatusFilter;
+                    return matchSearch && matchStatus;
+                  })}
+                  columns={[
+                    { label: "Order ID", value: o => o.id },
+                    { label: "Address", value: o => o.address },
+                    { label: "Vendor", value: o => o.client?.name ?? o.clientId },
+                    { label: "Service", value: o => o.serviceType },
+                    { label: "Price", value: o => o.totalPrice },
+                    { label: "Agent Payout", value: o => o.compensationAmount },
+                    { label: "Status", value: o => o.status },
+                    { label: "Created", value: o => o.createdAt },
+                  ]}
+                  filename="orders-export"
+                  pdfTitle="FieldFlow — Orders Report"
+                />
               </div>
             </div>
             <div className="overflow-x-auto">
@@ -1220,6 +1244,11 @@ export default function AdminPage() {
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2 flex-wrap">
                           <span className="font-semibold text-slate-900">{agent.name}</span>
+                          {agent.agentType==="ghost" && (
+                            <span className="flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200" title={agent.ghostAdminLabel}>
+                              👻 Ghost{agent.ghostAdminLabel?` — ${agent.ghostAdminLabel}`:""}
+                            </span>
+                          )}
                           {agent.approved===false&&<span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">Pending Approval</span>}
                           <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${agent.available?"bg-green-50 text-green-700 border-green-200":"bg-slate-50 text-slate-500 border-slate-200"}`}>
                             {agent.available?"Available":"Unavailable"}
@@ -2541,7 +2570,8 @@ export default function AdminPage() {
               <h3 className="font-bold text-slate-900">Place Bid on Behalf of Agent</h3>
               <button onClick={()=>setBidModal(null)} className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-400"><X className="w-5 h-5"/></button>
             </div>
-            <p className="text-xs text-slate-500 mb-4 bg-slate-50 rounded-lg px-3 py-2">{bidModal.orderAddr}</p>
+            <p className="text-xs text-slate-500 mb-1 bg-slate-50 rounded-lg px-3 py-2">{bidModal.orderAddr}</p>
+            <p className="text-[11px] text-slate-400 mb-3">Bidding is entirely admin-controlled — self-registered agents never place bids or see pricing.</p>
             {bidError&&<div className="mb-3 p-2.5 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl">{bidError}</div>}
             <div className="space-y-3">
               <div>
@@ -2553,9 +2583,21 @@ export default function AdminPage() {
                 </select>
               </div>
               <div>
-                <label className="text-xs font-medium text-slate-600 block mb-1">Amount ($) *</label>
+                <label className="text-xs font-medium text-slate-600 block mb-1">Bid Amount — vendor-facing price ($) *</label>
                 <input type="number" min="1" value={bidAmount} onChange={e=>setBidAmount(e.target.value)}
                   className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"/>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-slate-600 block mb-1">Agent Payout — what they actually get paid ($)</label>
+                <input type="number" min="0" value={bidPayout} onChange={e=>setBidPayout(e.target.value)} placeholder={bidAmount||"defaults to bid amount"}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"/>
+                {bidAmount && bidPayout && (
+                  <p className="text-xs mt-1 text-slate-400">
+                    Platform margin: <span className={`font-semibold ${Number(bidAmount)-Number(bidPayout)>=0?"text-emerald-600":"text-red-600"}`}>
+                      ${(Number(bidAmount)-Number(bidPayout)).toFixed(2)}
+                    </span>
+                  </p>
+                )}
               </div>
               <div>
                 <label className="text-xs font-medium text-slate-600 block mb-1">Message</label>

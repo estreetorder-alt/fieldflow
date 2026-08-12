@@ -8,6 +8,7 @@ export async function GET(request: NextRequest) {
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const agents = await getAgents();
+  const isAdminViewer = userRole === "admin" || userRole?.startsWith("sub_admin");
   const agentList = agents
     .map(u => ({
       id: u.id, name: u.name, email: u.email, phone: u.phone,
@@ -19,6 +20,12 @@ export async function GET(request: NextRequest) {
       state: resolveAgentState(u.coverageZone),
       backgroundCheckStatus: u.backgroundCheckStatus ?? "not_started",
       smsOptIn: u.smsOptIn ?? false,
+      // Req. 1 — agent type + admin-only ghost label. Never surfaced to the
+      // agent role itself or to vendors; only admin/sub-admin views get it.
+      ...(isAdminViewer ? {
+        agentType: u.agentType ?? "self_registered",
+        ghostAdminLabel: u.agentType === "ghost" ? (u.ghostAdminLabel ?? "") : undefined,
+      } : {}),
     }))
     .sort((a, b) => a.state.localeCompare(b.state) || a.name.localeCompare(b.name));
 

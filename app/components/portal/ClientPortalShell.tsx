@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   Home, Wallet, Package, BarChart3, FileText, MapPin, CreditCard,
   Headset, Settings, Crown, Bell, ChevronDown, ArrowUpRight, LogOut, Megaphone,
+  Menu, X,
 } from "lucide-react";
 import SupportWidget, { type SupportWidgetHandle } from "../support/SupportWidget";
 
@@ -83,13 +84,13 @@ function NavRow({ item, active, onOpenSupport }: { item: NavItem; active: boolea
   );
 }
 
-function Sidebar({ active }: { active: ClientNavKey }) {
+function SidebarBody({ active, onNavigate }: { active: ClientNavKey; onNavigate?: () => void }) {
   const supportRef = useRef<SupportWidgetHandle>(null);
 
   return (
-    <aside className="hidden lg:flex lg:flex-col w-64 shrink-0 bg-white border-r border-[var(--brand-border)] h-screen sticky top-0">
+    <>
       <div className="px-5 pt-6 pb-5 border-b border-[var(--brand-border)]">
-        <Link href="/client" className="flex items-center gap-2.5">
+        <Link href="/client" className="flex items-center gap-2.5" onClick={onNavigate}>
           <img src="/snapect-logo.png" alt="Snapect" className="h-8 w-auto object-contain" />
         </Link>
         <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--brand-ink-faint)] mt-1.5 ml-0.5">
@@ -99,12 +100,13 @@ function Sidebar({ active }: { active: ClientNavKey }) {
 
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
         {NAV_ITEMS.map((item) => (
-          <NavRow
-            key={item.key}
-            item={item}
-            active={item.key === active}
-            onOpenSupport={() => supportRef.current?.open("menu")}
-          />
+          <div key={item.key} onClick={onNavigate}>
+            <NavRow
+              item={item}
+              active={item.key === active}
+              onOpenSupport={() => supportRef.current?.open("menu")}
+            />
+          </div>
         ))}
       </nav>
 
@@ -115,6 +117,7 @@ function Sidebar({ active }: { active: ClientNavKey }) {
           <p className="text-xs text-white/60 mt-1 leading-snug">Buy credits in bulk and enjoy exclusive discounts and priority support.</p>
           <Link
             href="/client/wallet"
+            onClick={onNavigate}
             className="mt-3 inline-flex items-center gap-1 text-xs font-bold bg-[#FF6A00] hover:bg-[#FF8C1A] text-white px-3 py-2 rounded-lg transition-colors"
           >
             Buy Credits <ArrowUpRight className="w-3.5 h-3.5" />
@@ -130,14 +133,39 @@ function Sidebar({ active }: { active: ClientNavKey }) {
           <SupportWidget ref={supportRef} />
         </div>
       </div>
+    </>
+  );
+}
+
+function Sidebar({ active }: { active: ClientNavKey }) {
+  return (
+    <aside className="hidden lg:flex lg:flex-col w-64 shrink-0 bg-white border-r border-[var(--brand-border)] h-screen sticky top-0">
+      <SidebarBody active={active} />
     </aside>
   );
 }
 
+// Req. 9 — collapsible hamburger navigation, replacing the desktop-only top
+// menu bar, so mobile users get real nav instead of nothing at all.
+function MobileDrawer({ active, open, onClose }: { active: ClientNavKey; open: boolean; onClose: () => void }) {
+  if (!open) return null;
+  return (
+    <div className="lg:hidden fixed inset-0 z-40">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <aside className="absolute left-0 top-0 h-full w-72 max-w-[85vw] bg-white flex flex-col shadow-2xl animate-in slide-in-from-left duration-200">
+        <button onClick={onClose} aria-label="Close menu" className="absolute right-3 top-3 w-8 h-8 rounded-lg flex items-center justify-center text-[var(--brand-ink-soft)] hover:bg-slate-50">
+          <X className="w-5 h-5" />
+        </button>
+        <SidebarBody active={active} onNavigate={onClose} />
+      </aside>
+    </div>
+  );
+}
+
 function Topbar({
-  title, icon, userName, notificationCount = 0,
+  title, icon, userName, notificationCount = 0, onMenuClick,
 }: {
-  title: string; icon: ReactNode; userName: string; notificationCount?: number;
+  title: string; icon: ReactNode; userName: string; notificationCount?: number; onMenuClick: () => void;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -151,6 +179,9 @@ function Topbar({
   return (
     <header className="sticky top-0 z-20 bg-white border-b border-[var(--brand-border)] px-4 sm:px-6 py-3.5 flex items-center justify-between gap-3">
       <div className="flex items-center gap-3 min-w-0">
+        <button onClick={onMenuClick} aria-label="Open menu" className="lg:hidden -ml-1 w-9 h-9 rounded-lg flex items-center justify-center text-[var(--brand-ink-soft)] hover:bg-slate-50 shrink-0">
+          <Menu className="w-5 h-5" />
+        </button>
         <div className="w-9 h-9 rounded-xl bg-[#FF6A00]/10 text-[#FF6A00] flex items-center justify-center shrink-0">
           {icon}
         </div>
@@ -208,11 +239,13 @@ export default function ClientPortalShell({
   notificationCount?: number;
   children: ReactNode;
 }) {
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   return (
     <div className="portal-shell min-h-screen flex">
       <Sidebar active={active} />
+      <MobileDrawer active={active} open={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
       <div className="flex-1 min-w-0 flex flex-col">
-        <Topbar title={title} icon={icon} userName={userName} notificationCount={notificationCount} />
+        <Topbar title={title} icon={icon} userName={userName} notificationCount={notificationCount} onMenuClick={() => setMobileNavOpen(true)} />
         <main className="flex-1">{children}</main>
       </div>
     </div>
