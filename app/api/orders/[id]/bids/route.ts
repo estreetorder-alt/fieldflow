@@ -158,7 +158,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 export async function DELETE(request: NextRequest, { params }: Params) {
   const userId = request.cookies.get("user_id")?.value;
   const userRole = request.cookies.get("user_role")?.value;
-  if (!userId || userRole !== "admin")
+  if (!userId || (userRole !== "admin" && userRole !== "sub_admin_orders"))
     return NextResponse.json({ error: "Admin only" }, { status: 403 });
 
   const { id } = await params;

@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { activateUserAccount, suspendUserAccount, unsuspendUserAccount, getUserById, logAdminAction, updateUser } from "@/lib/db";
 import { sendPaymentConfirmationEmail } from "@/lib/email";
+import { canAccessScope } from "@/lib/adminAccess";
 
 type Params = { params: Promise<{ id: string }> };
 
 export async function PATCH(request: NextRequest, { params }: Params) {
   const adminId = request.cookies.get("user_id")?.value;
   const userRole = request.cookies.get("user_role")?.value;
-  if (!adminId || userRole !== "admin") return NextResponse.json({ error: "Admin only" }, { status: 403 });
+  if (!adminId || !(userRole === "admin" || canAccessScope(userRole, "users") || canAccessScope(userRole, "finance")))
+    return NextResponse.json({ error: "Admin only" }, { status: 403 });
 
   const { id } = await params;
   const { action, walletCreditLimit, rolloverEligible, rolloverLimit, rolloverRecurring, resetUsed } = await request.json();

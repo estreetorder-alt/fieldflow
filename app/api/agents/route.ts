@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAgents, getAllUsers } from "@/lib/db";
 import { resolveAgentState } from "@/lib/zipState";
+import { canAccessScope } from "@/lib/adminAccess";
 
 export async function GET(request: NextRequest) {
   const userId = request.cookies.get("user_id")?.value;
@@ -29,7 +30,8 @@ export async function GET(request: NextRequest) {
     }))
     .sort((a, b) => a.state.localeCompare(b.state) || a.name.localeCompare(b.name));
 
-  if (request.nextUrl.searchParams.get("all") === "1" && userRole === "admin") {
+  const canListAllUsers = userRole === "admin" || canAccessScope(userRole, "users") || canAccessScope(userRole, "finance");
+  if (request.nextUrl.searchParams.get("all") === "1" && canListAllUsers) {
     const all = await getAllUsers();
     const allUsers = all.map(u => ({
       id: u.id, name: u.name, email: u.email, role: u.role,

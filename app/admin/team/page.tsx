@@ -29,6 +29,8 @@ const SUB_ADMIN_LABELS: Record<string, string> = {
 export default function AdminTeamPage() {
   const router = useRouter();
   const [tab, setTab] = useState<"ghosts" | "signups" | "subadmins">("ghosts");
+  const [role, setRole] = useState<string>("");
+  const isFullAdmin = role === "admin";
 
   // Ghost agents
   const [agents, setAgents] = useState<AgentRow[]>([]);
@@ -64,8 +66,18 @@ export default function AdminTeamPage() {
     const r = await fetch("/api/admin/sub-admins");
     if (r.ok) { const d = await r.json(); setSubAdmins(d.accounts ?? []); }
   }, []);
+  const fetchMe = useCallback(async () => {
+    const r = await fetch("/api/auth/me");
+    if (r.ok) { const d = await r.json(); setRole(d.user?.role ?? ""); }
+  }, []);
 
-  useEffect(() => { fetchGhosts(); fetchSignups(); fetchSubAdmins(); }, [fetchGhosts, fetchSignups, fetchSubAdmins]);
+  useEffect(() => {
+    fetchGhosts(); fetchSignups(); fetchMe();
+  }, [fetchGhosts, fetchSignups, fetchMe]);
+  // Sub-admin accounts are a full-admin-only concept — only fetch/show that
+  // tab once we know the signed-in role is the top-level admin.
+  useEffect(() => { if (isFullAdmin) fetchSubAdmins(); }, [isFullAdmin, fetchSubAdmins]);
+  useEffect(() => { if (!isFullAdmin && tab === "subadmins") setTab("ghosts"); }, [isFullAdmin, tab]);
 
   async function createGhost(e: React.FormEvent) {
     e.preventDefault();
@@ -143,7 +155,7 @@ export default function AdminTeamPage() {
           {[
             ["ghosts", "Ghost Agents", <Ghost key="g" className="w-4 h-4" />],
             ["signups", "Pending Signups", <Clock key="c" className="w-4 h-4" />],
-            ["subadmins", "Sub-Admin Accounts", <ShieldCheck key="s" className="w-4 h-4" />],
+            ...(isFullAdmin ? [["subadmins", "Sub-Admin Accounts", <ShieldCheck key="s" className="w-4 h-4" />]] as const : []),
           ].map(([t, label, icon]) => (
             <button key={t as string} onClick={() => setTab(t as typeof tab)}
               className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium ${tab === t ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>

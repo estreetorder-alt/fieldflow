@@ -4,6 +4,7 @@ import {
   listActiveWalletPlans,
   listAllWalletPlans,
 } from "@/lib/walletBilling";
+import { canAccessScope } from "@/lib/adminAccess";
 
 /** GET — clients see active plans; admin can pass ?all=1 for inactive too. */
 export async function GET(request: NextRequest) {
@@ -12,11 +13,12 @@ export async function GET(request: NextRequest) {
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const all = request.nextUrl.searchParams.get("all") === "1";
-  if (all && userRole !== "admin") {
+  const financeViewer = userRole === "admin" || canAccessScope(userRole, "finance");
+  if (all && !financeViewer) {
     return NextResponse.json({ error: "Admin only" }, { status: 403 });
   }
 
-  if (!["client", "admin"].includes(userRole ?? "")) {
+  if (!(financeViewer || userRole === "client")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -28,7 +30,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const userId = request.cookies.get("user_id")?.value;
   const userRole = request.cookies.get("user_role")?.value;
-  if (!userId || userRole !== "admin") {
+  if (!userId || !(userRole === "admin" || canAccessScope(userRole, "finance"))) {
     return NextResponse.json({ error: "Admin only" }, { status: 403 });
   }
 

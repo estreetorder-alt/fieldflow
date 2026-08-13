@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPaymentLinks, upsertPaymentLink } from "@/lib/db";
 import { sendNtfyNotification } from "@/lib/notify";
+import { canAccessScope } from "@/lib/adminAccess";
 
 export async function GET(request: NextRequest) {
   const userId = request.cookies.get("user_id")?.value;
@@ -11,7 +12,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const userRole = request.cookies.get("user_role")?.value;
-  if (userRole !== "admin") return NextResponse.json({ error: "Admin only" }, { status: 403 });
+  if (!(userRole === "admin" || canAccessScope(userRole, "finance"))) return NextResponse.json({ error: "Admin only" }, { status: 403 });
   const body = await request.json();
   const { label, url, amount, description } = body;
   if (!label || !url) return NextResponse.json({ error: "label and url required" }, { status: 400 });

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { adminManualCredit } from "@/lib/walletBilling";
 import { getUserById, logAdminAction } from "@/lib/db";
 import { sendPaymentConfirmationEmail } from "@/lib/email";
+import { canAccessScope } from "@/lib/adminAccess";
 
 /**
  * POST — admin-only manual wallet credit. Used to reconcile a vendor's
@@ -11,7 +12,7 @@ import { sendPaymentConfirmationEmail } from "@/lib/email";
 export async function POST(request: NextRequest) {
   const adminId = request.cookies.get("user_id")?.value;
   const userRole = request.cookies.get("user_role")?.value;
-  if (!adminId || userRole !== "admin") {
+  if (!adminId || !(userRole === "admin" || canAccessScope(userRole, "finance"))) {
     return NextResponse.json({ error: "Admin only" }, { status: 403 });
   }
 

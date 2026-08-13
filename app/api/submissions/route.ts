@@ -4,6 +4,7 @@ import {
   updatePhotoSubmissionStatus, addPhoto, uploadPhotoToStorage, getOrderById, getUserById,
 } from "@/lib/db";
 import { sendNtfyNotification } from "@/lib/notify";
+import { canAccessScope } from "@/lib/adminAccess";
 
 // GET — admin sees all submissions; agents see their own
 export async function GET(request: NextRequest) {
@@ -11,7 +12,7 @@ export async function GET(request: NextRequest) {
   const userRole = request.cookies.get("user_role")?.value;
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  if (userRole === "admin") {
+  if (userRole === "admin" || canAccessScope(userRole, "orders")) {
     const submissions = await getPhotoSubmissions();
     return NextResponse.json({ submissions });
   }
@@ -73,7 +74,7 @@ export async function POST(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   const userId = request.cookies.get("user_id")?.value;
   const userRole = request.cookies.get("user_role")?.value;
-  if (!userId || userRole !== "admin")
+  if (!userId || !(userRole === "admin" || canAccessScope(userRole, "orders")))
     return NextResponse.json({ error: "Admin only" }, { status: 403 });
 
   const { id, action, orderId } = await request.json();

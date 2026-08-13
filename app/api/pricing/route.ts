@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SERVICE_CATALOG, Service } from "@/lib/services";
 import { supabase } from "@/lib/supabase";
+import { canAccessScope } from "@/lib/adminAccess";
 
 // Load overrides from DB, merge with catalog defaults
 async function getServicePricing() {
@@ -42,7 +43,7 @@ export async function GET(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   const adminId = request.cookies.get("user_id")?.value;
   const userRole = request.cookies.get("user_role")?.value;
-  if (!adminId || userRole !== "admin") return NextResponse.json({ error: "Admin only" }, { status: 403 });
+  if (!adminId || !(userRole === "admin" || canAccessScope(userRole, "finance"))) return NextResponse.json({ error: "Admin only" }, { status: 403 });
 
   const body = await request.json();
   const { id, basePrice, compensation, active, rushFlat24, rushFlat6 } = body;

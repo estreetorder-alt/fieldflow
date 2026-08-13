@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createDispute, getDisputesByClient, getAllDisputes, getOrderById, getUserById } from "@/lib/db";
 import { sendAdminNotification } from "@/lib/email";
+import { canAccessScope } from "@/lib/adminAccess";
 
 export async function GET(request: NextRequest) {
   const userId = request.cookies.get("user_id")?.value;
   const userRole = request.cookies.get("user_role")?.value;
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  if (userRole === "admin") {
+  if (userRole === "admin" || canAccessScope(userRole, "orders")) {
     const status = request.nextUrl.searchParams.get("status") ?? undefined;
     const disputes = await getAllDisputes(status);
     return NextResponse.json({ disputes });

@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getEmailLog, addEmailLog } from "@/lib/db";
+import { canAccessScope } from "@/lib/adminAccess";
 
 export async function GET(request: NextRequest) {
   const userRole = request.cookies.get("user_role")?.value;
-  if (userRole !== "admin") return NextResponse.json({ error: "Admin only" }, { status: 403 });
+  if (!(userRole === "admin" || canAccessScope(userRole, "support"))) return NextResponse.json({ error: "Admin only" }, { status: 403 });
   const emails = await getEmailLog();
   return NextResponse.json({ emails });
 }

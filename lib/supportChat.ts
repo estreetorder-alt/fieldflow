@@ -112,3 +112,41 @@ export async function listForUser(
   const items = (data ?? []).map((r) => mapChat(r as Record<string, unknown>));
   return { items, total: count ?? 0 };
 }
+
+export interface AdminSupportListItem extends SupportChat {
+  userName?: string;
+  userEmail?: string;
+  userRole?: string;
+}
+
+/**
+ * Admin-side ticket queue — every support chat/request across all users,
+ * newest first, with the requester's name/email/role joined in. Powers the
+ * admin Support tab (sub_admin_support + top admin).
+ */
+export async function listAllTickets(
+  { page = 1, pageSize = 20, status }: { page?: number; pageSize?: number; status?: string } = {}
+): Promise<{ items: AdminSupportListItem[]; total: number }> {
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+
+  let q = supabase
+    .from("support_chats")
+    .select("*, users:user_id ( name, email, role )", { count: "exact" })
+    .order("updated_at", { ascending: false })
+    .range(from, to);
+  if (status && status !== "all") q = q.eq("status", status);
+
+  const { data, count } = await q;
+  const items = (data ?? []).map((r) => {
+    const row = r as Record<string, unknown>;
+    const user = (row.users ?? {}) as Record<string, unknown>;
+    return {
+      ...mapChat(row),
+      userName: (user.name as string) ?? undefined,
+      userEmail: (user.email as string) ?? undefined,
+      userRole: (user.role as string) ?? undefined,
+    };
+  });
+  return { items, total: count ?? 0 };
+}

@@ -94,30 +94,49 @@ alter table messages         enable row level security;
 alter table payout_log       enable row level security;
 alter table photo_packages   enable row level security;
 
+drop policy if exists "service role full access" on agent_zip_codes;
 create policy "service role full access" on agent_zip_codes  for all using (true) with check (true);
+drop policy if exists "service role full access" on agent_samples;
 create policy "service role full access" on agent_samples    for all using (true) with check (true);
+drop policy if exists "service role full access" on messages;
 create policy "service role full access" on messages         for all using (true) with check (true);
+drop policy if exists "service role full access" on payout_log;
 create policy "service role full access" on payout_log       for all using (true) with check (true);
+drop policy if exists "service role full access" on photo_packages;
 create policy "service role full access" on photo_packages   for all using (true) with check (true);
 
--- Demo zip codes for existing agents
-insert into agent_zip_codes (agent_id, zip_code) values
-  ('user-2', '60601'), ('user-2', '60602'), ('user-2', '60603'),
-  ('user-2', '60604'), ('user-2', '60605'), ('user-2', '60610'),
-  ('user-3', '62701'), ('user-3', '62702'), ('user-3', '62703'),
-  ('user-6', '60201'), ('user-6', '60202'), ('user-6', '60203')
-on conflict do nothing;
-
--- Demo messages
-insert into messages (from_id, to_id, order_id, body) values
-  ('user-1', 'user-2', 'ord-2', 'Hi Jane, please make sure to capture the foundation clearly on this one.'),
-  ('user-2', 'user-1', 'ord-2', 'Understood! Will do extra shots of the foundation area.'),
-  ('user-1', 'user-3', null,    'Tom, your sample set looks great. You are approved to start taking orders.');
-
--- Agent grades for demo agents
-update users set grade = 4.8, completion_rate = 97.5, response_rate = 95.0, approved = true where id = 'user-2';
-update users set grade = 4.2, completion_rate = 89.0, response_rate = 88.0, approved = true where id = 'user-3';
-update users set grade = 4.9, completion_rate = 99.0, response_rate = 98.0, approved = true where id = 'user-6';
+-- Demo zip codes / messages / grades for the seed agents (user-2, user-3,
+-- user-6) that ship in schema.sql's demo data. Wrapped so this is a safe
+-- no-op on a production database that never had those seed rows.
+do $$ begin
+  if exists (select 1 from users where id = 'user-2') then
+    insert into agent_zip_codes (agent_id, zip_code) values
+      ('user-2', '60601'), ('user-2', '60602'), ('user-2', '60603'),
+      ('user-2', '60604'), ('user-2', '60605'), ('user-2', '60610')
+    on conflict do nothing;
+    update users set grade = 4.8, completion_rate = 97.5, response_rate = 95.0, approved = true where id = 'user-2';
+  end if;
+  if exists (select 1 from users where id = 'user-3') then
+    insert into agent_zip_codes (agent_id, zip_code) values
+      ('user-3', '62701'), ('user-3', '62702'), ('user-3', '62703')
+    on conflict do nothing;
+    update users set grade = 4.2, completion_rate = 89.0, response_rate = 88.0, approved = true where id = 'user-3';
+  end if;
+  if exists (select 1 from users where id = 'user-6') then
+    insert into agent_zip_codes (agent_id, zip_code) values
+      ('user-6', '60201'), ('user-6', '60202'), ('user-6', '60203')
+    on conflict do nothing;
+    update users set grade = 4.9, completion_rate = 99.0, response_rate = 98.0, approved = true where id = 'user-6';
+  end if;
+  if exists (select 1 from users where id = 'user-1')
+     and exists (select 1 from users where id = 'user-2')
+     and exists (select 1 from users where id = 'user-3') then
+    insert into messages (from_id, to_id, order_id, body) values
+      ('user-1', 'user-2', 'ord-2', 'Hi Jane, please make sure to capture the foundation clearly on this one.'),
+      ('user-2', 'user-1', 'ord-2', 'Understood! Will do extra shots of the foundation area.'),
+      ('user-1', 'user-3', null,    'Tom, your sample set looks great. You are approved to start taking orders.');
+  end if;
+end $$;
 
 -- ── Services catalog table (synced from lib/services.ts) ─────
 create table if not exists services_catalog (
@@ -134,6 +153,7 @@ create table if not exists services_catalog (
   active            boolean default true
 );
 alter table services_catalog enable row level security;
+drop policy if exists "service role full access" on services_catalog;
 create policy "service role full access" on services_catalog for all using (true) with check (true);
 
 -- Stripe payment fields on orders

@@ -2,7 +2,7 @@
 import { uploadImageFile } from "@/lib/uploadClient";
 import { etDate, etDateTime, etTime } from "@/lib/est";
 import ExportButton from "../components/ExportButton";
-import AdminSidebar, { type AdminTab } from "./AdminSidebar";
+import AdminSidebar, { type AdminTab, homeTabForRole, scopeForRole } from "./AdminSidebar";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -11,7 +11,7 @@ import {
   Mail, MapPin, Car, Download, Package, Gavel, UserPlus, Eye, EyeOff, X,
   ShieldCheck, CreditCard, AlertCircle, ZapIcon, ChevronDown, ChevronUp, Link as LinkIcon, Plus as PlusIcon, Trash as TrashIcon,
   AlertTriangle, History, Camera as CameraIcon, Wallet as WalletIcon, Upload, BarChart3, User as UserIcon,
-  ArrowLeft, ChevronRight, Search, Bell, Menu,
+  ArrowLeft, ChevronRight, Search, Bell, Menu, LifeBuoy,
 } from "lucide-react";
 
 interface Order { id: string; address: string; status: string; clientId: string; assignedAgentId: string | null; totalPrice: number; compensationAmount: number; serviceType: string; turnaroundTier: string; notes: string; createdAt: string; client?: { name: string; email: string } | null; agent?: { name: string; rating?: number } | null; bids?: Bid[]; acceptedBidId?: string | null; photos?: { id: string; filename: string; url: string; description: string; approved?: boolean }[]; }
@@ -31,10 +31,14 @@ interface Payout { id: number; agent_id: string; amount: number; paypal_email: s
 const STATUS_COLORS: Record<string,string> = { pending:"bg-amber-100 text-amber-700", in_progress:"bg-blue-100 text-blue-700", completed:"bg-green-100 text-green-700", cancelled:"bg-red-100 text-red-700" };
 const STATUS_ICONS: Record<string,React.ReactNode> = { pending:<Clock className="w-3.5 h-3.5"/>, in_progress:<RefreshCw className="w-3.5 h-3.5"/>, completed:<CheckCircle className="w-3.5 h-3.5"/>, cancelled:<XCircle className="w-3.5 h-3.5"/> };
 const TIER_BADGES: Record<string,string> = { standard:"bg-slate-50 text-slate-500", rush_24hr:"bg-amber-50 text-amber-700", rush_6hr:"bg-red-50 text-red-700" };
+const ROLE_LABELS: Record<string,string> = {
+  admin: "Admin", sub_admin_orders: "Sub-Admin — Orders", sub_admin_users: "Sub-Admin — Users",
+  sub_admin_finance: "Sub-Admin — Finance", sub_admin_support: "Sub-Admin — Support",
+};
 
 export default function AdminPage() {
   const router = useRouter();
-  const [tab, setTab] = useState<"orders"|"agents"|"users"|"wallet"|"samples"|"payouts"|"payment-links"|"pricing"|"emails"|"disputes"|"audit"|"photos">("orders");
+  const [tab, setTab] = useState<"orders"|"agents"|"users"|"wallet"|"samples"|"payouts"|"payment-links"|"pricing"|"emails"|"disputes"|"audit"|"photos"|"support">("orders");
   const [orders, setOrders] = useState<Order[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
   // Agents grouped by resolved state, states sorted alphabetically, agents sorted by name within each state
@@ -94,6 +98,8 @@ export default function AdminPage() {
   const [saving, setSaving] = useState<string|null>(null);
   const [userName, setUserName] = useState("Admin");
   const [adminId, setAdminId] = useState("");
+  const [role, setRole] = useState<string>("");
+  const isFullAdmin = role === "" || role === "admin"; // default open while /api/auth/me is still loading
   const [liveConnected, setLiveConnected] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -178,7 +184,7 @@ export default function AdminPage() {
     setEmails(emailsData.emails ?? []);
     setAllUsers(agentsData.allUsers ?? []);
     setPaymentLinks(linksData.links ?? []);
-    if (meData.user) { setUserName(meData.user.name); setAdminId(meData.user.id); }
+    if (meData.user) { setUserName(meData.user.name); setAdminId(meData.user.id); setRole(meData.user.role ?? ""); }
   }, []);
 
   const fetchSamples = useCallback(async () => {
@@ -247,6 +253,52 @@ export default function AdminPage() {
     setAuditLog(d.log ?? []);
   }, []);
 
+  // ── Support Center (admin queue) ──
+  interface SupportTicket {
+    id: string; userId: string; kind: "chat"|"request"; status: string;
+    category: string; subject?: string|null; userName?: string; userEmail?: string; userRole?: string;
+    createdAt: string; updatedAt: string;
+  }
+  interface SupportThreadMsg { id: number; sender: "user"|"bot"|"agent"; body: string; createdAt: string; }
+  const [supportTickets, setSupportTickets] = useState<SupportTicket[]>([]);
+  const [supportFilter, setSupportFilter] = useState<string>("open");
+  const [supportThread, setSupportThread] = useState<{ ticket: SupportTicket; messages: SupportThreadMsg[] } | null>(null);
+  const [supportReply, setSupportReply] = useState("");
+  const [supportBusy, setSupportBusy] = useState(false);
+  const fetchSupportTickets = useCallback(async (status?: string) => {
+    const r = await fetch(`/api/admin/support${status && status !== "all" ? `?status=${status}` : ""}`);
+    const d = await r.json();
+    setSupportTickets(d.items ?? []);
+  }, []);
+  const openSupportTicket = useCallback(async (t: SupportTicket) => {
+    const r = await fetch(`/api/admin/support/${t.id}`);
+    const d = await r.json();
+    setSupportThread({ ticket: t, messages: d.messages ?? [] });
+  }, []);
+  async function sendSupportReply() {
+    if (!supportThread || !supportReply.trim()) return;
+    setSupportBusy(true);
+    await fetch(`/api/admin/support/${supportThread.ticket.id}`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ body: supportReply.trim() }),
+    });
+    setSupportReply("");
+    await openSupportTicket(supportThread.ticket);
+    await fetchSupportTickets(supportFilter);
+    setSupportBusy(false);
+  }
+  async function closeSupportTicket(status: "resolved"|"closed") {
+    if (!supportThread) return;
+    setSupportBusy(true);
+    await fetch(`/api/admin/support/${supportThread.ticket.id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    });
+    setSupportThread(null);
+    await fetchSupportTickets(supportFilter);
+    setSupportBusy(false);
+  }
+
   useEffect(() => {
     setLoading(true);
     fetchAll().finally(() => setLoading(false));
@@ -259,6 +311,22 @@ export default function AdminPage() {
   }, [fetchAll]);
 
   useEffect(() => { if (tab === "samples") fetchSamples(); }, [tab, fetchSamples]);
+
+  // Once we know the signed-in role, if it's a scoped sub-admin still sitting
+  // on the default "orders" tab (which they may not have access to), send
+  // them to the first tab their role actually covers.
+  useEffect(() => {
+    if (!role || role === "admin") return;
+    if (tab === "orders" && scopeForRole(role)) setTab(homeTabForRole(role) as typeof tab);
+  }, [role]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => { if (tab === "support") fetchSupportTickets(supportFilter); }, [tab, fetchSupportTickets, supportFilter]);
+  // Sidebar badge needs an open-ticket count even before the Support tab is
+  // ever visited — fetch it once we know this role can see Support at all.
+  useEffect(() => {
+    if (!role) return;
+    if (role === "admin" || scopeForRole(role) === "support") fetchSupportTickets("open");
+  }, [role]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { if (tab === "payouts") fetchPayouts(); }, [tab, fetchPayouts]);
   useEffect(() => { if (tab === "payment-links") fetchPaymentLinks(); }, [tab, fetchPaymentLinks]);
@@ -748,9 +816,11 @@ export default function AdminPage() {
         badges={{
           samples: samples.length,
           photos: orders.reduce((sum,o)=>sum+(o.photos??[]).filter(p=>p.approved===false).length,0) + submissions.filter(su=>su.status==="pending").length,
+          support: supportTickets.filter(t=>t.status==="open").length,
         }}
         onTeamAccess={() => router.push("/admin/team")}
         liveConnected={liveConnected}
+        role={role}
       />
       <div className="flex-1 min-w-0 flex flex-col">
       <header className="bg-white border-b border-slate-200 px-4 sm:px-6 sticky top-0 z-10">
@@ -787,7 +857,7 @@ export default function AdminPage() {
             <button onClick={openProfile} className="flex items-center gap-2.5" title="My profile">
               <div className="hidden sm:block text-right">
                 <p className="text-sm font-bold text-[#081A36] leading-tight">{userName}</p>
-                <p className="text-xs text-slate-400 leading-none">Admin</p>
+                <p className="text-xs text-slate-400 leading-none">{ROLE_LABELS[role] ?? "Admin"}</p>
               </div>
               <div className="w-9 h-9 rounded-full bg-[#081A36] text-white flex items-center justify-center font-bold text-sm shrink-0">
                 {(userName||"A").trim().charAt(0).toUpperCase()}
@@ -877,15 +947,15 @@ export default function AdminPage() {
           )}
         </div>
 
-        {/* Stats */}
+        {/* Stats — scoped to what this role can actually act on */}
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-6">
           {[
-            {label:"Total Orders",value:orders.length,color:"text-blue-600 bg-blue-50",icon:<ClipboardList className="w-4 h-4"/>},
-            {label:"Awaiting Payment",value:orders.filter(o=>(o as unknown as Record<string,unknown>).payment_status==="pending").length,color:"text-amber-600 bg-amber-50",icon:<DollarSign className="w-4 h-4"/>},
-            {label:"In Progress",value:orders.filter(o=>o.status==="in_progress").length,color:"text-blue-600 bg-blue-50",icon:<RefreshCw className="w-4 h-4"/>},
-            {label:"Completed",value:orders.filter(o=>o.status==="completed").length,color:"text-green-600 bg-green-50",icon:<CheckCircle className="w-4 h-4"/>},
-            {label:"Pending Users",value:allUsers.filter(u=>u.role!=="admin"&&!u.accountActive&&!u.suspended).length,color:"text-amber-600 bg-amber-50",icon:<Users className="w-4 h-4"/>},
-          ].map(card=>(
+            {label:"Total Orders",value:orders.length,color:"text-blue-600 bg-blue-50",icon:<ClipboardList className="w-4 h-4"/>,scope:"orders"},
+            {label:"Awaiting Payment",value:orders.filter(o=>(o as unknown as Record<string,unknown>).payment_status==="pending").length,color:"text-amber-600 bg-amber-50",icon:<DollarSign className="w-4 h-4"/>,scope:"finance"},
+            {label:"In Progress",value:orders.filter(o=>o.status==="in_progress").length,color:"text-blue-600 bg-blue-50",icon:<RefreshCw className="w-4 h-4"/>,scope:"orders"},
+            {label:"Completed",value:orders.filter(o=>o.status==="completed").length,color:"text-green-600 bg-green-50",icon:<CheckCircle className="w-4 h-4"/>,scope:"orders"},
+            {label:"Pending Users",value:allUsers.filter(u=>u.role!=="admin"&&!u.accountActive&&!u.suspended).length,color:"text-amber-600 bg-amber-50",icon:<Users className="w-4 h-4"/>,scope:"users"},
+          ].filter(card => isFullAdmin || scopeForRole(role) === card.scope).map(card=>(
             <div key={card.label} className="bg-white border border-slate-200 rounded-xl p-4">
               <div className={`w-8 h-8 rounded-lg flex items-center justify-center mb-2 ${card.color}`}>{card.icon}</div>
               <div className="text-2xl font-bold text-slate-900">{card.value}</div>
@@ -2548,6 +2618,86 @@ export default function AdminPage() {
                 )}
               </div>
             ))}
+          </div>
+        ) : tab === "support" ? (
+          <div className="grid lg:grid-cols-[380px_1fr] gap-4">
+            {/* Ticket queue */}
+            <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+              <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between flex-wrap gap-2">
+                <h2 className="font-semibold text-slate-900">Support Center</h2>
+                <div className="flex gap-1">
+                  {["open","in_progress","resolved","closed","all"].map(s=>(
+                    <button key={s} onClick={()=>setSupportFilter(s)}
+                      className={`text-[11px] font-medium px-2 py-1 rounded-lg border ${supportFilter===s?"bg-[#081A36] text-white border-slate-900":"border-slate-200 text-slate-600 hover:bg-slate-50"}`}>
+                      {s.replace("_"," ")}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {supportTickets.length===0 ? (
+                <div className="text-center py-12 text-slate-400"><LifeBuoy className="w-8 h-8 mx-auto mb-2 text-slate-300"/><p>No tickets{supportFilter!=="all"?` (${supportFilter.replace("_"," ")})`:""}</p></div>
+              ) : (
+                <div className="divide-y divide-slate-100 max-h-[70vh] overflow-y-auto">
+                  {supportTickets.map(t=>(
+                    <button key={t.id} onClick={()=>openSupportTicket(t)}
+                      className={`w-full text-left px-5 py-3 hover:bg-slate-50 ${supportThread?.ticket.id===t.id?"bg-[#FF6A00]/5":""}`}>
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                          t.status==="open"?"bg-amber-100 text-amber-700":
+                          t.status==="in_progress"?"bg-blue-100 text-blue-700":
+                          t.status==="resolved"?"bg-green-100 text-green-700":"bg-slate-100 text-slate-500"
+                        }`}>{t.status.replace("_"," ")}</span>
+                        <span className="text-[10px] text-slate-400">{t.kind === "chat" ? "Live Chat" : "Request"}</span>
+                      </div>
+                      <p className="text-sm font-medium text-[#081A36] truncate">{t.subject || t.category || "Support ticket"}</p>
+                      <p className="text-xs text-slate-400 truncate">{t.userName ?? "Unknown"} {t.userEmail ? `— ${t.userEmail}` : ""}</p>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Thread */}
+            <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden flex flex-col">
+              {!supportThread ? (
+                <div className="flex-1 flex items-center justify-center text-slate-400 text-sm py-16">Select a ticket to view the conversation</div>
+              ) : (
+                <>
+                  <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between flex-wrap gap-2">
+                    <div>
+                      <p className="font-semibold text-[#081A36] text-sm">{supportThread.ticket.subject || supportThread.ticket.category || "Support ticket"}</p>
+                      <p className="text-xs text-slate-400">{supportThread.ticket.userName} — {supportThread.ticket.userEmail} ({supportThread.ticket.userRole})</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={()=>closeSupportTicket("resolved")} disabled={supportBusy}
+                        className="text-xs font-medium px-3 py-1.5 rounded-lg border border-green-200 text-green-700 hover:bg-green-50 disabled:opacity-50">Mark Resolved</button>
+                      <button onClick={()=>closeSupportTicket("closed")} disabled={supportBusy}
+                        className="text-xs font-medium px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50">Close</button>
+                    </div>
+                  </div>
+                  <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3 max-h-[55vh]">
+                    {supportThread.messages.map(m=>(
+                      <div key={m.id} className={`max-w-[80%] ${m.sender==="user"?"mr-auto":"ml-auto"}`}>
+                        <div className={`rounded-2xl px-3.5 py-2 text-sm ${m.sender==="user"?"bg-slate-100 text-slate-800":m.sender==="bot"?"bg-slate-50 text-slate-500 italic":"bg-[#081A36] text-white"}`}>
+                          {m.body}
+                        </div>
+                        <p className={`text-[10px] text-slate-400 mt-0.5 ${m.sender==="user"?"text-left":"text-right"}`} suppressHydrationWarning>{etTime(m.createdAt)}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="px-5 py-3 border-t border-slate-100 flex gap-2">
+                    <input value={supportReply} onChange={e=>setSupportReply(e.target.value)}
+                      onKeyDown={e=>{ if(e.key==="Enter" && !supportBusy) sendSupportReply(); }}
+                      placeholder="Reply to this ticket…"
+                      className="flex-1 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6A00]"/>
+                    <button onClick={sendSupportReply} disabled={supportBusy || !supportReply.trim()}
+                      className="bg-[#FF6A00] hover:bg-[#FF8C1A] disabled:opacity-50 text-[#081A36] font-bold px-4 py-2 rounded-xl text-sm">
+                      {supportBusy?"Sending…":"Send"}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         ) : (
           <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">

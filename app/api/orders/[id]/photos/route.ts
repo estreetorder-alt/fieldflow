@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { addPhoto, uploadPhotoToStorage, getOrderById, addStatusHistory, anonUserId } from "@/lib/db";
+import { canAccessScope } from "@/lib/adminAccess";
 
 type Params = { params: Promise<{ id: string }> };
 
 export async function POST(request: NextRequest, { params }: Params) {
   const userId = request.cookies.get("user_id")?.value;
   const userRole = request.cookies.get("user_role")?.value;
-  if (!userId || !["agent", "admin"].includes(userRole ?? ""))
+  if (!userId || !(userRole === "agent" || userRole === "admin" || canAccessScope(userRole, "orders")))
     return NextResponse.json({ error: "Agents or admin only" }, { status: 403 });
 
   const { id } = await params;
@@ -19,7 +20,7 @@ export async function POST(request: NextRequest, { params }: Params) {
 
   // Admin: batch upload on behalf of the assigned agent — the vendor sees it as
   // the anonymized agent ("Agent #A93F2C"), never as admin.
-  if (userRole === "admin") {
+  if (userRole === "admin" || canAccessScope(userRole, "orders")) {
     if (!order.assignedAgentId)
       return NextResponse.json({ error: "This order has no assigned agent — assign one before uploading on their behalf" }, { status: 400 });
 
@@ -69,7 +70,7 @@ export async function POST(request: NextRequest, { params }: Params) {
 export async function PATCH(request: NextRequest, { params }: Params) {
   const userId = request.cookies.get("user_id")?.value;
   const userRole = request.cookies.get("user_role")?.value;
-  if (!userId || userRole !== "admin")
+  if (!userId || !(userRole === "admin" || canAccessScope(userRole, "orders")))
     return NextResponse.json({ error: "Admin only" }, { status: 403 });
 
   const { id } = await params;
@@ -91,7 +92,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 export async function DELETE(request: NextRequest, { params }: Params) {
   const userId = request.cookies.get("user_id")?.value;
   const userRole = request.cookies.get("user_role")?.value;
-  if (!userId || userRole !== "admin")
+  if (!userId || !(userRole === "admin" || canAccessScope(userRole, "orders")))
     return NextResponse.json({ error: "Admin only" }, { status: 403 });
   const { id } = await params;
   const { photoId } = await request.json();

@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { listAdminWhopPayments, listAdminWhopWebhooks } from "@/lib/walletBilling";
+import { canAccessScope } from "@/lib/adminAccess";
 
 /** GET — admin view of Whop wallet payments + webhook event log. */
 export async function GET(request: NextRequest) {
   const userId = request.cookies.get("user_id")?.value;
   const userRole = request.cookies.get("user_role")?.value;
-  if (!userId || userRole !== "admin") {
+  if (!userId || !(userRole === "admin" || canAccessScope(userRole, "finance"))) {
     return NextResponse.json({ error: "Admin only" }, { status: 403 });
   }
 

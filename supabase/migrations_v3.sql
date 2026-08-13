@@ -8,6 +8,7 @@ create table if not exists rate_limit_attempts (
 );
 create index if not exists idx_rla_key_created on rate_limit_attempts(key, created_at);
 alter table rate_limit_attempts enable row level security;
+drop policy if exists "service role full access" on rate_limit_attempts;
 create policy "service role full access" on rate_limit_attempts for all using (true) with check (true);
 -- Optional cleanup: delete attempts older than 24h (run periodically, e.g. via a cron/edge function)
 -- delete from rate_limit_attempts where created_at < now() - interval '24 hours';
@@ -33,6 +34,7 @@ create index if not exists idx_disputes_order  on disputes(order_id);
 create index if not exists idx_disputes_client on disputes(client_id);
 create index if not exists idx_disputes_status on disputes(status);
 alter table disputes enable row level security;
+drop policy if exists "service role full access" on disputes;
 create policy "service role full access" on disputes for all using (true) with check (true);
 
 -- ── 3. Agent reviews (client rates a completed job) ──────────────
@@ -48,6 +50,7 @@ create table if not exists reviews (
 );
 create index if not exists idx_reviews_agent on reviews(agent_id);
 alter table reviews enable row level security;
+drop policy if exists "service role full access" on reviews;
 create policy "service role full access" on reviews for all using (true) with check (true);
 
 -- ── 4. Admin audit log ────────────────────────────────────────
@@ -64,6 +67,7 @@ create table if not exists audit_log (
 create index if not exists idx_audit_created on audit_log(created_at desc);
 create index if not exists idx_audit_actor   on audit_log(actor_id);
 alter table audit_log enable row level security;
+drop policy if exists "service role full access" on audit_log;
 create policy "service role full access" on audit_log for all using (true) with check (true);
 
 -- ── 5. Agent background-check tracking (manual/admin-managed) ────

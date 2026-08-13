@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabase";
 import { SERVICE_MAP, calcServicePrice, calcCompensation } from "@/lib/services";
 import { notifyOrderPlaced } from "@/lib/notify";
 import { sendOrderConfirmedEmail } from "@/lib/email";
+import { canAccessScope } from "@/lib/adminAccess";
 
 export async function GET(request: NextRequest) {
   const userId = request.cookies.get("user_id")?.value;
@@ -11,7 +12,7 @@ export async function GET(request: NextRequest) {
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   let orders;
-  if (userRole === "admin") {
+  if (userRole === "admin" || canAccessScope(userRole, "orders")) {
     orders = await getAllOrders();
   } else if (userRole === "client") {
     const { data: subs } = await supabase.from("users").select("id").eq("parent_client_id", userId);

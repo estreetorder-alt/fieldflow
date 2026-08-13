@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getOrderById, updateOrder, addStatusHistory, getUserById, updatePhotoSelection, logAdminAction, anonUserId } from "@/lib/db";
 import { sendOrderCompletionEmail, sendOrderActivatedEmail, sendOrderStatusEmail, sendPaymentReceivedAdminEmail } from "@/lib/email";
 import { supabase } from "@/lib/supabase";
+import { canAccessScope } from "@/lib/adminAccess";
 
 type Params = { params: Promise<{ id: string }> };
 type OrderLike = { clientId: string; assignedAgentId: string | null };
@@ -10,7 +11,7 @@ type OrderLike = { clientId: string; assignedAgentId: string | null };
 // belongs to one of their sub-accounts. Agents may only touch orders
 // assigned to them. Admins can always access everything.
 async function canAccessOrder(order: OrderLike, userId: string, userRole?: string): Promise<boolean> {
-  if (userRole === "admin") return true;
+  if (userRole === "admin" || canAccessScope(userRole, "orders")) return true;
   if (userRole === "agent") return order.assignedAgentId === userId;
   if (userRole === "client") {
     if (order.clientId === userId) return true;
@@ -62,7 +63,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   }
 
   // Admin confirms payment
-  if (body.confirmPayment === true && userRole === "admin") {
+  if (body.confirmPayment === true && (userRole === "admin" || canAccessScope(userRole, "orders"))) {
     const client = await getUserById(order.clientId);
     await supabase.from("orders").update({
       payment_status: "confirmed",
@@ -94,12 +95,12 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 
   // Status update — admin can update any order; agents only their assigned order
   if (body.status) {
-    const canUpdateStatus = userRole === "admin" || (userRole === "agent" && order.assignedAgentId === userId);
+    const canUpdateStatus = userRole === "admin" || canAccessScope(userRole, "orders") || (userRole === "agent" && order.assignedAgentId === userId);
     if (!canUpdateStatus) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
     await updateOrder(id, { status: body.status });
     await addStatusHistory(id, body.status, body.note ?? `Order ${body.status.replace("_", " ")}`);
-    if (userRole === "admin") {
+    if (userRole === "admin" || canAccessScope(userRole, "orders")) {
       const admin = await getUserById(userId);
       await logAdminAction({ actorId: userId, actorName: admin?.name ?? "Admin", action: "order.status_override", targetType: "order", targetId: id, details: { newStatus: body.status, note: body.note ?? "" } });
     }
@@ -146,7 +147,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 
   // Admin assign agent — shown as system action without admin mention
   if (body.assignedAgentId !== undefined) {
-    if (userRole !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    if (userRole !== "admin" && !canAccessScope(userRole, "orders")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     await updateOrder(id, { assignedAgentId: body.assignedAgentId || null, status: body.status ?? order.status });
     const admin = await getUserById(userId);
     if (body.assignedAgentId) {
@@ -167,7 +168,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 
   // Marking an invoice paid outside of Whop/admin confirmation flows — admin only
   if (body.invoicePaid !== undefined) {
-    if (userRole !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    if (userRole !== "admin" && !canAccessScope(userRole, "orders")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     await updateOrder(id, { invoicePaid: body.invoicePaid });
     const admin = await getUserById(userId);
     await logAdminAction({ actorId: userId, actorName: admin?.name ?? "Admin", action: "order.invoice_paid_override", targetType: "order", targetId: id, details: { invoicePaid: body.invoicePaid } });

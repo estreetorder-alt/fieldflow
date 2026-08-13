@@ -22,6 +22,10 @@ create table if not exists photo_submissions (
 create index if not exists idx_photo_submissions_status on photo_submissions(status);
 create index if not exists idx_photo_submissions_agent on photo_submissions(agent_id);
 
+alter table photo_submissions enable row level security;
+drop policy if exists "service role full access" on photo_submissions;
+create policy "service role full access" on photo_submissions for all using (true) with check (true);
+
 -- 3) Storage bucket for photo files (public read).
 --    If this insert errors, create it manually: Dashboard → Storage → New bucket → name "photos", Public.
 insert into storage.buckets (id, name, public)

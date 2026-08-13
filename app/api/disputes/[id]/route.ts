@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDisputeById, resolveDispute, setDisputeStatus, getUserById, logAdminAction } from "@/lib/db";
 import { sendDisputeResolutionEmail } from "@/lib/email";
+import { canAccessScope } from "@/lib/adminAccess";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -11,7 +12,7 @@ export async function GET(request: NextRequest, { params }: Params) {
   const { id } = await params;
   const dispute = await getDisputeById(id);
   if (!dispute) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  if (userRole !== "admin" && dispute.clientId !== userId)
+  if (userRole !== "admin" && !canAccessScope(userRole, "orders") && dispute.clientId !== userId)
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   return NextResponse.json({ dispute });
 }
@@ -19,7 +20,7 @@ export async function GET(request: NextRequest, { params }: Params) {
 export async function PATCH(request: NextRequest, { params }: Params) {
   const userId = request.cookies.get("user_id")?.value;
   const userRole = request.cookies.get("user_role")?.value;
-  if (!userId || userRole !== "admin") return NextResponse.json({ error: "Admin only" }, { status: 403 });
+  if (!userId || !(userRole === "admin" || canAccessScope(userRole, "orders"))) return NextResponse.json({ error: "Admin only" }, { status: 403 });
 
   const { id } = await params;
   const dispute = await getDisputeById(id);

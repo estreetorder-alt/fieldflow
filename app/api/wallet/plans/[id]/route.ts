@@ -4,6 +4,7 @@ import {
   getWalletPlanById,
   updateWalletPlan,
 } from "@/lib/walletBilling";
+import { canAccessScope } from "@/lib/adminAccess";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -14,8 +15,11 @@ export async function GET(request: NextRequest, ctx: Ctx) {
   const { id } = await ctx.params;
   const plan = await getWalletPlanById(id);
   if (!plan) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  if (!plan.active && request.cookies.get("user_role")?.value !== "admin") {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  {
+    const r = request.cookies.get("user_role")?.value;
+    if (!plan.active && r !== "admin" && !canAccessScope(r, "finance")) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
   }
   return NextResponse.json({ plan });
 }
@@ -23,7 +27,7 @@ export async function GET(request: NextRequest, ctx: Ctx) {
 /** PATCH — admin updates name/amount/active/sort. */
 export async function PATCH(request: NextRequest, ctx: Ctx) {
   const userRole = request.cookies.get("user_role")?.value;
-  if (userRole !== "admin") return NextResponse.json({ error: "Admin only" }, { status: 403 });
+  if (!(userRole === "admin" || canAccessScope(userRole, "finance"))) return NextResponse.json({ error: "Admin only" }, { status: 403 });
 
   const { id } = await ctx.params;
   const existing = await getWalletPlanById(id);
@@ -65,7 +69,7 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
 /** DELETE — soft-deactivate (keeps FK history). */
 export async function DELETE(request: NextRequest, ctx: Ctx) {
   const userRole = request.cookies.get("user_role")?.value;
-  if (userRole !== "admin") return NextResponse.json({ error: "Admin only" }, { status: 403 });
+  if (!(userRole === "admin" || canAccessScope(userRole, "finance"))) return NextResponse.json({ error: "Admin only" }, { status: 403 });
 
   const { id } = await ctx.params;
   const existing = await getWalletPlanById(id);

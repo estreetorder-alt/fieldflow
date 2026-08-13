@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { manualWalletAdjustment, getUserById } from "@/lib/db";
 import { sendPaymentConfirmationEmail } from "@/lib/email";
+import { canAccessScope } from "@/lib/adminAccess";
 
 /**
  * Admin backup tool: manually credit or debit a vendor's wallet.
@@ -12,7 +13,7 @@ import { sendPaymentConfirmationEmail } from "@/lib/email";
 export async function POST(request: NextRequest) {
   const adminId = request.cookies.get("user_id")?.value;
   const userRole = request.cookies.get("user_role")?.value;
-  if (!adminId || userRole !== "admin") {
+  if (!adminId || !(userRole === "admin" || canAccessScope(userRole, "finance"))) {
     return NextResponse.json({ error: "Admin only" }, { status: 403 });
   }
 

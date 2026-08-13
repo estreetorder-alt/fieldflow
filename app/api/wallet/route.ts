@@ -2,13 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { getWalletBalance, getWalletTransactions } from "@/lib/db";
 import { supabase } from "@/lib/supabase";
 import { sendAdminNotification } from "@/lib/email";
+import { canAccessScope } from "@/lib/adminAccess";
 
 export async function GET(request: NextRequest) {
   const userId = request.cookies.get("user_id")?.value;
   const userRole = request.cookies.get("user_role")?.value;
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  if (userRole === "admin") {
+  if (userRole === "admin" || canAccessScope(userRole, "finance")) {
     // Admin gets all pending topups
     const { getAllWalletTopupsPending } = await import("@/lib/db");
     const pending = await getAllWalletTopupsPending();

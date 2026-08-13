@@ -10,4 +10,5 @@ create table if not exists site_announcements (
 );
 create index if not exists idx_announcements_active on site_announcements(active, audience);
 alter table site_announcements enable row level security;
+drop policy if exists "service role full access" on site_announcements;
 create policy "service role full access" on site_announcements for all using (true) with check (true);

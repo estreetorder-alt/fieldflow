@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUserById } from "@/lib/db";
 import { supabase } from "@/lib/supabase";
+import { canAccessScope } from "@/lib/adminAccess";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -10,7 +11,7 @@ type Params = { params: Promise<{ id: string }> };
 export async function GET(request: NextRequest, { params }: Params) {
   const adminId = request.cookies.get("user_id")?.value;
   const userRole = request.cookies.get("user_role")?.value;
-  if (!adminId || userRole !== "admin")
+  if (!adminId || !(userRole === "admin" || canAccessScope(userRole, "users")))
     return NextResponse.json({ error: "Admin only" }, { status: 403 });
 
   const { id } = await params;

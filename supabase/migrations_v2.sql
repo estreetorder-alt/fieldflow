@@ -121,29 +121,51 @@ alter table payout_log       enable row level security;
 alter table photo_packages   enable row level security;
 alter table services_catalog enable row level security;
 
+drop policy if exists "service role full access" on agent_zip_codes;
 create policy "service role full access" on agent_zip_codes  for all using (true) with check (true);
+drop policy if exists "service role full access" on agent_samples;
 create policy "service role full access" on agent_samples    for all using (true) with check (true);
+drop policy if exists "service role full access" on messages;
 create policy "service role full access" on messages         for all using (true) with check (true);
+drop policy if exists "service role full access" on payout_log;
 create policy "service role full access" on payout_log       for all using (true) with check (true);
+drop policy if exists "service role full access" on photo_packages;
 create policy "service role full access" on photo_packages   for all using (true) with check (true);
+drop policy if exists "service role full access" on services_catalog;
 create policy "service role full access" on services_catalog for all using (true) with check (true);
 
 -- ── 10. Demo data ─────────────────────────────────────────────
-insert into agent_zip_codes (agent_id, zip_code) values
-  ('user-2','60601'),('user-2','60602'),('user-2','60603'),('user-2','60604'),('user-2','60605'),
-  ('user-3','62701'),('user-3','62702'),('user-3','62703'),
-  ('user-6','60201'),('user-6','60202'),('user-6','60203')
-on conflict do nothing;
-
-insert into messages (from_id, to_id, order_id, body) values
-  ('user-1','user-2','ord-2','Hi Jane, please capture the foundation clearly on this one.'),
-  ('user-2','user-1','ord-2','Understood! Will do extra shots of the foundation area.'),
-  ('user-1','user-3',null,   'Tom, your sample set looks great. You are approved.')
-on conflict do nothing;
-
-update users set grade=4.8, completion_rate=97.5, response_rate=95.0, approved=true where id='user-2';
-update users set grade=4.2, completion_rate=89.0, response_rate=88.0, approved=true where id='user-3';
-update users set grade=4.9, completion_rate=99.0, response_rate=98.0, approved=true where id='user-6';
+-- Only seeds if the demo agents (user-2/3/6) actually exist — safe
+-- no-op on a production database that never had schema.sql's demo rows.
+do $$ begin
+  if exists (select 1 from users where id = 'user-2') then
+    insert into agent_zip_codes (agent_id, zip_code) values
+      ('user-2','60601'),('user-2','60602'),('user-2','60603'),('user-2','60604'),('user-2','60605')
+    on conflict do nothing;
+    update users set grade=4.8, completion_rate=97.5, response_rate=95.0, approved=true where id='user-2';
+  end if;
+  if exists (select 1 from users where id = 'user-3') then
+    insert into agent_zip_codes (agent_id, zip_code) values
+      ('user-3','62701'),('user-3','62702'),('user-3','62703')
+    on conflict do nothing;
+    update users set grade=4.2, completion_rate=89.0, response_rate=88.0, approved=true where id='user-3';
+  end if;
+  if exists (select 1 from users where id = 'user-6') then
+    insert into agent_zip_codes (agent_id, zip_code) values
+      ('user-6','60201'),('user-6','60202'),('user-6','60203')
+    on conflict do nothing;
+    update users set grade=4.9, completion_rate=99.0, response_rate=98.0, approved=true where id='user-6';
+  end if;
+  if exists (select 1 from users where id = 'user-1')
+     and exists (select 1 from users where id = 'user-2')
+     and exists (select 1 from users where id = 'user-3') then
+    insert into messages (from_id, to_id, order_id, body) values
+      ('user-1','user-2','ord-2','Hi Jane, please capture the foundation clearly on this one.'),
+      ('user-2','user-1','ord-2','Understood! Will do extra shots of the foundation area.'),
+      ('user-1','user-3',null,   'Tom, your sample set looks great. You are approved.')
+    on conflict do nothing;
+  end if;
+end $$;
 
 -- Payment link management
 create table if not exists payment_links (
@@ -157,6 +179,7 @@ create table if not exists payment_links (
   updated_at  timestamptz not null default now()
 );
 alter table payment_links enable row level security;
+drop policy if exists "service role full access" on payment_links;
 create policy "service role full access" on payment_links for all using (true) with check (true);
 
 -- Order payment tracking
@@ -179,6 +202,7 @@ create table if not exists password_reset_tokens (
   created_at  timestamptz not null default now()
 );
 alter table password_reset_tokens enable row level security;
+drop policy if exists "service role full access" on password_reset_tokens;
 create policy "service role full access" on password_reset_tokens for all using (true) with check (true);
 
 -- Admin is always active
@@ -202,6 +226,7 @@ create table if not exists wallet_transactions (
   created_at  timestamptz not null default now()
 );
 alter table wallet_transactions enable row level security;
+drop policy if exists "service role full access" on wallet_transactions;
 create policy "service role full access" on wallet_transactions for all using (true) with check (true);
 create index if not exists idx_wallet_user on wallet_transactions(user_id);
 
@@ -224,4 +249,5 @@ create table if not exists agent_applications (
   created_at  timestamptz not null default now()
 );
 alter table agent_applications enable row level security;
+drop policy if exists "service role full access" on agent_applications;
 create policy "service role full access" on agent_applications for all using (true) with check (true);

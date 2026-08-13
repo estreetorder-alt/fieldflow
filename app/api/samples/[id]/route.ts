@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { reviewSample, getUserById, logAdminAction } from "@/lib/db";
 import { sendAgentApprovedEmail, sendAgentRejectedEmail } from "@/lib/email";
+import { canAccessScope } from "@/lib/adminAccess";
 
 type Params = { params: Promise<{ id: string }> };
 
 export async function PATCH(request: NextRequest, { params }: Params) {
   const userId = request.cookies.get("user_id")?.value;
   const userRole = request.cookies.get("user_role")?.value;
-  if (!userId || userRole !== "admin") return NextResponse.json({ error: "Admin only" }, { status: 403 });
+  if (!userId || !(userRole === "admin" || canAccessScope(userRole, "users"))) return NextResponse.json({ error: "Admin only" }, { status: 403 });
   const { id } = await params;
   const { decision, notes, agentId } = await request.json();
   if (!["approved", "rejected"].includes(decision))

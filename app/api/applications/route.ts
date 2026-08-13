@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { saveAgentApplication, getAgentApplications } from "@/lib/db";
 import { sendAdminNotification } from "@/lib/email";
+import { canAccessScope } from "@/lib/adminAccess";
 
 export async function GET(request: NextRequest) {
   const userRole = request.cookies.get("user_role")?.value;
-  if (userRole !== "admin") return NextResponse.json({ error: "Admin only" }, { status: 403 });
+  if (!(userRole === "admin" || canAccessScope(userRole, "users"))) return NextResponse.json({ error: "Admin only" }, { status: 403 });
   const apps = await getAgentApplications();
   return NextResponse.json({ applications: apps });
 }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUserById, updateUser } from "@/lib/db";
+import { canAccessScope } from "@/lib/adminAccess";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -29,7 +30,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   const { id } = await params;
 
   // Agent can only update themselves; admin can update anyone
-  if (userRole !== "admin" && userId !== id)
+  if (userRole !== "admin" && !canAccessScope(userRole, "users") && userId !== id)
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const body = await request.json();
@@ -43,7 +44,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   if (body.smsOptIn !== undefined) allowed.smsOptIn = body.smsOptIn;
 
   // Admin-only fields
-  if (userRole === "admin") {
+  if (userRole === "admin" || canAccessScope(userRole, "users")) {
     if (body.rating !== undefined) allowed.rating = body.rating;
     if (body.pendingPayout !== undefined) allowed.pendingPayout = body.pendingPayout;
     if (body.backgroundCheckStatus !== undefined) allowed.backgroundCheckStatus = body.backgroundCheckStatus;

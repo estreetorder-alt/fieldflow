@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { getAllOrders, getOrdersByClientId, getOrdersByAgentId, anonUserId } from "@/lib/db";
 import { supabase } from "@/lib/supabase";
+import { isAdminTier } from "@/lib/adminAccess";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -28,7 +29,7 @@ export async function GET(request: NextRequest) {
         if (closed) { clearInterval(intervalId); return; }
         try {
           let orders;
-          if (userRole === "admin") orders = await getAllOrders();
+          if (isAdminTier(userRole)) orders = await getAllOrders();
           else if (userRole === "client") {
             const { data: subs } = await supabase.from("users").select("id").eq("parent_client_id", userId!);
             const subIds = (subs ?? []).map(s => (s as Record<string,unknown>).id as string);
