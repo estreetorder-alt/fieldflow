@@ -218,7 +218,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
             </div>
           </div>
           <div className="text-right flex-shrink-0">
-            {order.acceptedBidId ? (
+            {order.agent ? (
               <div className="text-3xl font-black text-slate-900">${order.compensationAmount}</div>
             ) : (
               <div className="inline-flex items-center gap-2 text-amber-600 text-sm font-semibold">
@@ -334,7 +334,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                   <span className="text-slate-500">Service</span>
                   <span className="font-medium text-slate-700 capitalize text-right">{order.serviceType}</span>
                 </div>
-                {order.acceptedBidId ? (
+                {order.agent ? (
                   <div className="border-t border-slate-100 pt-3 flex justify-between">
                     <span className="font-semibold text-slate-900">Accepted offer</span>
                     <span className="font-bold text-slate-900 text-lg">${order.compensationAmount}</span>

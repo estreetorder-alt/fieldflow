@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getOrderById, getUserById } from "@/lib/db";
 import { getTierLabel } from "@/lib/pricing";
+import { generateOrderReportPdf } from "@/lib/reportPdf";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -28,19 +29,27 @@ export async function GET(request: NextRequest, { params }: Params) {
 
   const fmt = (d: string) => new Date(d).toLocaleDateString("en-US", { timeZone: "America/New_York", year:"numeric", month:"long", day:"numeric" });
 
-  return NextResponse.json({
+  const pdfBytes = await generateOrderReportPdf({
     order: {
       id: order.id, address: order.address, status: order.status,
-      serviceType: order.serviceType, turnaroundTier: order.turnaroundTier,
-      turnaroundLabel: getTierLabel(order.turnaroundTier),
+      serviceType: order.serviceType, turnaroundLabel: getTierLabel(order.turnaroundTier),
       totalPrice: order.totalPrice, compensationAmount: order.compensationAmount,
       notes: order.notes, customizeNotes: order.customizeNotes,
-      photos: order.photos, photoExpiresAt: order.photoExpiresAt,
+      photos: order.photos.map(p => p.filename),
       createdAt: order.createdAt, invoicePaid: order.invoicePaid,
       statusHistory: order.statusHistory,
     },
     client: client ? { name: client.name, email: client.email, phone: client.phone } : null,
     agent: agent ? { name: agent.name, email: agent.email } : null,
     formattedDate: fmt(order.createdAt),
+  });
+
+  return new NextResponse(Buffer.from(pdfBytes), {
+    status: 200,
+    headers: {
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `inline; filename="Snapect-Report-${order.id}.pdf"`,
+      "Cache-Control": "private, no-store",
+    },
   });
 }

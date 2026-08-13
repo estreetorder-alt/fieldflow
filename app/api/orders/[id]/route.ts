@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getOrderById, updateOrder, addStatusHistory, getUserById, updatePhotoSelection, logAdminAction, anonUserId } from "@/lib/db";
+import { getOrderById, updateOrder, addStatusHistory, getUserById, updatePhotoSelection, logAdminAction, anonUserId, getBidsByOrderId, updateBidStatus, rejectAllPendingBids } from "@/lib/db";
 import { sendOrderCompletionEmail, sendOrderActivatedEmail, sendOrderStatusEmail, sendPaymentReceivedAdminEmail } from "@/lib/email";
 import { supabase } from "@/lib/supabase";
 import { canAccessScope } from "@/lib/adminAccess";
@@ -148,7 +148,47 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   // Admin assign agent — shown as system action without admin mention
   if (body.assignedAgentId !== undefined) {
     if (userRole !== "admin" && !canAccessScope(userRole, "orders")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    await updateOrder(id, { assignedAgentId: body.assignedAgentId || null, status: body.status ?? order.status });
+
+    if (body.assignedAgentId) {
+      // If this agent already has a pending bid on the order, treat this as
+      // accepting that bid — same wallet-hold + acceptedBidId path the
+      // normal bid-accept flow uses — instead of silently skipping it and
+      // leaving the order in a contradictory "assigned but still awaiting
+      // offers" state with no funds actually held.
+      const bids = await getBidsByOrderId(id);
+      const matchingBid = bids.find(b => b.agentId === body.assignedAgentId && b.status === "pending");
+
+      if (matchingBid && !order.acceptedBidId) {
+        const { tryHoldWithRollover } = await import("@/lib/rollover");
+        const { held, usedRollover, rolloverAmount } = await tryHoldWithRollover(order.clientId, id, matchingBid.amount);
+        if (!held) {
+          return NextResponse.json({
+            error: "insufficient_funds",
+            message: `Client's wallet balance is too low to cover this agent's $${matchingBid.amount} bid. Have them top up before assigning.`,
+          }, { status: 402 });
+        }
+        if (usedRollover) {
+          await addStatusHistory(id, order.status, `$${rolloverAmount?.toFixed(2)} of this order proceeded on rollover credit — will auto-settle on next wallet top-up.`);
+        }
+        await updateBidStatus(matchingBid.id, "accepted");
+        await rejectAllPendingBids(id);
+        await updateOrder(id, {
+          assignedAgentId: body.assignedAgentId, status: body.status ?? "in_progress",
+          acceptedBidId: matchingBid.id, compensationAmount: matchingBid.amount,
+          offerAcceptedAt: new Date().toISOString(),
+        });
+      } else {
+        // No matching bid to accept — either a bid was already accepted
+        // earlier (reassignment) or this is a pure manual placement. Either
+        // way, close out any other still-pending bids so the order can't be
+        // mistaken for still open to offers.
+        await rejectAllPendingBids(id);
+        await updateOrder(id, { assignedAgentId: body.assignedAgentId, status: body.status ?? order.status });
+      }
+    } else {
+      await updateOrder(id, { assignedAgentId: null, status: body.status ?? order.status });
+    }
+
     const admin = await getUserById(userId);
     if (body.assignedAgentId) {
       const agent = await getUserById(body.assignedAgentId);

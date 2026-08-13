@@ -649,6 +649,14 @@ export async function rejectOtherBids(orderId: string, acceptedBidId: string): P
     .eq("order_id", orderId).neq("id", acceptedBidId);
 }
 
+/** Closes out every still-pending bid on an order — used when an admin
+ *  assigns an agent directly (bypassing the accept-bid flow) so stray
+ *  "pending" bids don't linger and imply bidding is still open. */
+export async function rejectAllPendingBids(orderId: string): Promise<void> {
+  await supabase.from("bids").update({ status: "rejected" })
+    .eq("order_id", orderId).eq("status", "pending");
+}
+
 // ── Photos ────────────────────────────────────────────────────
 
 export async function addPhoto(photo: {
