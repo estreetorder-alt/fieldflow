@@ -23,6 +23,8 @@ interface WalletTx {
 }
 
 const CASHAPP_ID = "$snapect";
+const ZELLE_PHONE = "347-291-5301";
+const ZELLE_NAME = "Abdullah Baig";
 
 const TX_TYPE_LABEL: Record<string, string> = {
   topup: "Top-up",
@@ -69,6 +71,7 @@ function WalletPageInner() {
   const [userName, setUserName] = useState("Client");
   const [bouncing, setBouncing] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [copiedField, setCopiedField] = useState<"phone" | "name" | null>(null);
 
   // Cash App payment proof form
   const [payAmount, setPayAmount] = useState("");
@@ -118,6 +121,14 @@ function WalletPageInner() {
     navigator.clipboard?.writeText(CASHAPP_ID).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 1800);
+    });
+  }
+
+  function copyZelleField(field: "phone" | "name") {
+    const value = field === "phone" ? ZELLE_PHONE : ZELLE_NAME;
+    navigator.clipboard?.writeText(value).then(() => {
+      setCopiedField(field);
+      setTimeout(() => setCopiedField(null), 1800);
     });
   }
 
@@ -340,6 +351,47 @@ function WalletPageInner() {
                 <div className="pt-2 border-t border-slate-200">
                   <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Memo</p>
                   <p className="text-sm text-slate-700">Payment for Property Inspections (include your Order # if available).</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <div className="flex-1 h-px bg-slate-200" />
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wide">OR</span>
+                <div className="flex-1 h-px bg-slate-200" />
+              </div>
+
+              <div>
+                <h2 className="font-bold text-[#081A36] flex items-center gap-2 mb-0.5">
+                  <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-[#6D1ED4] text-white text-xs font-black">Z</span>
+                  Pay with Zelle
+                </h2>
+                <p className="text-xs text-slate-400 mb-3">Send your payment directly, then upload proof below</p>
+
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Phone Number</p>
+                      <p className="text-lg font-black text-[#081A36]">{ZELLE_PHONE}</p>
+                    </div>
+                    <button
+                      onClick={() => copyZelleField("phone")}
+                      className="flex items-center gap-1.5 text-xs font-bold border border-slate-300 hover:border-[#6D1ED4] hover:bg-[#6D1ED4]/5 text-slate-700 px-3 py-2 rounded-lg"
+                    >
+                      {copiedField === "phone" ? <><Check className="w-3.5 h-3.5 text-emerald-600" /> Copied</> : <><Copy className="w-3.5 h-3.5" /> Copy</>}
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Account Name</p>
+                      <p className="text-lg font-black text-[#081A36]">{ZELLE_NAME}</p>
+                    </div>
+                    <button
+                      onClick={() => copyZelleField("name")}
+                      className="flex items-center gap-1.5 text-xs font-bold border border-slate-300 hover:border-[#6D1ED4] hover:bg-[#6D1ED4]/5 text-slate-700 px-3 py-2 rounded-lg"
+                    >
+                      {copiedField === "name" ? <><Check className="w-3.5 h-3.5 text-emerald-600" /> Copied</> : <><Copy className="w-3.5 h-3.5" /> Copy</>}
+                    </button>
+                  </div>
                 </div>
               </div>
 
