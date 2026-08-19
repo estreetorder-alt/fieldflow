@@ -45,22 +45,28 @@ export async function POST(request: NextRequest) {
   if (!userId || !["client","agent"].includes(userRole ?? ""))
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { amount, description, receiptUrl, orderNumber } = await request.json();
+  const { amount, description, receiptUrl, orderNumber, paymentMethod } = await request.json();
   if (!amount || Number(amount) <= 0)
     return NextResponse.json({ error: "Valid amount required" }, { status: 400 });
 
-  const isCashApp = Boolean(receiptUrl);
-  if (isCashApp && !String(receiptUrl).trim())
+  const isReceiptPayment = Boolean(receiptUrl);
+  if (isReceiptPayment && !String(receiptUrl).trim())
     return NextResponse.json({ error: "Receipt screenshot is required" }, { status: 400 });
+
+  // The client explicitly picks Cash App or Zelle on the wallet page — trust
+  // that selection so admin sees the true processor, defaulting to Cash App
+  // only for legacy/manual submissions that predate the method picker.
+  const isZelle = isReceiptPayment && paymentMethod === "zelle";
+  const methodLabel = isZelle ? "Zelle" : "Cash App";
 
   // Create pending topup transaction (admin confirms after payment received)
   const txId = `wtx-${Date.now()}-${Math.random().toString(36).slice(2,5)}`;
   await supabase.from("wallet_transactions").insert({
     id: txId, user_id: userId, type: "topup",
     amount: Number(amount), balance_after: 0,
-    description: description ?? (isCashApp ? `Cash App payment — $${amount}` : `Wallet top-up $${amount}`),
+    description: description ?? (isReceiptPayment ? `${methodLabel} payment — $${amount}` : `Wallet top-up $${amount}`),
     status: "pending",
-    purpose: isCashApp ? "cashapp_topup" : "manual_topup",
+    purpose: isReceiptPayment ? (isZelle ? "zelle_topup" : "cashapp_topup") : "manual_topup",
     metadata: {
       ...(receiptUrl ? { receiptUrl: String(receiptUrl) } : {}),
       ...(orderNumber ? { orderNumber: String(orderNumber) } : {}),
@@ -71,8 +77,8 @@ export async function POST(request: NextRequest) {
   const { getUserById } = await import("@/lib/db");
   const user = await getUserById(userId);
   await sendAdminNotification({
-    title: isCashApp ? `💵 Cash App Payment Submitted — $${amount}` : `💰 Wallet Top-up Request — $${amount}`,
-    message: `User: ${user?.name} (${user?.email})\nAmount: $${amount}${orderNumber ? `\nOrder #: ${orderNumber}` : ""}\nTransaction: ${txId}${isCashApp ? `\nReceipt: ${receiptUrl}` : ""}\n\nConfirm payment received in Admin → Wallet tab.`,
+    title: isReceiptPayment ? `💵 ${methodLabel} Payment Submitted — $${amount}` : `💰 Wallet Top-up Request — $${amount}`,
+    message: `User: ${user?.name} (${user?.email})\nMethod: ${methodLabel}\nAmount: $${amount}${orderNumber ? `\nOrder #: ${orderNumber}` : ""}\nTransaction: ${txId}${isReceiptPayment ? `\nReceipt: ${receiptUrl}` : ""}\n\nConfirm payment received in Admin → Wallet tab.`,
     type: "topup_request",
   });
 

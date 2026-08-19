@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { addPhoto, uploadPhotoToStorage, getOrderById, addStatusHistory, anonUserId } from "@/lib/db";
+import { addPhoto, uploadPhotoToStorage, getOrderById, addStatusHistory, anonUserId, getUserById } from "@/lib/db";
 import { canAccessScope } from "@/lib/adminAccess";
+import { sendPhotosReleasedEmail, sendPhotoRejectedEmail } from "@/lib/email";
+
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://snapect.com";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -77,12 +80,36 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   const body = await request.json();
   const { supabase } = await import("@/lib/supabase");
 
+  // Notify the client whenever photos are actually released to them —
+  // photo approval was previously silent, leaving the client with no idea
+  // new photos had landed on their order.
+  async function notifyClientOfRelease(photoCount: number) {
+    if (photoCount <= 0) return;
+    const order = await getOrderById(id);
+    if (!order) return;
+    const client = order.client ?? (order.clientId ? await getUserById(order.clientId) : null);
+    if (!client?.email) return;
+    await sendPhotosReleasedEmail({
+      clientEmail: client.email,
+      clientName: client.name ?? "there",
+      address: order.address,
+      orderId: id,
+      photoCount,
+      baseUrl: BASE_URL,
+    });
+  }
+
   if (body.approveAll === true) {
+    const { data: newlyApproved } = await supabase
+      .from("photos").select("id").eq("order_id", id).eq("approved", false);
     await supabase.from("photos").update({ approved: true }).eq("order_id", id);
+    await notifyClientOfRelease(newlyApproved?.length ?? 0);
     return NextResponse.json({ ok: true });
   }
   if (body.photoId) {
-    await supabase.from("photos").update({ approved: body.approved !== false }).eq("id", body.photoId).eq("order_id", id);
+    const approving = body.approved !== false;
+    await supabase.from("photos").update({ approved: approving }).eq("id", body.photoId).eq("order_id", id);
+    if (approving) await notifyClientOfRelease(1);
     return NextResponse.json({ ok: true });
   }
   return NextResponse.json({ error: "photoId or approveAll required" }, { status: 400 });
@@ -95,9 +122,28 @@ export async function DELETE(request: NextRequest, { params }: Params) {
   if (!userId || !(userRole === "admin" || canAccessScope(userRole, "orders")))
     return NextResponse.json({ error: "Admin only" }, { status: 403 });
   const { id } = await params;
-  const { photoId } = await request.json();
+  const { photoId, reason } = await request.json();
   if (!photoId) return NextResponse.json({ error: "photoId required" }, { status: 400 });
   const { supabase } = await import("@/lib/supabase");
   await supabase.from("photos").delete().eq("id", photoId).eq("order_id", id);
+
+  // Rejecting/removing a photo was previously silent — the agent had no way
+  // to know a submission didn't make it through review. Notify them so they
+  // know to re-upload a replacement.
+  const order = await getOrderById(id);
+  if (order?.assignedAgentId) {
+    const agent = await getUserById(order.assignedAgentId);
+    if (agent?.email) {
+      await sendPhotoRejectedEmail({
+        agentEmail: agent.email,
+        agentName: agent.name ?? "there",
+        address: order.address,
+        orderId: id,
+        reason: typeof reason === "string" ? reason : undefined,
+        baseUrl: BASE_URL,
+      });
+    }
+  }
+
   return NextResponse.json({ ok: true });
 }

@@ -1715,7 +1715,7 @@ export default function AdminPage() {
               ) : pendingTopups.map(tx => (
                 <div key={tx.id} className="px-6 py-4 border-b border-slate-100 last:border-0 flex items-center justify-between gap-4">
                   <div className="flex items-center gap-4 flex-1 min-w-0">
-                    {tx.purpose === "cashapp_topup" && (
+                    {(tx.purpose === "cashapp_topup" || tx.purpose === "zelle_topup") && (
                       tx.receiptUrl ? (
                         <button onClick={() => setReceiptLightbox(tx.receiptUrl!)} className="flex-shrink-0">
                           <img src={tx.receiptUrl} alt="Payment receipt" className="w-16 h-16 object-cover rounded-lg border border-slate-200 hover:border-[#FF6A00]" />
@@ -1729,7 +1729,16 @@ export default function AdminPage() {
                         <span className="font-bold text-slate-900">{tx.userName ?? tx.userId}</span>
                         <span className="text-xs text-slate-500">{tx.userEmail}</span>
                         {tx.purpose === "cashapp_topup" && (
-                          <span className="text-[10px] font-bold uppercase bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">Cash App</span>
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">
+                            <span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-[3px] bg-[#00D632] text-white text-[9px] font-black">$</span>
+                            Cash App
+                          </span>
+                        )}
+                        {tx.purpose === "zelle_topup" && (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full">
+                            <span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-[3px] bg-[#6D1ED4] text-white text-[9px] font-black">Z</span>
+                            Zelle
+                          </span>
                         )}
                       </div>
                       <p className="text-xs text-slate-500">{tx.description}</p>
