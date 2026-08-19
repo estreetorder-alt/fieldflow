@@ -279,44 +279,29 @@ export async function sendDispatchEmail(opts: {
 
 // ── PHOTO REVIEW ──────────────────────────────────────────────
 // Agent uploads are held for admin review before the vendor can see them.
-// These fire on the two outcomes of that review so nobody is left guessing:
-// the vendor is told when new photos are released to them, and the agent is
-// told when a photo they submitted gets rejected/removed.
+// Admin review itself is invisible to the vendor by design (they never see
+// "pending" or "rejected" states) — the only moment worth notifying them
+// about is when photos are actually released, and it reads as the agent's
+// upload (matching Status History), never as an admin action.
 
 export async function sendPhotosReleasedEmail(opts: {
   clientEmail: string; clientName: string; address: string;
-  orderId: string; photoCount: number; baseUrl: string;
+  orderId: string; photoCount: number; agentLabel: string; baseUrl: string;
 }): Promise<void> {
   const subject = `New Photos Available — ${opts.address}`;
   const html = emailWrapper(
     "New Photos Have Been Added to Your Order",
-    `<p style="color:#475569;font-size:15px;line-height:1.7;">Hi ${opts.clientName}, ${opts.photoCount} photo${opts.photoCount !== 1 ? "s" : ""} from your inspection at <strong>${opts.address}</strong> ${opts.photoCount !== 1 ? "have" : "has"} been reviewed and released to you.</p>
+    `<p style="color:#475569;font-size:15px;line-height:1.7;">Hi ${opts.clientName}, ${opts.agentLabel} uploaded ${opts.photoCount} photo${opts.photoCount !== 1 ? "s" : ""} for your inspection at <strong>${opts.address}</strong>.</p>
      <table style="width:100%;border:1px solid #e2e8f0;border-radius:10px;padding:16px;margin:16px 0;border-collapse:separate;">
        ${row("Order ID", opts.orderId)}
        ${row("Address", opts.address)}
-       ${row("Photos Released", `${opts.photoCount} photo(s)`)}
+       ${row("Photos Added", `${opts.photoCount} photo(s)`)}
      </table>`,
     `${opts.baseUrl}/client/orders/${opts.orderId}`,
     "View Photos"
   );
   await addEmailLog({ type: "photos_released", to: opts.clientEmail, subject, body: `Photos released: ${opts.address}, ${opts.photoCount} photos` });
   await sendViaResend(opts.clientEmail, subject, html);
-}
-
-export async function sendPhotoRejectedEmail(opts: {
-  agentEmail: string; agentName: string; address: string;
-  orderId: string; reason?: string; baseUrl: string;
-}): Promise<void> {
-  const subject = `A Photo Was Rejected — ${opts.address}`;
-  const html = emailWrapper(
-    "One of Your Photos Was Rejected",
-    `<p style="color:#475569;font-size:15px;line-height:1.7;">Hi ${opts.agentName}, a photo you submitted for <strong>${opts.address}</strong> was reviewed and rejected.${opts.reason ? ` <strong>Reason:</strong> ${opts.reason}` : ""}</p>
-     <p style="color:#475569;font-size:14px;margin-top:12px;">Please re-upload a replacement photo for this order as soon as possible.</p>`,
-    `${opts.baseUrl}/agent`,
-    "Go to Order"
-  );
-  await addEmailLog({ type: "photo_rejected", to: opts.agentEmail, subject, body: `Photo rejected: ${opts.address}` });
-  await sendViaResend(opts.agentEmail, subject, html);
 }
 
 // ── AGENT APPROVAL ────────────────────────────────────────────
