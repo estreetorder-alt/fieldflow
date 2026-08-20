@@ -124,6 +124,10 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       acceptedBidId: bidId, assignedAgentId: bid.agentId,
       compensationAmount: bid.amount, status: "in_progress",
       offerAcceptedAt: new Date().toISOString(),
+      // Wallet hold above already collected the money for this order, so
+      // the invoice is paid — unless part of it rode on rollover credit,
+      // in which case it stays unpaid until settleRolloverOnTopup clears it.
+      invoicePaid: !usedRollover,
     });
     const agent = await getUserById(bid.agentId);
     await addStatusHistory(id, "in_progress", `Bid accepted — ${anonUserId(bid.agentId, id)} assigned at $${bid.amount}. $${bid.amount} deducted from wallet.`);

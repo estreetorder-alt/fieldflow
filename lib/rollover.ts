@@ -100,7 +100,7 @@ export async function settleRolloverOnTopup(userId: string): Promise<{ settledCo
   for (const row of rows) {
     const owed = Number(row.rollover_amount ?? 0);
     if (owed <= 0) {
-      await supabase.from("orders").update({ rollover_unpaid: false, rollover_settled_at: new Date().toISOString() }).eq("id", row.id);
+      await supabase.from("orders").update({ rollover_unpaid: false, rollover_settled_at: new Date().toISOString(), invoice_paid: true }).eq("id", row.id);
       continue;
     }
     if (balance < owed) break; // settle oldest-first; stop once balance can't cover the next one
@@ -118,6 +118,7 @@ export async function settleRolloverOnTopup(userId: string): Promise<{ settledCo
     await supabase.from("orders").update({
       rollover_unpaid: false,
       rollover_settled_at: new Date().toISOString(),
+      invoice_paid: true,
     }).eq("id", row.id);
   }
 

@@ -176,6 +176,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
           assignedAgentId: body.assignedAgentId, status: body.status ?? "in_progress",
           acceptedBidId: matchingBid.id, compensationAmount: matchingBid.amount,
           offerAcceptedAt: new Date().toISOString(),
+          invoicePaid: !usedRollover,
         });
       } else {
         // No matching bid to accept — either a bid was already accepted

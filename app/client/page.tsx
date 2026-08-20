@@ -889,8 +889,9 @@ function ClientPageInner() {
                                           return (
                                             <button key={ph.id} onClick={()=>togglePhotoSel(order.id,ph.id)}
                                               className={`relative aspect-video rounded-xl overflow-hidden border-2 transition-all ${isSel?"border-[#FF6A00]":"border-slate-200 hover:border-[#CBD5E1]"}`}>
-                                              {ph.url?.startsWith("data:") ? <img src={ph.url} alt={ph.description} className="w-full h-full object-cover"/>
-                                              : <div className="w-full h-full bg-slate-100 flex items-center justify-center"><Camera className="w-5 h-5 text-slate-400"/></div>}
+                                              {ph.url ? <img src={ph.url} alt={ph.description} className="w-full h-full object-cover" onError={(e)=>{(e.target as HTMLImageElement).style.display="none";(e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden");}}/>
+                                              : null}
+                                              <div className={`w-full h-full bg-slate-100 items-center justify-center ${ph.url ? "hidden" : "flex"}`}><Camera className="w-5 h-5 text-slate-400"/></div>
                                               <div className={`absolute top-1.5 right-1.5 ${isSel?"text-[#FF6A00]":"text-[#081A36]/70"}`}>
                                                 {isSel?<CheckSquare className="w-4 h-4 drop-shadow"/>:<Square className="w-4 h-4 drop-shadow"/>}
                                               </div>
