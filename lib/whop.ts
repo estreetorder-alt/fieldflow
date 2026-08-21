@@ -107,7 +107,15 @@ export function getWhopClient(): Whop | null {
 }
 
 export function isWhopConfigured(): boolean {
-  return Boolean(resolveApiKey() && getWhopCompanyId());
+  // Whop is deliberately disabled as an active payment method for this
+  // version — Cash App and Zelle (manual, receipt-based) are the only
+  // supported wallet-funding methods. Every route that creates a Whop
+  // checkout/setup session gates on this flag and already degrades
+  // gracefully (503 / "not configured") when it's false, so flipping it
+  // here is a single, safe kill switch rather than editing each route.
+  // The webhook route is left intact so any in-flight historical
+  // checkouts can still resolve, but nothing new can be created.
+  return false;
 }
 
 export type WalletCheckoutPurpose =

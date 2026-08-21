@@ -1,6 +1,5 @@
 import { supabase } from "./supabase";
 import { getWalletBalance } from "./db";
-import { settleRolloverOnTopup } from "./rollover";
 
 export interface WalletPlan {
   id: string;
@@ -252,9 +251,10 @@ export async function confirmWalletTopup(opts: {
   }
 
   await supabase.from("users").update({ wallet_balance: newBalance }).eq("id", userId);
-  // Req. 11 — auto-settle any outstanding rollover-credit orders now that
-  // fresh funds have landed, oldest first, up to what the new balance covers.
-  await settleRolloverOnTopup(userId).catch((err) => console.error("[rollover] settle on topup", err));
+  // Fresh funds landed — settle any outstanding unpaid/partially-paid orders,
+  // oldest first, up to what the new balance covers.
+  const { settleVendorUnpaidOrders } = await import("./orderPayments");
+  await settleVendorUnpaidOrders(userId).catch((err) => console.error("[settle] after confirmWalletTopup", err));
   return { credited: true, alreadyDone: false, userId, amount };
 }
 
@@ -305,7 +305,8 @@ export async function adminManualCredit(opts: {
   if (error) throw new Error(error.message);
 
   await supabase.from("users").update({ wallet_balance: newBalance }).eq("id", opts.userId);
-  await settleRolloverOnTopup(opts.userId).catch((err) => console.error("[rollover] settle on manual credit", err));
+  const { settleVendorUnpaidOrders } = await import("./orderPayments");
+  await settleVendorUnpaidOrders(opts.userId).catch((err) => console.error("[settle] after admin manual credit", err));
   return { txId, newBalance };
 }
 

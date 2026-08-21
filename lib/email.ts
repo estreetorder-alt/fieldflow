@@ -304,6 +304,29 @@ export async function sendPhotosReleasedEmail(opts: {
   await sendViaResend(opts.clientEmail, subject, html);
 }
 
+// ── OVERDRAFT DECISION ────────────────────────────────────────
+// Vendor-facing notice when admin approves/rejects an overdraft request —
+// distinct from sendAdminNotification, which only reaches admin.
+
+export async function sendOverdraftDecisionEmail(opts: {
+  vendorEmail: string; vendorName: string; orderId: string;
+  shortfall: number; decision: "approved" | "rejected"; baseUrl: string;
+}): Promise<void> {
+  const approved = opts.decision === "approved";
+  const subject = `Overdraft Request ${approved ? "Approved" : "Declined"} — Order #${opts.orderId}`;
+  const html = emailWrapper(
+    approved ? "Your Overdraft Request Was Approved" : "Your Overdraft Request Was Declined",
+    `<p style="color:#475569;font-size:15px;line-height:1.7;">Hi ${opts.vendorName}, your overdraft request for order <strong>#${opts.orderId}</strong> (shortfall $${opts.shortfall.toFixed(2)}) was ${approved ? "approved" : "declined"}.</p>
+     <p style="color:#475569;font-size:14px;margin-top:12px;">${approved
+       ? "You can keep working with this order. The order is still marked unpaid until you recharge your wallet — please send a Cash App or Zelle payment to settle the outstanding balance."
+       : "Please recharge your wallet via Cash App or Zelle to settle the outstanding balance on this order."}</p>`,
+    `${opts.baseUrl}/client/wallet`,
+    "Go to Wallet"
+  );
+  await addEmailLog({ type: "overdraft_decision", to: opts.vendorEmail, subject, body: `Overdraft ${opts.decision}: order ${opts.orderId}` });
+  await sendViaResend(opts.vendorEmail, subject, html);
+}
+
 // ── AGENT APPROVAL ────────────────────────────────────────────
 
 export async function sendAgentApprovedEmail(agent: { email: string; name: string }): Promise<void> {

@@ -24,7 +24,6 @@ interface Order {
 interface ServiceItem { id: string; name: string; description: string; basePrice: number; compensation: number; category: string; photoCount?: number; shotList?: string[]; isCustom?: boolean; requiresInterior?: boolean; }
 interface ServiceCategory { id: string; label: string; services: ServiceItem[]; }
 interface SubAccount { id: string; name: string; email: string; createdAt: string; }
-interface PaymentLink { id: string; label: string; url: string; amount?: number; description: string; active: boolean; }
 
 const STATUS_COLORS: Record<string,string> = { under_review:"bg-purple-100 text-purple-700 border-purple-200", pending:"bg-amber-100 text-amber-700 border-amber-200", in_progress:"bg-blue-100 text-blue-700 border-blue-200", completed:"bg-green-100 text-green-700 border-green-200", cancelled:"bg-red-100 text-red-700 border-red-200" };
 const STATUS_ICONS: Record<string,React.ReactNode> = { under_review:<Clock className="w-3.5 h-3.5"/>, pending:<Clock className="w-3.5 h-3.5"/>, in_progress:<RefreshCw className="w-3.5 h-3.5"/>, completed:<CheckCircle className="w-3.5 h-3.5"/>, cancelled:<XCircle className="w-3.5 h-3.5"/> };
@@ -101,8 +100,7 @@ function ClientPageInner() {
   const [actingBid, setActingBid] = useState<string|null>(null);
 
   // Payment links
-  const [paymentLinks, setPaymentLinks] = useState<PaymentLink[]>([]);
-  const [showPaymentLinks, setShowPaymentLinks] = useState<string | null>(null);
+
 
   // Sub-accounts
   const [subAccounts, setSubAccounts] = useState<SubAccount[]>([]);
@@ -219,7 +217,6 @@ function ClientPageInner() {
   useEffect(() => {
     fetch("/api/auth/me").then(r=>r.json()).then(d=>{ if(d.user){ setUserName(d.user.name); setUserId(d.user.id); } });
     fetch("/api/wallet").then(r=>r.json()).then(d=>{ if(typeof d.balance==="number") setWalletBalance(d.balance); }).catch(()=>{});
-    fetch("/api/payment-links").then(r=>r.json()).then(d=>{ setPaymentLinks(d.links?.filter((l: PaymentLink) => l.active) ?? []); });
     const es = new EventSource("/api/events");
     esRef.current = es;
     es.addEventListener("connected",()=>setLiveConnected(true));

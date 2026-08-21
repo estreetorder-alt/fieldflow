@@ -33,6 +33,17 @@ export async function GET(request: NextRequest) {
  * provider.
  */
 export async function POST(request: NextRequest) {
+  // Hosted payment links (Care Business Consulting Solutions / pd.cash) are
+  // disabled as an active wallet-funding method — Cash App and Zelle are
+  // the only supported methods now. Route kept (not deleted) so historical
+  // transaction rows it created remain readable in the admin ledger.
+  return NextResponse.json(
+    { error: "This payment method is no longer available. Please use Cash App or Zelle from the wallet page." },
+    { status: 410 },
+  );
+}
+
+async function _disabledTopupPost(request: NextRequest) {
   const userId = request.cookies.get("user_id")?.value;
   const userRole = request.cookies.get("user_role")?.value;
   if (!userId || userRole !== "client") {

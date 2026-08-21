@@ -100,10 +100,17 @@ td{padding:12px 14px;border-bottom:1px solid #f1f5f9;font-size:14px}
         <tr class="total-row"><td colspan="4" style="text-align:right">Total</td><td style="text-align:right">$${order.totalPrice.toFixed(2)}</td></tr>
       </tfoot>
     </table>
-    <div style="display:flex;justify-content:space-between;align-items:center;padding:16px;background:#f8fafc;border-radius:8px;margin-bottom:24px">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:16px;background:#f8fafc;border-radius:8px;margin-bottom:${order.paymentState === "partially_paid" ? "8px" : "24px"}">
       <span style="font-size:14px;color:#64748b">Payment Status</span>
-      <span class="${order.invoicePaid ? "paid" : "unpaid"}">${order.invoicePaid ? "✓ PAID" : "PENDING PAYMENT"}</span>
+      <span class="${order.invoicePaid ? "paid" : "unpaid"}">${
+        order.paymentState === "partially_paid" ? "PARTIALLY PAID" : order.invoicePaid ? "✓ PAID" : "PENDING PAYMENT"
+      }</span>
     </div>
+    ${order.paymentState === "partially_paid" ? `
+    <div style="display:flex;justify-content:space-between;padding:0 16px 24px;font-size:13px;color:#64748b">
+      <span>Amount Paid: $${(order.amountPaid ?? 0).toFixed(2)}</span>
+      <span>Amount Due: $${(order.amountDue ?? 0).toFixed(2)}</span>
+    </div>` : ""}
     ${agent ? `
     <div style="padding:16px;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:16px">
       <p style="font-size:12px;color:#64748b;margin-bottom:4px;font-weight:600;text-transform:uppercase;letter-spacing:.5px">Assigned Agent</p>

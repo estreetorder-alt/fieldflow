@@ -86,6 +86,9 @@ export interface Order {
   statusHistory: StatusEvent[];
   offerSentAt: string | null; offerAcceptedAt: string | null;
   bulkBatchId: string | null; invoicePaid: boolean;
+  amountPaid?: number; amountDue?: number;
+  paymentState?: "unpaid" | "partially_paid" | "paid";
+  overdraftStatus?: "pending" | "approved" | "rejected" | null;
   serviceId?: string | null; customShotList?: string | null;
   bids: Bid[];
   client?: { name: string; email: string } | null;
@@ -181,6 +184,10 @@ function mapOrder(
     offerAcceptedAt: row.offer_accepted_at as string | null,
     bulkBatchId: row.bulk_batch_id as string | null,
     invoicePaid: row.invoice_paid as boolean,
+    amountPaid: row.amount_paid !== undefined && row.amount_paid !== null ? Number(row.amount_paid) : undefined,
+    amountDue: row.amount_due !== undefined && row.amount_due !== null ? Number(row.amount_due) : undefined,
+    paymentState: (row.payment_state as Order["paymentState"]) ?? undefined,
+    overdraftStatus: (row.overdraft_status as Order["overdraftStatus"]) ?? null,
     serviceId: (row.service_id as string) ?? null,
     customShotList: (row.custom_shot_list as string) ?? null,
     bids,
@@ -1115,42 +1122,55 @@ export async function holdWalletFunds(userId: string, orderId: string, amount: n
 }
 
 export async function releaseWalletHold(orderId: string, agentId: string): Promise<void> {
+  // Agent payout is independent from the vendor payment mechanism — it's
+  // always the order's committed compensation_amount (the accepted bid
+  // price), not tied to how much of the wallet was actually collected from
+  // the vendor. wallet_released still guards against double-paying on
+  // repeated status flips.
   const { data } = await supabase.from("orders")
-    .select("wallet_hold_amount, client_id, wallet_released").eq("id", orderId).single();
+    .select("compensation_amount, client_id, wallet_released").eq("id", orderId).single();
   const row = data as Record<string,unknown>;
   if (!row || row.wallet_released) return;
-  const holdAmount = Number(row.wallet_hold_amount ?? 0);
-  if (holdAmount <= 0) return;
+  const payoutAmount = Number(row.compensation_amount ?? 0);
+  if (payoutAmount <= 0) return;
   // Credit agent pending payout
   const agent = await getUserById(agentId);
   if (agent) {
     await updateUser(agentId, {
-      pendingPayout: (agent.pendingPayout ?? 0) + holdAmount,
-      totalEarnings: (agent.totalEarnings ?? 0) + holdAmount,
+      pendingPayout: (agent.pendingPayout ?? 0) + payoutAmount,
+      totalEarnings: (agent.totalEarnings ?? 0) + payoutAmount,
     });
   }
   await supabase.from("orders").update({ wallet_released: true }).eq("id", orderId);
   await supabase.from("wallet_transactions").insert({
-    user_id: agentId, type: "release", amount: holdAmount, balance_after: 0,
+    user_id: agentId, type: "release", amount: payoutAmount, balance_after: 0,
     description: `Payment released for order ${orderId}`, order_id: orderId, status: "confirmed",
   });
 }
 
 export async function refundWalletHold(userId: string, orderId: string): Promise<void> {
   const { data } = await supabase.from("orders")
-    .select("wallet_hold_amount, wallet_released").eq("id", orderId).single();
+    .select("amount_paid, total_price, wallet_released").eq("id", orderId).single();
   const row = data as Record<string,unknown>;
   if (!row || row.wallet_released) return;
-  const holdAmount = Number(row.wallet_hold_amount ?? 0);
-  if (holdAmount <= 0) return;
+  const paidAmount = Number(row.amount_paid ?? 0);
+  if (paidAmount <= 0) {
+    await supabase.from("orders").update({ wallet_released: true }).eq("id", orderId);
+    return;
+  }
   const current = await getWalletBalance(userId);
-  const newBalance = current + holdAmount;
+  const newBalance = current + paidAmount;
   await supabase.from("users").update({ wallet_balance: newBalance }).eq("id", userId);
   await supabase.from("wallet_transactions").insert({
-    user_id: userId, type: "refund", amount: holdAmount, balance_after: newBalance,
+    user_id: userId, type: "refund", amount: paidAmount, balance_after: newBalance,
     description: `Refund for cancelled order ${orderId}`, order_id: orderId, status: "confirmed",
   });
-  await supabase.from("orders").update({ wallet_released: true, wallet_hold_amount: 0 }).eq("id", orderId);
+  await supabase.from("orders").update({
+    wallet_released: true, wallet_hold_amount: 0,
+    amount_paid: 0, amount_due: Number(row.total_price ?? 0),
+    payment_state: "unpaid", invoice_paid: false, overdraft_status: null,
+  }).eq("id", orderId);
+  await supabase.from("overdraft_requests").update({ status: "rejected" }).eq("order_id", orderId).eq("status", "pending");
 }
 
 export async function getAllWalletTopupsPending(): Promise<(WalletTransaction & { userName?: string; userEmail?: string })[]> {
@@ -1214,6 +1234,12 @@ export async function confirmTopup(transactionId: string): Promise<void> {
   const newBalance = current + Number(row.amount);
   await supabase.from("users").update({ wallet_balance: newBalance }).eq("id", row.user_id as string);
   await supabase.from("wallet_transactions").update({ status: "confirmed", balance_after: newBalance }).eq("id", transactionId);
+
+  // This is the actual confirm button behind manual Cash App/Zelle top-ups
+  // (admin Wallet tab). Fresh funds just landed — apply them to the
+  // vendor's outstanding unpaid/partially-paid orders, oldest first.
+  const { settleVendorUnpaidOrders } = await import("@/lib/orderPayments");
+  await settleVendorUnpaidOrders(row.user_id as string).catch((err) => console.error("[settle] after confirmTopup", err));
 }
 
 // ── Agent Applications ────────────────────────────────────────
@@ -1274,6 +1300,11 @@ export async function manualWalletAdjustment(opts: {
     confirmed_at: new Date().toISOString(),
     metadata: { admin_id: opts.adminId, admin_name: opts.adminName, note: opts.note ?? "" },
   });
+
+  if (opts.direction === "credit") {
+    const { settleVendorUnpaidOrders } = await import("@/lib/orderPayments");
+    await settleVendorUnpaidOrders(opts.userId).catch((err) => console.error("[settle] after manual credit", err));
+  }
 
   return { newBalance };
 }

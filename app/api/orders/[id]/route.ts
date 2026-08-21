@@ -159,25 +159,29 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       const matchingBid = bids.find(b => b.agentId === body.assignedAgentId && b.status === "pending");
 
       if (matchingBid && !order.acceptedBidId) {
-        const { tryHoldWithRollover } = await import("@/lib/rollover");
-        const { held, usedRollover, rolloverAmount } = await tryHoldWithRollover(order.clientId, id, matchingBid.amount);
-        if (!held) {
-          return NextResponse.json({
-            error: "insufficient_funds",
-            message: `Client's wallet balance is too low to cover this agent's $${matchingBid.amount} bid. Have them top up before assigning.`,
-          }, { status: 402 });
-        }
-        if (usedRollover) {
-          await addStatusHistory(id, order.status, `$${rolloverAmount?.toFixed(2)} of this order proceeded on rollover credit — will auto-settle on next wallet top-up.`);
-        }
+        // Orders are never blocked by wallet balance here either — same
+        // atomic charge-whatever's-available + auto overdraft-request flow
+        // as the normal client-facing bid-accept endpoint.
+        const { getWalletBalance } = await import("@/lib/db");
+        const { acceptOrderCharge, openOverdraftRequest } = await import("@/lib/orderPayments");
+        const balanceBefore = await getWalletBalance(order.clientId);
+
         await updateBidStatus(matchingBid.id, "accepted");
         await rejectAllPendingBids(id);
         await updateOrder(id, {
           assignedAgentId: body.assignedAgentId, status: body.status ?? "in_progress",
           acceptedBidId: matchingBid.id, compensationAmount: matchingBid.amount,
           offerAcceptedAt: new Date().toISOString(),
-          invoicePaid: !usedRollover,
         });
+
+        const charge = await acceptOrderCharge(id);
+        if (charge.amountDue > 0) {
+          await addStatusHistory(id, order.status, `Admin-assigned — $${charge.charged.toFixed(2)} collected from wallet, $${charge.amountDue.toFixed(2)} outstanding.`);
+          await openOverdraftRequest({
+            orderId: id, vendorId: order.clientId, orderAmount: matchingBid.amount,
+            walletBalanceAtRequest: balanceBefore, requestedAmount: charge.amountDue,
+          }).catch((err) => console.error("[overdraft] auto-open failed", err));
+        }
       } else {
         // No matching bid to accept — either a bid was already accepted
         // earlier (reassignment) or this is a pure manual placement. Either

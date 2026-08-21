@@ -53,6 +53,8 @@ export default function AdminPage() {
   const [samples, setSamples] = useState<Sample[]>([]);
   const [payouts, setPayouts] = useState<Payout[]>([]);
   const [pendingTopups, setPendingTopups] = useState<{id:string;userId:string;amount:number;description:string;createdAt:string;userName?:string;userEmail?:string;purpose?:string;receiptUrl?:string|null;orderNumber?:string|null}[]>([]);
+  const [overdraftRequests, setOverdraftRequests] = useState<{id:string;orderId:string;vendorId:string;vendorName?:string;vendorEmail?:string;orderAmount:number;walletBalanceAtRequest:number;requestedAmount:number;shortfallAmount:number;status:"pending"|"approved"|"rejected";createdAt:string}[]>([]);
+  const [overdraftBusy, setOverdraftBusy] = useState<string|null>(null);
   const [receiptLightbox, setReceiptLightbox] = useState<string|null>(null);
   const [confirmingTopup, setConfirmingTopup] = useState<string|null>(null);
   const [manualCreditFor, setManualCreditFor] = useState<string|null>(null);
@@ -206,6 +208,25 @@ export default function AdminPage() {
     setPendingTopups(d.pending ?? []);
   }, []);
 
+  const fetchOverdraftRequests = useCallback(async () => {
+    const r = await fetch("/api/overdraft-requests?status=pending");
+    const d = await r.json();
+    setOverdraftRequests(d.requests ?? []);
+  }, []);
+
+  async function decideOverdraft(id: string, decision: "approved" | "rejected") {
+    setOverdraftBusy(id);
+    try {
+      await fetch(`/api/overdraft-requests/${id}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ decision }),
+      });
+      await fetchOverdraftRequests();
+    } finally {
+      setOverdraftBusy(null);
+    }
+  }
+
   const fetchWalletPlans = useCallback(async () => {
     const r = await fetch("/api/wallet/plans?all=1");
     const d = await r.json();
@@ -344,11 +365,12 @@ export default function AdminPage() {
   useEffect(() => {
     if (tab === "wallet") {
       fetchWallet();
+      fetchOverdraftRequests();
       fetchWalletPlans();
       fetchWhopActivity();
       fetchWalletLog();
     }
-  }, [tab, fetchWallet, fetchWalletPlans, fetchWhopActivity, fetchWalletLog]);
+  }, [tab, fetchWallet, fetchOverdraftRequests, fetchWalletPlans, fetchWhopActivity, fetchWalletLog]);
   useEffect(() => { if (tab === "users") fetchApplications(); }, [tab, fetchApplications]);
 
   async function handleLogout() { await fetch("/api/auth/logout", { method:"POST" }); router.push("/"); }
@@ -1766,6 +1788,59 @@ export default function AdminPage() {
                 <img src={receiptLightbox} alt="Payment receipt" className="max-w-full max-h-full rounded-lg shadow-2xl" />
               </div>
             )}
+
+            {/* Overdraft requests — orders that proceeded without full wallet
+                coverage (never blocked); admin approves/rejects here.
+                Approval does not mark the order paid — only a settled
+                top-up does that, via settle_vendor_unpaid_orders. */}
+            <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+              <div className="px-6 py-4 border-b border-slate-100">
+                <h2 className="font-bold text-slate-900 flex items-center gap-2">
+                  <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-amber-500 text-white text-xs font-black">!</span>
+                  Overdraft Requests
+                  {overdraftRequests.length > 0 && (
+                    <span className="text-[10px] font-bold uppercase bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">{overdraftRequests.length} pending</span>
+                  )}
+                </h2>
+                <p className="text-xs text-slate-400 mt-0.5">Orders that proceeded without full wallet coverage. Approving does not mark the order paid — it only confirms the vendor may keep working while they recharge.</p>
+              </div>
+              {overdraftRequests.length === 0 ? (
+                <div className="px-6 py-8 text-center text-sm text-slate-400">No pending overdraft requests.</div>
+              ) : (
+                <div>
+                  {overdraftRequests.map((req) => (
+                    <div key={req.id} className="px-6 py-4 border-b border-slate-100 last:border-0 flex items-center justify-between gap-4 flex-wrap">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          <span className="font-bold text-slate-900">{req.vendorName ?? req.vendorId}</span>
+                          <span className="text-xs text-slate-500">{req.vendorEmail}</span>
+                        </div>
+                        <p className="text-xs text-slate-500">
+                          Order #{req.orderId} · Order amount ${req.orderAmount.toFixed(2)} · Balance at request ${req.walletBalanceAtRequest.toFixed(2)}
+                        </p>
+                        <p className="text-sm font-bold text-amber-700 mt-0.5">Shortfall: ${req.shortfallAmount.toFixed(2)}</p>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <button
+                          disabled={overdraftBusy === req.id}
+                          onClick={() => decideOverdraft(req.id, "rejected")}
+                          className="text-xs font-bold border border-slate-300 hover:border-red-400 hover:bg-red-50 text-slate-600 px-3 py-2 rounded-lg disabled:opacity-50"
+                        >
+                          Reject
+                        </button>
+                        <button
+                          disabled={overdraftBusy === req.id}
+                          onClick={() => decideOverdraft(req.id, "approved")}
+                          className="text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-lg disabled:opacity-50"
+                        >
+                          Approve
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
             {/* Whop payment + webhook activity */}
             <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">

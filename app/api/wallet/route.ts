@@ -21,6 +21,29 @@ export async function GET(request: NextRequest) {
     getWalletTransactions(userId),
   ]);
 
+  // Outstanding orders (unpaid/partially paid) + any pending/approved
+  // overdraft requests, so the vendor wallet page can show why an order
+  // isn't fully paid and what they still owe.
+  let outstanding: { orderId: string; address: string; amountDue: number; paymentState: string; overdraftStatus: string | null }[] = [];
+  if (userRole === "client") {
+    const { data: unpaidOrders } = await supabase
+      .from("orders")
+      .select("id, address, amount_due, payment_state, overdraft_status")
+      .eq("client_id", userId)
+      .neq("payment_state", "paid")
+      .order("created_at", { ascending: true });
+    outstanding = (unpaidOrders ?? []).map((r) => {
+      const row = r as Record<string, unknown>;
+      return {
+        orderId: row.id as string,
+        address: row.address as string,
+        amountDue: Number(row.amount_due ?? 0),
+        paymentState: (row.payment_state as string) ?? "unpaid",
+        overdraftStatus: (row.overdraft_status as string) ?? null,
+      };
+    }).filter((o) => o.amountDue > 0);
+  }
+
   // Soft check: if client is viewing wallet and balance is low, try auto top-up
   let autoTopup = null;
   if (userRole === "client") {
@@ -29,14 +52,14 @@ export async function GET(request: NextRequest) {
       autoTopup = await maybeRunAutoTopup(userId);
       if (autoTopup.ran && autoTopup.creditedNow) {
         const fresh = await getWalletBalance(userId);
-        return NextResponse.json({ balance: fresh, transactions, autoTopup });
+        return NextResponse.json({ balance: fresh, transactions, autoTopup, outstanding });
       }
     } catch (err) {
       console.error("[wallet GET] auto-topup", err);
     }
   }
 
-  return NextResponse.json({ balance, transactions, autoTopup });
+  return NextResponse.json({ balance, transactions, autoTopup, outstanding });
 }
 
 export async function POST(request: NextRequest) {

@@ -30,6 +30,20 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: verified.error }, { status: 400 });
   }
 
+  // Whop is disabled as an active payment method for this version (see
+  // lib/whop.ts isWhopConfigured). No new checkouts are created, so any
+  // webhook that still arrives here is historical/stray — acknowledge it
+  // with 200 (so Whop doesn't retry-storm) but don't credit anything.
+  return NextResponse.json({ ok: true, skipped: "whop_disabled" });
+}
+
+async function _disabledWhopWebhookHandler(request: NextRequest) {
+  const bodyText = await request.text();
+  const verified = verifyWhopWebhookSignature(bodyText, request.headers);
+  if (!verified.ok) {
+    return NextResponse.json({ error: verified.error }, { status: 400 });
+  }
+
   let event: JsonRecord;
   try {
     event = JSON.parse(bodyText) as JsonRecord;

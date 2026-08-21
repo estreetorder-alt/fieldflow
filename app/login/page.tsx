@@ -27,7 +27,6 @@ function LoginForm() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [pendingActivation, setPendingActivation] = useState(false);
-  const [paymentLinks, setPaymentLinks] = useState<{id:string;label:string;url:string;amount?:number;description:string}[]>([]);
   const [recaptchaToken, setRecaptchaToken] = useState("");
   const [captchaError, setCaptchaError] = useState(false);
   const recaptchaRef = useRef<HTMLDivElement>(null);
@@ -77,10 +76,6 @@ function LoginForm() {
       const data = await res.json();
       if (!res.ok) {
         if (data.error === "pending_activation") {
-          // Fetch payment links and show payment UI
-          const pl = await fetch("/api/payment-links");
-          const pld = await pl.json();
-          setPaymentLinks(pld.links?.filter((l: {active:boolean}) => l.active) ?? []);
           setPendingActivation(true);
         } else if (data.error === "pending_approval" || data.error === "rejected") {
           setError(data.message || "Your account is not yet approved for login.");
@@ -184,19 +179,7 @@ function LoginForm() {
               <div className="mt-4 bg-amber-50 border border-amber-300 rounded-xl p-5">
                 <p className="font-bold text-amber-900 text-sm mb-2">⏳ Account Pending Activation</p>
                 <p className="text-amber-800 text-xs mb-4 leading-relaxed">Your account has been created but is not yet active. Complete your payment to access your dashboard.</p>
-                {paymentLinks.length > 0 ? (
-                  <div className="space-y-2">
-                    {paymentLinks.map((link: {id:string;label:string;url:string;amount?:number;description:string}) => (
-                      <a key={link.id} href={link.url} target="_blank" rel="noopener noreferrer"
-                        className="flex items-center justify-between gap-2 p-3 border-2 border-[#FF6A00] rounded-xl hover:bg-[#FF6A00]/5 transition-colors text-sm">
-                        <span className="font-bold text-[#081A36]">{link.label}</span>
-                        <span className="text-xs bg-[#FF6A00] text-white font-bold px-2.5 py-1 rounded-lg">Pay Now →</span>
-                      </a>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-xs text-amber-700">Contact <a href="mailto:info@snapect.com" className="underline font-bold">info@snapect.com</a> to complete activation.</p>
-                )}
+                <p className="text-xs text-amber-700">Contact <a href="mailto:info@snapect.com" className="underline font-bold">info@snapect.com</a> to complete activation via Cash App or Zelle.</p>
                 <button onClick={() => setPendingActivation(false)} className="mt-3 text-xs text-slate-400 hover:text-slate-600 underline">Back to login</button>
               </div>
             )}

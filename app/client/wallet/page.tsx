@@ -67,6 +67,7 @@ export default function WalletPage() {
 function WalletPageInner() {
   const [balance, setBalance] = useState(0);
   const [transactions, setTransactions] = useState<WalletTx[]>([]);
+  const [outstanding, setOutstanding] = useState<{ orderId: string; address: string; amountDue: number; paymentState: string; overdraftStatus: string | null }[]>([]);
   const [loading, setLoading] = useState(true);
   const [userName, setUserName] = useState("Client");
   const [bouncing, setBouncing] = useState(false);
@@ -111,6 +112,7 @@ function WalletPageInner() {
     const [walletData, meData] = await Promise.all([walletRes.json(), meRes.json()]);
     setBalance(walletData.balance ?? 0);
     setTransactions(walletData.transactions ?? []);
+    setOutstanding(walletData.outstanding ?? []);
     if (meData.user) setUserName(meData.user.name);
     setLoading(false);
   }, []);
@@ -328,6 +330,36 @@ function WalletPageInner() {
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
+
+          {/* Outstanding balance / overdraft status — orders that proceeded
+              without full payment (never blocked), still awaiting a
+              recharge to settle. */}
+          {outstanding.length > 0 && (
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-amber-500 text-white text-xs font-black">!</span>
+                <h2 className="font-bold text-amber-900">Outstanding Payments</h2>
+              </div>
+              <p className="text-xs text-amber-800 mb-3">
+                Payment is pending on {outstanding.length} order{outstanding.length !== 1 ? "s" : ""}. Recharge your wallet to settle the outstanding balance{outstanding.length !== 1 ? "s" : ""} below — they'll be applied automatically, oldest first.
+              </p>
+              <div className="space-y-2">
+                {outstanding.map((o) => (
+                  <div key={o.orderId} className="flex items-center justify-between gap-3 bg-white border border-amber-200 rounded-xl px-3 py-2">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-[#081A36] truncate">{o.address}</p>
+                      <p className="text-[11px] text-amber-700">
+                        {o.paymentState === "partially_paid" ? "Partially paid" : "Unpaid"}
+                        {o.overdraftStatus === "pending" && " · overdraft pending review"}
+                        {o.overdraftStatus === "approved" && " · overdraft approved"}
+                      </p>
+                    </div>
+                    <span className="text-sm font-black text-amber-900 flex-shrink-0">${o.amountDue.toFixed(2)} due</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Pay with Cash App or Zelle */}
           <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
