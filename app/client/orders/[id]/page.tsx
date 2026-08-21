@@ -16,6 +16,14 @@ interface StatusEvent {
   note: string;
 }
 
+interface OrderPhoto {
+  id?: string;
+  filename?: string;
+  url?: string;
+  description?: string;
+  approved?: boolean;
+}
+
 interface Order {
   id: string;
   address: string;
@@ -26,7 +34,7 @@ interface Order {
   serviceType: string;
   turnaroundTier: string;
   notes: string;
-  photos: string[];
+  photos: OrderPhoto[];
   createdAt: string;
   statusHistory: StatusEvent[];
   client?: { name: string; email: string; phone: string } | null;
@@ -290,13 +298,15 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     {order.photos.map((photo, i) => (
                       <div
-                        key={i}
+                        key={photo.id ?? i}
                         className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col items-center gap-2 text-center"
                       >
                         <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
                           <Camera className="w-5 h-5 text-blue-600" />
                         </div>
-                        <p className="text-xs text-slate-600 font-medium break-all leading-tight">{photo}</p>
+                        <p className="text-xs text-slate-600 font-medium break-all leading-tight">
+                          {photo.description || photo.filename || `Photo ${i + 1}`}
+                        </p>
                         <span className="text-xs text-green-600 font-semibold flex items-center gap-1">
                           <CheckCircle className="w-3 h-3" />
                           Uploaded
