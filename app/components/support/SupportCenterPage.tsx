@@ -63,7 +63,7 @@ function StatCard({ icon: Icon, label, value, sub }: { icon: React.ComponentType
 
 export default function SupportCenterPage({ pageSize = 5 }: { pageSize?: number }) {
   const supportRef = useRef<SupportWidgetHandle>(null);
-  const [tab, setTab] = useState<"requests" | "chats" | "faq">("requests");
+  const [tab, setTab] = useState<"requests" | "faq">("requests");
   const [items, setItems] = useState<SupportListItem[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -86,7 +86,10 @@ export default function SupportCenterPage({ pageSize = 5 }: { pageSize?: number 
     };
   }, [page, pageSize]);
 
-  const rows = tab === "chats" ? items.filter((i) => i.kind === "chat") : items;
+  // Single unified history of everything the client has submitted — support
+  // requests and past live chats alike — rather than splitting live chat
+  // out into its own separate history tab.
+  const rows = items;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   return (
@@ -126,7 +129,6 @@ export default function SupportCenterPage({ pageSize = 5 }: { pageSize?: number 
           <div className="flex border-b border-[var(--brand-border)] px-2">
             {[
               { key: "requests", label: "My Requests" },
-              { key: "chats", label: "Live Chat History" },
               { key: "faq", label: "FAQ" },
             ].map((t) => (
               <button
@@ -144,7 +146,7 @@ export default function SupportCenterPage({ pageSize = 5 }: { pageSize?: number 
           {tab !== "faq" ? (
             <div>
               <div className="px-5 pt-4 pb-2">
-                <h2 className="font-bold text-[var(--brand-navy)]">{tab === "chats" ? "Live Chat History" : "My Support Requests"}</h2>
+                <h2 className="font-bold text-[var(--brand-navy)]">My Support Requests</h2>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">

@@ -70,7 +70,16 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       invoice_paid: true,
       paid_at: new Date().toISOString(),
       status: "pending",
+      // Keep the newer amount_paid/amount_due/payment_state trio in sync
+      // with this confirmation — otherwise the order still shows up as
+      // "Unpaid" on the client's wallet page (Outstanding Payments) even
+      // though invoice_paid/payment_status say it's settled.
+      amount_paid: order.totalPrice,
+      amount_due: 0,
+      payment_state: "paid",
+      overdraft_status: null,
     }).eq("id", id);
+    await supabase.from("overdraft_requests").update({ status: "approved" }).eq("order_id", id).eq("status", "pending");
     await addStatusHistory(id, "pending", "Payment confirmed — order is now active");
     const admin = await getUserById(userId);
     await logAdminAction({ actorId: userId, actorName: admin?.name ?? "Admin", action: "order.confirm_payment", targetType: "order", targetId: id, details: { amount: order.totalPrice } });
@@ -215,6 +224,18 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   if (body.invoicePaid !== undefined) {
     if (userRole !== "admin" && !canAccessScope(userRole, "orders")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     await updateOrder(id, { invoicePaid: body.invoicePaid });
+    // Keep amount_paid/amount_due/payment_state in sync with this override
+    // so the client's wallet "Outstanding Payments" list matches reality.
+    if (body.invoicePaid === true) {
+      await supabase.from("orders").update({
+        amount_paid: order.totalPrice, amount_due: 0, payment_state: "paid", overdraft_status: null,
+      }).eq("id", id);
+      await supabase.from("overdraft_requests").update({ status: "approved" }).eq("order_id", id).eq("status", "pending");
+    } else {
+      await supabase.from("orders").update({
+        amount_due: order.totalPrice, payment_state: "unpaid",
+      }).eq("id", id);
+    }
     const admin = await getUserById(userId);
     await logAdminAction({ actorId: userId, actorName: admin?.name ?? "Admin", action: "order.invoice_paid_override", targetType: "order", targetId: id, details: { invoicePaid: body.invoicePaid } });
   }
